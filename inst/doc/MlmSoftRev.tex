@@ -1,0 +1,148 @@
+\documentclass[12pt]{article}
+\usepackage{Sweave}
+\usepackage{myVignette}
+\usepackage[authoryear,round]{natbib}
+\bibliographystyle{plainnat}
+\DefineVerbatimEnvironment{Sinput}{Verbatim}
+{formatcom={\vspace{-2.5ex}},fontshape=sl,
+  fontfamily=courier,fontseries=b, fontsize=\scriptsize}
+\DefineVerbatimEnvironment{Soutput}{Verbatim}
+{formatcom={\vspace{-2.5ex}},fontfamily=courier,fontseries=b,%
+  fontsize=\scriptsize}
+%%\VignetteIndexEntry{Examples from Multilevel Software Reviews}
+%%\VignetteDepends{Matrix}
+%%\VignetteDepends{lme4}
+\begin{document}
+
+\setkeys{Gin}{width=\textwidth}
+\title{Examples from Multilevel Software Comparative Reviews}
+\author{Douglas Bates\\R Development Core Team\\\email{Douglas.Bates@R-project.org}}
+\date{\today}
+\maketitle
+\begin{abstract}
+   The Center for Multilevel Modelling at the Institute of Education,
+   London maintains a web site of ``Software reviews of multilevel
+   modeling packages''.  The data sets discussed in the reviews are
+   available at this web site.  We have incorporated these data sets
+   in the \code{lme4} package for \RR{} and, in this vignette, provide
+   the results of fitting several models to these data sets.
+\end{abstract}
+
+\section{Introduction}
+\label{sec:Intro}
+
+
+\section{Two-level normal models}
+\label{sec:TwoLevelNormal}
+
+The \code{Exam} data set is used in fitting examples of two-level
+normal multilevel models.
+\begin{Schunk}
+\begin{Sinput}
+> data(Exam)
+> str(Exam)
+\end{Sinput}
+\begin{Soutput}
+`data.frame':	4059 obs. of  10 variables:
+ $ school  : Factor w/ 65 levels "1","2","3","4",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ normexam: num   0.261  0.134 -1.724  0.968  0.544 ...
+ $ schgend : Factor w/ 3 levels "mixed","boys",..: 1 1 1 1 1 1 1 1 1 1 ...
+ $ schavg  : num  0.166 0.166 0.166 0.166 0.166 ...
+ $ vr      : Factor w/ 3 levels "bottom 25%","mi..",..: 2 2 2 2 2 2 2 2 2 2 ...
+ $ intake  : Factor w/ 3 levels "bottom 25%","mi..",..: 1 2 3 2 2 1 3 2 2 3 ...
+ $ standLRT: num   0.619  0.206 -1.365  0.206  0.371 ...
+ $ sex     : Factor w/ 2 levels "F","M": 1 1 2 1 1 2 2 2 1 2 ...
+ $ type    : Factor w/ 2 levels "Mxd","Sngl": 1 1 1 1 1 1 1 1 1 1 ...
+ $ student : Factor w/ 650 levels "1","2","3","4",..: 143 145 142 141 138 155 158 115 117 113 ...
+\end{Soutput}
+\begin{Sinput}
+> sysgc.time(Em1 <- lme(normexam ~ standLRT + sex + schgend, 
++     Exam, ~1 | school), gc = TRUE)
+\end{Sinput}
+\begin{Soutput}
+[1] 0.09 0.00 0.09 0.00 0.00
+\end{Soutput}
+\begin{Sinput}
+> summary(Em1)
+\end{Sinput}
+\begin{Soutput}
+Linear mixed-effects model fit by REML
+Fixed: normexam ~ standLRT + sex + schgend 
+ Data: Exam 
+      AIC      BIC    logLik
+ 9361.673 9405.834 -4673.837
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ school   (Intercept) 0.085829 0.29297 
+ Residual             0.56253  0.75002 
+
+Fixed effects:
+                Estimate  Std. Error   DF t value  Pr(>|t|)
+(Intercept)  -1.0493e-03  5.5569e-02 4054 -0.0189   0.98494
+standLRT      5.5975e-01  1.2450e-02 4054 44.9601 < 2.2e-16
+sexM         -1.6739e-01  3.4100e-02 4054 -4.9089 9.519e-07
+schgendboys   1.7769e-01  1.1347e-01 4054  1.5659   0.11745
+schgendgirls  1.5900e-01  8.9403e-02 4054  1.7784   0.07541
+
+Correlation of Fixed Effects:
+            (Intr) stnLRT sexM   schgndb
+standLRT    -0.014                      
+sexM        -0.316  0.061               
+schgendboys -0.395 -0.003 -0.145        
+schgendgrls -0.622  0.009  0.197  0.245 
+
+Number of Observations: 4059
+Number of Groups: 65 
+\end{Soutput}
+\begin{Sinput}
+> sysgc.time(Em2 <- lme(normexam ~ standLRT * sex + schgend, 
++     Exam, ~1 | school), gc = TRUE)
+\end{Sinput}
+\begin{Soutput}
+[1] 0.05 0.00 0.05 0.00 0.00
+\end{Soutput}
+\begin{Sinput}
+> summary(Em2)
+\end{Sinput}
+\begin{Soutput}
+Linear mixed-effects model fit by REML
+Fixed: normexam ~ standLRT * sex + schgend 
+ Data: Exam 
+      AIC      BIC    logLik
+ 9369.204 9419.673 -4676.602
+
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ school   (Intercept) 0.085856 0.29301 
+ Residual             0.56267  0.75011 
+
+Fixed effects:
+                 Estimate  Std. Error   DF t value  Pr(>|t|)
+(Intercept)   -8.4349e-04  5.5586e-02 4053 -0.0152   0.98789
+standLRT       5.5745e-01  1.6662e-02 4053 33.4572 < 2.2e-16
+sexM          -1.6733e-01  3.4105e-02 4053 -4.9064 9.638e-07
+schgendboys    1.7765e-01  1.1349e-01 4053  1.5653   0.11759
+schgendgirls   1.5879e-01  8.9422e-02 4053  1.7757   0.07586
+standLRT:sexM  5.1121e-03  2.4584e-02 4053  0.2079   0.83528
+
+Correlation of Fixed Effects:
+            (Intr) stnLRT sexM   schgndb schgndg
+standLRT    -0.022                              
+sexM        -0.316  0.040                       
+schgendboys -0.395 -0.001 -0.145                
+schgendgrls -0.622  0.014  0.196  0.245         
+stndLRT:sxM  0.018 -0.664  0.008 -0.002  -0.011 
+
+Number of Observations: 4059
+Number of Groups: 65 
+\end{Soutput}
+\begin{Sinput}
+> sysgc.time(Em3 <- lme(normexam ~ standLRT * sex + schgend, 
++     Exam, ~standLRT | school), gc = TRUE)
+\end{Sinput}
+\begin{Soutput}
+[1] 0.06 0.00 0.06 0.00 0.00
+\end{Soutput}
+\begin{Sinput}
+> summary(mE3)

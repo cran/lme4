@@ -45,15 +45,19 @@ make.mf.call = function(mf, frm, random) #unexported utility
     mf
 }
 
-lmeControl =                            # Control parameters for lme
-  function(maxIter = 50, msMaxIter = 50, tolerance =
-           sqrt((.Machine$double.eps)), niterEM = 25,
-           msTol = sqrt(.Machine$double.eps), msScale, msVerbose = FALSE,
-           glmmMaxIter = 20,
-           returnObject = FALSE, gradHess = TRUE, apVar = TRUE,
-           .relStep = (.Machine$double.eps)^(1/3), minAbsParApVar = 0.05,
+lmeControl <-                            # Control parameters for lme
+  function(maxIter = 50,
+           msMaxIter = 50,
+           tolerance = sqrt((.Machine$double.eps)),
+           niterEM = 20,
+           msTol = sqrt(.Machine$double.eps),
+           msScale,
+           msVerbose = getOption("verbose"),
+           PQLmaxIt = 20,
+           .relStep = (.Machine$double.eps)^(1/3),
            nlmStepMax = NULL,
-           natural = TRUE, optimizer="nlm", EMverbose=FALSE,
+           optimizer="nlm",
+           EMverbose = getOption("verbose"),
            analyticGradient = TRUE,
            analyticHessian=FALSE)
 {
@@ -69,15 +73,18 @@ lmeControl =                            # Control parameters for lme
         }
         scale
     }
-    list(maxIter = maxIter, msMaxIter = msMaxIter, tolerance = tolerance,
-         niterEM = niterEM, msTol = msTol, msScale = msScale,
+    list(maxIter = maxIter,
+         msMaxIter = msMaxIter,
+         tolerance = tolerance,
+         niterEM = niterEM,
+         msTol = msTol,
+         msScale = msScale,
          msVerbose = msVerbose,
-         glmmMaxIter = glmmMaxIter,
-         returnObject = returnObject,
-         gradHess = gradHess , apVar = apVar, .relStep = .relStep,
+         PQLmaxIt = PQLmaxIt,
+         .relStep = .relStep,
          nlmStepMax = nlmStepMax,
-         minAbsParApVar = minAbsParApVar, natural = natural,
-         optimizer=optimizer, EMverbose=EMverbose,
+         optimizer=optimizer,
+         EMverbose=EMverbose,
          analyticHessian=analyticHessian,
          analyticGradient=analyticGradient)
 }
@@ -255,6 +262,12 @@ setMethod("show", signature(object = "summary.lme"),
           invisible(object)
       })
 
+setMethod("coef", signature(object = "summary.lme"),
+          function(object, ...)
+      {
+          coef(object@re)
+      })
+
 setMethod("show", signature(object = "lme"),
           function(object)
       {
@@ -283,7 +296,52 @@ setMethod("show", signature(object = "lme"),
 
 setMethod("anova", signature(object = "lme"),
           function(object, ...)
-          cat("anova method for lme not yet implemented\n"))
+      {
+          mCall <- match.call(expand.dots = TRUE)
+          dots <- list(...)
+          modp <- logical(0)
+          if (length(dots))
+              modp <- sapply(dots, inherits, "lme") | sapply(dots, inherits, "lm")
+          if (!any(modp)) {             # only one model - use terms
+              mCall$object <- substitute(object@rep)
+              return(eval(mCall, parent.frame()))
+          }
+          opts <- dots[!modp]
+          mods <- c(list(object), dots[modp])
+          names(mods) <- sapply(as.list(mCall)[c(FALSE, TRUE, modp)], as.character)
+          mods <- mods[order(sapply(lapply(mods, logLik, REML = FALSE), attr, "df"))]
+          calls <- lapply(mods, slot, "call")
+          data <- lapply(calls, "[[", "data")
+          if (any(data != data[[1]])) stop("all models must be fit to the same data object")
+          header <- paste("Data:", data[[1]])
+          subset <- lapply(calls, "[[", "subset")
+          if (any(subset != subset[[1]])) stop("all models must use the same subset")
+          if (!is.null(subset[[1]]))
+              header <-
+                  c(header,
+                    paste("Subset", deparse(subset[[1]], forDisplay = TRUE), sep = ": "))
+          llks <- lapply(mods, logLik, REML = FALSE)
+          Df <- sapply(llks, attr, "df")
+          llk <- unlist(llks)
+          chisq <- 2 * pmax(0, c(NA, diff(llk)))
+          dfChisq <- c(NA, diff(Df))
+          val <- data.frame(Df = Df,
+                            AIC = sapply(llks, AIC),
+                            BIC = sapply(llks, BIC),
+                            logLik = llk,
+                            "Chisq" = chisq,
+                            "Chi Df" = dfChisq,
+                            "Pr(>Chisq)" = pchisq(chisq, dfChisq, lower = FALSE),
+                            check.names = FALSE)
+          class(val) <- c("anova", class(val))
+          attr(val, "heading") <-
+              c(header, "", "Models: <fixed>: <random>",
+                paste(names(mods),
+                      unlist(lapply(lapply(calls, "[[", "formula"), deparse, forDisplay = TRUE)),
+                      unlist(lapply(lapply(calls, "[[", "random"), deparse, forDisplay = TRUE)),
+                      sep = ": "),"")
+          val
+      })
 
 setMethod("fixef", signature(object = "lme"),
           function(object, ...)
@@ -352,3 +410,21 @@ setMethod("gradient", signature(x = "lme"),
               callGeneric()
           })
 
+setMethod("confint", signature(object = "lme"),
+          function (object, parm, level = 0.95, ...) 
+      {
+          cf <- fixef(object)
+          pnames <- names(cf)
+          if (missing(parm)) 
+              parm <- seq(along = pnames)
+          else if (is.character(parm)) 
+              parm <- match(parm, pnames, nomatch = 0)
+          a <- (1 - level)/2
+          a <- c(a, 1 - a)
+          pct <- paste(round(100 * a, 1), "%")
+          ci <- array(NA, dim = c(length(parm), 2),
+                      dimnames = list(pnames[parm], pct))
+          ses <- sqrt(diag(vcov(object)))[parm]
+          ci[] <- cf[parm] + ses * t(outer(a, getFixDF(object@rep)[parm], qt))
+          ci
+      })

@@ -2,6 +2,8 @@
 \docType{class}
 \alias{summary.lme-class}
 \alias{summary.ssclme-class}
+\alias{coef,summary.lme-method}
+\alias{coef,summary.ssclme-method}
 \alias{show,summary.lme-method}
 \alias{show,summary.ssclme-method}
 \title{Class "summary.lme"}

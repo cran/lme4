@@ -13,7 +13,7 @@
 %%\VignetteDepends{Matrix}
 %%\VignetteDepends{lme4}
 \begin{document}
-\SweaveOpts{engine=R,eps=FALSE,pdf=TRUE,width=5,height=3,strip.white=TRUE}
+
 \setkeys{Gin}{width=\textwidth}
 \title{Sparse Matrix Representations of Linear Mixed Models}
 \author{Douglas Bates\\Department of Statistics\\University of
@@ -44,11 +44,6 @@
   structure.
 
 \end{abstract}
-<<preliminaries,echo=FALSE,print=FALSE>>=
-options(width=75)
-library(lme4)
-data(ScotsSec, package = "Matrix")
-@
 
 \section{Introduction}
 \label{sec:Intro}
@@ -210,11 +205,7 @@ $\bZ\trans\bZ$ are shown in Figure~\ref{fig:ZtZ}
 \begin{figure}[tbp]
   \centering
 \setkeys{Gin}{width=\textwidth}
-<<FigZtZ,fig=TRUE,echo=FALSE,height=8,width=8.>>=
-ctab = sscCrosstab(list(ScotsSec$primary, ScotsSec$second), FALSE)
-print(image(ctab, aspect='xy', xlim = c(-0.5,166.5),
-           ylim = c(166.5, -0.5), colorkey = FALSE))
-@   
+\includegraphics{MixedEffects-FigZtZ}
 \caption{Location of nonzero elements in
   $\bZ\trans\bZ$ for a variance components model for the
   \var{ScotsSec} data.  Darker squares indicate larger magnitudes.
@@ -538,35 +529,7 @@ matrix in Figure~\ref{fig:ZtZ} onto the $19\times19$ block for the
 \begin{figure}[tbp]
   \centering
 \setkeys{Gin}{width=\textwidth}
-<<FigScotsProj,fig=TRUE,echo=FALSE,height=4,width=10>>=
-proj = .Call("sscCrosstab_project2", ctab)
-trp1 = as(proj, "tripletMatrix")
-trp2 = as(.Call("sscMatrix_ldl_symbolic", proj, FALSE)[[2]], "tripletMatrix")
-symb = .Call("sscMatrix_ldl_symbolic", proj, TRUE)
-## use the permutation to create the permuted symmetric matrix
-iperm = perm = symb[[3]]
-iperm[perm+1] = seq(a = perm) - as.integer(1)
-trp3 = trp1
-trp3@i = iperm[trp1@i + 1]
-trp3@j = iperm[trp1@j + 1]
-trp4 = as(symb[[2]], "tripletMatrix")
-df <- data.frame(i = c(trp1@i, trp2@i, trp3@i, trp4@i),
-                 j = c(trp1@j, trp2@j, trp3@j, trp4@j),
-                 x = c(trp1@x, trp2@x, trp3@x, trp4@x),
-                 type = factor(rep(c("Projected", "L", "Permuted", "L-perm"),
-                 c(length(trp1@x), length(trp2@x), length(trp3@x),
-                   length(trp4@x))),
-                 levels = c("Projected", "L", "Permuted", "L-perm")))
-df$x[] = 0.1
-df$x[df$i == df$j] = 1
-print(levelplot(x ~ j + i | type, data = df,
-                sub = "Dimensions: 19 x 19",
-                xlim = c(-0.5, 18.5), ylim = c(18.5, -0.5), xlab = "Column",
-                ylab = "Row", aspect = 'xy',
-                col.regions = grey(seq(from = 0.7, to = 0, length = 100)),
-                par.settings = list(background = list(col = "transparent")),
-                colorkey = FALSE, layout = c(4,1)))
-@   
+\includegraphics{MixedEffects-FigScotsProj}
   \caption{Projection of the pairwise crosstabulation for the Scottish
     secondary school data onto the $19\times 19$ lower right block for
     the \var{second} factor.  The ``Projected'' panel shows the
@@ -851,17 +814,41 @@ column values themselves.  The \var{tripletMatrix} class in the
 \var{cscMatrix} class provides the compressed, sparse column-oriented
 format.  In both these classes indices are 0-based (for compatibility
 with the underlying C code) and not 1-based as is common in R.
-<<Matintro>>=
-library(Matrix)
-mm = new("tripletMatrix", 
-         i = as(c(0,2,3,1,2,0,3,4,3,4),"integer"),
-         j = as(c(0,0,0,1,1,2,2,2,3,3),"integer"),
-         x = (1:10)/10, Dim = as(c(5,4),"integer"))
-m1 = as(mm,"cscMatrix")
-str(m1)
-as(m1, "matrix")
-diff(m1@p)
-@ 
+\begin{Schunk}
+\begin{Sinput}
+> library(Matrix)
+> mm = new("tripletMatrix", i = as(c(0, 2, 3, 1, 2, 0, 3, 4, 
++     3, 4), "integer"), j = as(c(0, 0, 0, 1, 1, 2, 2, 2, 3, 
++     3), "integer"), x = (1:10)/10, Dim = as(c(5, 4), "integer"))
+> m1 = as(mm, "cscMatrix")
+> str(m1)
+\end{Sinput}
+\begin{Soutput}
+Formal class 'cscMatrix' [package "Matrix"] with 5 slots
+  ..@ p            : int [1:5] 0 3 5 8 10
+  ..@ i            : int [1:10] 0 2 3 1 2 0 3 4 3 4
+  ..@ x            : num [1:10] 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1
+  ..@ Dim          : int [1:2] 5 4
+  ..@ factorization: list()
+\end{Soutput}
+\begin{Sinput}
+> as(m1, "matrix")
+\end{Sinput}
+\begin{Soutput}
+     [,1] [,2] [,3] [,4]
+[1,]  0.1  0.0  0.6  0.0
+[2,]  0.0  0.4  0.0  0.0
+[3,]  0.2  0.5  0.0  0.0
+[4,]  0.3  0.0  0.7  0.9
+[5,]  0.0  0.0  0.8  1.0
+\end{Soutput}
+\begin{Sinput}
+> diff(m1@p)
+\end{Sinput}
+\begin{Soutput}
+[1] 3 2 3 2
+\end{Soutput}
+\end{Schunk}
 We see that the \var{p} slot in a \var{cscMatrix} with 4 columns has 5
 elements.  The first element is always zero and the successive differences
 are the numbers of nonzero elements in each column.  The total number
@@ -882,10 +869,26 @@ upper triangle or the lower triangle, as indicated by \code{"U"} or
 \code{"L"} in the \var{uplo} slot, of a symmetric matrix is stored.
 The \var{crossprod} function applied to a \var{cscMatrix} produces an
 \var{sscMatrix}.
-<<crossprod>>=
-class(m2 <- crossprod(m1))
-as(m2, "matrix")
-@
+\begin{Schunk}
+\begin{Sinput}
+> class(m2 <- crossprod(m1))
+\end{Sinput}
+\begin{Soutput}
+[1] "sscMatrix"
+attr(,"package")
+[1] "Matrix"
+\end{Soutput}
+\begin{Sinput}
+> as(m2, "matrix")
+\end{Sinput}
+\begin{Soutput}
+     [,1] [,2] [,3] [,4]
+[1,] 0.14 0.00 0.00 0.00
+[2,] 0.10 0.41 0.00 0.00
+[3,] 0.27 0.00 1.49 0.00
+[4,] 0.27 0.00 1.43 1.81
+\end{Soutput}
+\end{Schunk}
 
 In Statistics we usually define the Cholesky decomposition of a
 positive semidefinite, symmetric matrix $\bA$ as an upper triangular
@@ -907,16 +910,39 @@ use a graph-based method implemented in the Metis package.
 The \var{chol} function generates the Cholesky decomposition.   When
 applied to an \var{sscMatrix} object it defaults to generating a
 fill-reducing permutation and the Cholesky factor of the permuted matrix.
-<<chols>>=
-m3 = chol(m2)
-as(m3, "matrix")
-m3@perm
-@ 
+\begin{Schunk}
+\begin{Sinput}
+> m3 = chol(m2)
+> as(m3, "matrix")
+\end{Sinput}
+\begin{Soutput}
+          [,1]       [,2]      [,3]      [,4]
+[1,] 1.3453624 0.00000000 0.0000000 0.0000000
+[2,] 1.0629106 0.60018413 0.0000000 0.0000000
+[3,] 0.0000000 0.00000000 0.6403124 0.0000000
+[4,] 0.2006894 0.09444615 0.1561738 0.2577080
+\end{Soutput}
+\begin{Sinput}
+> m3@perm
+\end{Sinput}
+\begin{Soutput}
+[1] 3 2 1 0
+\end{Soutput}
+\end{Schunk}
 If we set the optional argument \var{pivot} to \var{FALSE},
 calculation of the fill-reducing permutation is suppressed.
-<<chols2>>=
-as(chol(m2, pivot = FALSE), "matrix")
-@ 
+\begin{Schunk}
+\begin{Sinput}
+> as(chol(m2, pivot = FALSE), "matrix")
+\end{Sinput}
+\begin{Soutput}
+          [,1]       [,2]      [,3]    [,4]
+[1,] 0.3741657  0.0000000 0.0000000 0.00000
+[2,] 0.2672612  0.5818689 0.0000000 0.00000
+[3,] 0.7216054 -0.3314443 0.9270547 0.00000
+[4,] 0.7216054 -0.3314443 0.8623336 0.66016
+\end{Soutput}
+\end{Schunk}
 In this example the fill-reducing permutation reverses the order of
 the columns and rows of \var{m2} before taking the decomposition.  It
 results in two fewer nonzero elements in the decomposition than when
@@ -981,9 +1007,18 @@ number of students attending each secondary school.  Part of this
 tabulation is given in the output of the \var{summary} function above.
 Here we give the full tabulation of the secondary schools and part of
 the crosstabulation of the primary and secondary schools.
-<<xtabs>>=
-xtabs(~second, ScotsSec)
-@ 
+\begin{Schunk}
+\begin{Sinput}
+> xtabs(~second, ScotsSec)
+\end{Sinput}
+\begin{Soutput}
+second
+  1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18 
+219 199 156 139 175 250 109 107 114  92 234 253 216 290 147 134 233 257 
+ 19 
+111 
+\end{Soutput}
+\end{Schunk}
 
 For the purposes of this study each student is classified as attending
 only one primary school and one secondary school.  Primary school $i$
@@ -1037,11 +1072,29 @@ based on tests taken at entry to secondary school, and the primary and
 secondary schools attended for 3435 students.  There are 148 distinct
 primary schools and 19 distinct secondary schools represented in these
 data.
-<<ScotsSec>>=
-data(ScotsSec, package = "Matrix")
-dim(ScotsSec)
-summary(ScotsSec[,c("attain", "verbal", "sex", "primary", "second")])
-@ 
+\begin{Schunk}
+\begin{Sinput}
+> data(ScotsSec, package = "Matrix")
+> dim(ScotsSec)
+\end{Sinput}
+\begin{Soutput}
+[1] 3435    6
+\end{Soutput}
+\begin{Sinput}
+> summary(ScotsSec[, c("attain", "verbal", "sex", "primary", 
++     "second")])
+\end{Sinput}
+\begin{Soutput}
+     attain           verbal        sex         primary         second    
+ Min.   : 1.000   Min.   :-30.000   M:1739   61     :  72   14     : 290  
+ 1st Qu.: 3.000   1st Qu.:-11.000   F:1696   122    :  68   18     : 257  
+ Median : 5.000   Median : -2.000            32     :  58   12     : 253  
+ Mean   : 5.679   Mean   : -2.196            24     :  57   6      : 250  
+ 3rd Qu.: 9.000   3rd Qu.:  7.000            6      :  55   11     : 234  
+ Max.   :10.000   Max.   : 40.000            1      :  54   17     : 233  
+                                             (Other):3071   (Other):1918  
+\end{Soutput}
+\end{Schunk}
 
 In common models for such data
 \citep{Rnews:Lockwood+Doran+Mccaffrey:2003}, there would be one or
@@ -1056,9 +1109,12 @@ student's verbal score and sex and their interaction in the fixed
 effects part of the model (the model matrix $\bX$ and the coefficients
 $\bbeta$).
 
-<<fm1>>=
-fm1 = lme(attain~verbal*sex,ScotsSec,list(primary=~1,second=~1))
-@ 
+\begin{Schunk}
+\begin{Sinput}
+> fm1 = lme(attain ~ verbal * sex, ScotsSec, list(primary = ~1, 
++     second = ~1))
+\end{Sinput}
+\end{Schunk}
 
 
 only on the the corresponding information on
@@ -1165,12 +1221,42 @@ vector $\bZ\trans\by$ as a single dense matrix of size $167\times 5$.
 Similarly $\bX\trans\bX$, $\bX\trans\by$ and $\by\trans\by$ are stored
 in a single dense matrix of size $5\times 5$ (only the upper triangle
 of this symmetric matrix is stored).
-<<fm1Pieces>>=
-unlist(fm1@rep@Omega)
-dim(fm1@rep@ZtX)
-fm1@rep@ZtX[1:4,]
-fm1@rep@XtX
-@ 
+\begin{Schunk}
+\begin{Sinput}
+> unlist(fm1@rep@Omega)
+\end{Sinput}
+\begin{Soutput}
+  primary    second 
+ 15.44011 288.39660 
+\end{Soutput}
+\begin{Sinput}
+> dim(fm1@rep@ZtX)
+\end{Sinput}
+\begin{Soutput}
+[1] 167   5
+\end{Soutput}
+\begin{Sinput}
+> fm1@rep@ZtX[1:4, ]
+\end{Sinput}
+\begin{Soutput}
+     [,1] [,2] [,3] [,4] [,5]
+[1,]   54 -557   30 -319  239
+[2,]    7  -24    4   -5   37
+[3,]    3   26    2   -1   26
+[4,]    7   -6    5  -26   44
+\end{Soutput}
+\begin{Sinput}
+> fm1@rep@XtX
+\end{Sinput}
+\begin{Soutput}
+            (Intercept) verbal  sexF verbal:sexF .response
+(Intercept)        3435  -7542  1696       -1532     19506
+verbal                0 623352 -1532      290862     57489
+sexF                  0      0  1696       -1532     10078
+verbal:sexF           0      0     0      290862     39233
+.response             0      0     0           0    142890
+\end{Soutput}
+\end{Schunk}
 
 \section{Symbolic analysis of pairwise crosstabulations}
 \label{sec:Symbolic}

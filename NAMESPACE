@@ -1,6 +1,7 @@
 importFrom("graphics", "plot")
 importFrom("stats",
            "anova",
+	   "confint",
            "deviance",
            "fitted",
            "logLik",
@@ -41,6 +42,7 @@ importMethodsFrom("Matrix",
                   )
 
 export(
+       "BIC",
        "GLMM",
        "Names",
        "Names<-",
@@ -51,6 +53,7 @@ export(
        "getGroupsFormula",
        "getResponse",
        "getResponseFormula",      
+       "gsummary",
        "lmList",
        "lme",
        "lmeControl",
@@ -72,6 +75,7 @@ exportClasses(
 exportMethods(
               "$",
               "$<-",
+              "BIC",
               "GLMM",
               "[",
               "[<-",
@@ -83,6 +87,7 @@ exportMethods(
               "fitted",
               "fixef",
               "formula",
+              "gsummary",
               "logLik",
               "plot",
               "ranef",

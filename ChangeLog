@@ -1,3 +1,14 @@
+2004-06-11  Douglas Bates  <bates@bates2_home>
+
+	* inst/doc/MlmSoftRev.Rnw: Add new vignette
+
+	* R/GLMM.R: protect verbose PQL output.
+
+2004-06-08  Douglas Bates  <bates@stat.wisc.edu>
+
+	* R/lme.R (lmeControl) R/GLMM.R: Change name to PQLmaxIt and
+	change defaults for verbosity options to getOption("verbose")
+
 2004-04-18  Douglas Bates  <bates@stat.wisc.edu>
 
 	* R/ssclme.R: Fix coef<- so it really does use the unconstrained

@@ -8,20 +8,25 @@
   used as the \code{control} argument in the \code{lme} function.
 }
 \synopsis{
-lmeControl(maxIter = 50, msMaxIter = 50, tolerance =
-                 sqrt((.Machine$double.eps)), niterEM = 25, msTol =
-                 sqrt(.Machine$double.eps), msScale, msVerbose =
-                 FALSE, glmmMaxIter = 20, returnObject = FALSE,
-                 gradHess = TRUE, apVar = TRUE, .relStep =
-                 (.Machine$double.eps)^(1/3), minAbsParApVar = 0.05,
-                 nlmStepMax = NULL, natural = TRUE, optimizer = "nlm",
-                 EMverbose = FALSE, analyticGradient = TRUE,
-                 analyticHessian = FALSE)
+lmeControl(maxIter = 50,
+           msMaxIter = 50,
+           tolerance = sqrt((.Machine$double.eps)),
+           niterEM = 20,
+           msTol = sqrt(.Machine$double.eps),
+           msScale,
+           msVerbose = getOption("verbose"),
+           PQLmaxIt = 20,
+           .relStep = (.Machine$double.eps)^(1/3), 
+           nlmStepMax = NULL,
+           optimizer="nlm",
+           EMverbose = getOption("verbose"),
+           analyticGradient = TRUE,
+           analyticHessian=FALSE))
 }
 \usage{
 lmeControl(maxIter, msMaxIter, tolerance, niterEM, msTol,
-           msScale, msVerbose, returnObject, gradHess, apVar,
-           .relStep, minAbsParApVar, nlmStepMax, natural, optimizer,
+           msScale, msVerbose, PQLmaxIt, .relStep,
+           nlmStepMax, optimizer,
            EMverbose, analyticGradient, analyticHessian)
 }
 \arguments{
@@ -43,37 +48,17 @@ lmeControl(maxIter, msMaxIter, tolerance, niterEM, msTol,
    is \code{lmeScale}.}
  \item{msVerbose}{a logical value passed as the \code{trace} argument to
    \code{nlm} (see documentation on that function). Default is
-   \code{FALSE}.} 
- \item{returnObject}{a logical value indicating whether the fitted
-   object should be returned when the maximum number of iterations is
-   reached without convergence of the algorithm. Default is
-   \code{FALSE}.} 
- \item{gradHess}{a logical value indicating whether numerical gradient
-   vectors and Hessian matrices of the log-likelihood function should
-   be used in the \code{nlm} optimization. This option is only available
-   when the correlation structure (\code{corStruct}) and the variance
-   function structure (\code{varFunc}) have no "varying" parameters and
-   the \code{pdMat} classes used in the random effects structure are
-   \code{pdLogChol} (general positive-definite), \code{pdDiag} (diagonal),
-   \code{pdIdent} (multiple of the identity),  or
-   \code{pdCompSymm} (compound symmetry). Default is \code{TRUE}.}
- \item{apVar}{a logical value indicating whether the approximate
-   covariance matrix of the variance-covariance parameters should be
-   calculated. Default is \code{TRUE}.}
+   \code{getOption("verbose")}.} 
+ \item{PQLmaxIt}{maximum number of iterations for the PQL algorithm in
+   \code{GLMM}.}
  \item{.relStep}{relative step for numerical derivatives
    calculations. Default is \code{.Machine$double.eps^(1/3)}.}
- \item{minAbsParApVar}{numeric value - minimum absolute parameter value
-   in the approximate variance calculation.  The default is \code{0.05}.}
  \item{nlmStepMax}{stepmax value to be passed to nlm. See
      \code{\link{nlm}} for details. Default is 100.0}
- \item{natural}{a logical value indicating whether the \code{pdNatural}
-   parametrization should be used for general positive-definite matrices
-   (\code{pdLogChol}) in \code{reStruct}, when the approximate covariance
-   matrix of the estimators is calculated. Default is \code{TRUE}.}
  \item{optimizer}{the optimizer to be used - either \code{"optim"}, the
    default, or \code{"nlm"}}
  \item{EMverbose}{a logical value indicating if verbose output should be
-   produced during the EM iterations.  Default is \code{FALSE}.}
+   produced during the EM iterations.  Default is \code{getOption("verbose"}.}
  \item{analyticGradient}{a logical value indicating if the analytic
    gradient of the objective should be used.  This option is for testing
    purposes and would not normally be changed from the default.  Default
@@ -87,7 +72,7 @@ lmeControl(maxIter, msMaxIter, tolerance, niterEM, msTol,
   a list with a component for each of the possible arguments.
 }
 \seealso{\code{\link{lme}}, \code{\link{nlm}}, \code{\link{optim}},
-  \code{\link{lmeScale}}}
+  \code{\link{lmeScale}}, \code{\link{GLMM}}}
 \examples{
 # decrease the maximum number iterations in the ms call and
 # request that information on the evolution of the ms iterations be printed

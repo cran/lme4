@@ -10,11 +10,7 @@
   A data frame with 4059 observations on the following 9 variables.
   \describe{
     \item{school}{School ID - a factor.}
-    \item{student}{Student ID (within school) - a factor.}
     \item{normexam}{Normalized exam score.}
-    \item{standlrt}{Standardised LR test score.}
-    \item{gender}{Student gender - a factor.
-      Levels are \code{F} and \code{M}.}
     \item{schgend}{School gender - a factor.  Levels are \code{mixed},
       \code{boys}, and \code{girls}.}
     \item{schavg}{School average of intake score.}
@@ -24,6 +20,10 @@
     \item{intake}{Band of student's intake score - a factor.
       Levels are \code{bottom 25\%}, \code{mid 50\%} and \code{top
 	25\%}./}
+    \item{standLRT}{Standardised LR test score.}
+    \item{sex}{Sex of the student - levels are \code{F} and \code{M}.}
+    \item{type}{School type - levels are \code{Mxd} and \code{Sngl}.}
+    \item{student}{Student id (within school) - a factor}
   }
 }
 %\details{}
@@ -38,14 +38,14 @@
 data(Exam)
 str(Exam)
 summary(Exam)
-fm1 <- lme(normexam ~ standlrt + gender + schgend,
+fm1 <- lme(normexam ~ standLRT + sex + schgend,
            data = Exam, random = ~ 1|school)
 summary(fm1)
-fm2 <- lme(normexam ~ standlrt*gender + schgend,
+fm2 <- lme(normexam ~ standLRT*sex + schgend,
            data = Exam, random = ~ 1|school)
 summary(fm2)
-fm3 <- lme(normexam ~ standlrt*gender + schgend,
-          data = Exam, random = ~ standlrt|school)
+fm3 <- lme(normexam ~ standLRT*sex + schgend,
+          data = Exam, random = ~ standLRT|school)
 summary(fm3)
 }
 \keyword{datasets}

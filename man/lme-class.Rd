@@ -4,6 +4,7 @@
 \alias{VarCorr,lme-method}
 \alias{VarCorr,ssclme-method}
 \alias{anova,lme-method}
+\alias{anova,ssclme-method}
 \alias{coef,lme-method}
 \alias{deviance,lme-method}
 \alias{deviance,ssclme-method}

@@ -98,6 +98,7 @@ setMethod("GLMM",
                    offset,
                    model = TRUE, x = FALSE, y = FALSE, ...)
       {
+          gVerb <- getOption("verbose")
           random <-
               lapply(random,
                      get("formula", pos = parent.frame(), mode = "function"))
@@ -168,7 +169,7 @@ setMethod("GLMM",
           firstIter <- TRUE
           msMaxIter.orig <- controlvals$msMaxIter
 
-          for (iter in seq(length = controlvals$glmmMaxIter)) ## FIXME: rename to pqlMaxIter ?
+          for (iter in seq(length = controlvals$PQLmaxIt))
           {
               mu <- family$linkinv(eta)
               dmu.deta <- family$mu.eta(eta)
@@ -179,7 +180,10 @@ setMethod("GLMM",
               .Call("nlme_weight_matrix_list",
                     mmats.unadjusted, w, z, mmats, PACKAGE="Matrix")
               .Call("ssclme_update_mm", obj, facs, mmats, PACKAGE="Matrix")
-              if (firstIter) .Call("ssclme_initial", obj, PACKAGE="Matrix")
+              if (firstIter) {
+                  .Call("ssclme_initial", obj, PACKAGE="Matrix")
+                  if (gVerb) cat(" PQL iterations convergence criterion\n")
+              }
               .Call("ssclme_EMsteps", obj,
                     controlvals$niterEM,
                     FALSE, #controlvals$REML,
@@ -190,8 +194,7 @@ setMethod("GLMM",
                   .Call("ssclme_fitted", obj, facs,
                         mmats.unadjusted, TRUE, PACKAGE = "Matrix")
               crit <- max(abs(eta - etaold)) / (0.1 + max(abs(eta)))
-              cat(paste("Iteration", iter,"Termination Criterion:",
-                        format(crit), "\n"))
+              if (gVerb) cat(sprintf("%03d: %#11g\n", as.integer(iter), crit))
               ## use this to determine convergence
               if (crit < controlvals$tolerance) {
                   conv <- TRUE
@@ -362,7 +365,7 @@ setMethod("GLMM",
                                               )))
 
                   ## the constant terms from the r.e. and the final
-                  ## Laplacian integral cancle out both being:
+                  ## Laplacian integral cancel out both being:
                   ## ranef.loglik.constant <- 0.5 * length(ranefs[[i]]) * log(2 * base::pi)
 
                   ans <- ans + ranef.loglik + log.jacobian
@@ -391,11 +394,9 @@ setMethod("GLMM",
                       optim(fn = devLaplace,
                             par = c(fixef(obj), coef(obj, unconst = TRUE)),
                             method = "BFGS", hessian = TRUE,
-                            control = list(trace = getOption("verbose")),
-                            reltol = controlvals$msTol,
-                            ##fnscale = -xval,
-                            ##parscale = 1/controlvals$msScale(coef(obj)),
-                            maxit = controlvals$msMaxIter)
+                            control = list(trace = getOption("verbose"),
+                                           reltol = controlvals$msTol,
+                                           maxit = controlvals$msMaxIter))
                   if (optimRes$convergence != 0)
                       warning("optim failed to converge")
                   optpars <- optimRes$par

@@ -5,6 +5,7 @@
 \alias{getGroups}
 \alias{getGroups,data.frame,formula-method}
 \alias{getGroups,groupedData-method}
+\alias{getGroups,groupedData,missing-method}
 \alias{getGroupsFormula}
 \alias{getGroupsFormula,ANY-method}
 \alias{getResponse}
@@ -18,7 +19,7 @@
 \usage{
 getCovariate(object, form, data)
 getCovariateFormula(object)
-getGroups(object, form, level, data, sep)
+getGroups(object, form, level, data, sep, \dots)
 getGroupsFormula(object, asList, sep)
 getResponse(object, form)
 getResponseFormula(object)
@@ -43,6 +44,8 @@ splitFormula(form, sep)
     multiple levels are collapsed.  Defaults to \code{'/'}.}
   \item{pos}{the integer index of the component of the formula to
     return.  Defaults to \code{2}.}
+  \item{\dots}{Optional arguments that are passed to some methods.  None
+    used at present.}
 }
 \value{
   \code{getGroupsFormula} returns a one-sided formula, or a list of
@@ -50,7 +53,6 @@ splitFormula(form, sep)
   \code{formula(object)}. If no conditioning expression is present in
   \code{formula(object)} a \code{NULL} value is returned.
 }
-%\author{Douglas Bates \email{bates@stat.wisc.edu} and Saikat DebRoy \email{saikat@stat.wisc.edu}}
 %\seealso{}
 \examples{
 form = resp ~ cov1 + cov2 | grp1/grp2

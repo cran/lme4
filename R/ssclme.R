@@ -244,3 +244,54 @@ setMethod("show", signature(object="summary.ssclme"),
 
           })
 
+
+setMethod("coef", signature(object="summary.ssclme"),
+          function(object, ...)
+      {
+          digits = max(3, getOption("digits") - 2)
+          useScale = length(object@useScale) > 0 && object@useScale[1]
+          cm = object@coefficients
+          if (nrow(cm) > 0) {
+              if (useScale) {
+                  stat = cm[,1]/cm[,2]
+                  pval = 2*pt(abs(stat), cm[,3], lower = FALSE)
+                  nms = colnames(cm)
+                  cm = cbind(cm, stat, pval)
+                  colnames(cm) = c(nms, "t value", "Pr(>|t|)")
+              } else {
+                  cm = cm[, 1:2, drop = FALSE]
+                  stat = cm[,1]/cm[,2]
+                  pval = 2*pnorm(abs(stat), lower = FALSE)
+                  nms = colnames(cm)
+                  cm = cbind(cm, stat, pval)
+                  colnames(cm) = c(nms, "z value", "Pr(>|z|)")
+              }
+              printCoefmat(cm, tst.ind = 4, zap.ind = 3)
+          }
+      })
+
+setMethod("anova", signature(object="ssclme"),
+          function(object, ...)
+      {
+          foo <- object
+          foo@status["factored"] <- FALSE
+          .Call("ssclme_factor", foo, PACKAGE="Matrix")
+          dfr <- getFixDF(foo)
+          ss <- foo@RXX[ , ".response"]^2
+          ssr <- ss[[".response"]]
+          ss <- ss[seq(along = dfr)]
+          # FIXME: This only gives single degree of freedom tests
+          ms <- ss
+          df <- rep(1, length(ms))
+          f <- ms/(ssr/dfr)
+          P <- pf(f, df, dfr, lower.tail = FALSE)
+          table <- data.frame(df, ss, ms, dfr, f, P)
+          dimnames(table) <-
+              list(names(ss),
+                   c("Df", "Sum Sq", "Mean Sq", "Denom", "F value", "Pr(>F)"))
+          if (any(match(names(ss), "(Intercept)", nomatch = 0)))
+              table <- table[-1,]
+          attr(table, "heading") = "Analysis of Variance Table"
+          class(table) <- c("anova", "data.frame")
+          table
+      })
