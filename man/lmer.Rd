@@ -61,9 +61,8 @@ lmer(formula, data, \dots)
 %\note{}
 \seealso{\code{\link[Matrix]{lmer-class}}, \code{\link[stats]{lm}}}
 \examples{
-(fm <- lmer(langPOST ~
-           IQ.ver.cen + avg.IQ.ver.cen + (IQ.ver.cen | schoolNR),
-           data = bdf))
+(fm1 <- lmer(decrease ~ treatment + (1|rowpos) + (1|colpos),
+             OrchardSprays))
 }
 \keyword{models}
 \keyword{methods}

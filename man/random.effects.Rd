@@ -24,9 +24,9 @@ ranef(object, \dots)
 \value{
   a list of matrices.
 }
-%\seealso{}
 \examples{
-## see the method function documentation
+ranef(lmer(decrease ~ treatment + (1|rowpos) + (1|colpos),
+             OrchardSprays))
 }
 \keyword{models}
 \keyword{methods}

@@ -95,11 +95,8 @@ pseudo-likelihood approach.
   \code{\link{lme}}
 }
 \examples{
-data(guImmun)
-fm1 <-
-    GLMM(immun ~ kid2p + mom25p + ord + ethn +
-                 momEd + husEd + momWork + rural + pcInd81,
-         family = binomial, data = guImmun, random = ~1|comm)
-summary(fm1)
+(fm1 <- GLMM(decrease ~ treatment, family = poisson(),
+             data = OrchardSprays,
+             random = list(rowpos = ~ 1, colpos = ~1)))
 }
 \keyword{models}

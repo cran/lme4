@@ -121,9 +121,9 @@ setMethod("pooledSD", signature(object = "lmList"),
           val
       })
 
-setMethod("intervals", signature(object = "lmList", level = "ANY"),
-          function(object, level = 0.95, ...)
-          cat("intervals method for lmList not yet implemented\n"))
+# setMethod("intervals", signature(object = "lmList", level = "ANY"),
+#           function(object, level = 0.95, ...)
+#           cat("intervals method for lmList not yet implemented\n"))
 
 setMethod("plot", signature(x = "lmList"),
           function(x, y, ...)

@@ -91,15 +91,10 @@ lme(formula, data, random, \dots)
 \value{
   An \code{\link{lme-class}{lme}} object.
 }
-%\references{ ~put references to the literature/web site here ~ }
-%\author{}
-%\note{}
 \seealso{\code{\link{lme-class}}, \code{\link[stats]{lm}}}
 \examples{
-data(bdf)
-fm <- lme(langPOST ~ IQ.ver.cen + avg.IQ.ver.cen, data = bdf,
-          random = ~ IQ.ver.cen | schoolNR)
-summary(fm)
+(fm1 <- lme(decrease ~ treatment, OrchardSprays,
+            list(rowpos = ~ 1, colpos = ~ 1)))
 }
 \keyword{models}
 \keyword{methods}

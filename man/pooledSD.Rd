@@ -19,11 +19,8 @@ pooledSD(object)
   \code{object}, with an attribute \code{df} with the number of
   degrees-of-freedom used in the estimation.
 }
-%\author{Jose Pinheiro \email{Jose.Pinheiro@pharma.novartis.com} and Douglas Bates \email{bates@stat.wisc.edu}}
 \seealso{\code{\link{lmList}}, \code{\link{lm}}}
 \examples{
-data(Orthodont)
-fm <- lmList(distance ~ age | Subject, Orthodont)
-pooledSD(fm)
+pooledSD(lmList(weight ~ Time | Chick, do.call("data.frame", ChickWeight)))
 }
 \keyword{models}

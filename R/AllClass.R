@@ -64,7 +64,9 @@ setClass("lmer",
                                         # model matrices and number of observations
                         Gp = "integer", # Pointers to groups of rows in RZX
                         status = "logical",
-                        call = "call"
+                        call = "call",
+                        terms = "terms",
+                        assign = "integer"
                         ),
          validity = function(object) {
              .Call("lmer_validate", object, PACKAGE = "Matrix")

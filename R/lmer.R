@@ -71,12 +71,17 @@ setMethod("lmer", signature(formula = "formula"),
           }
           fixed.form <- nobars(formula)
           if (!inherits(fixed.form, "formula")) fixed.form <- ~ 1 # default formula
+          Xmat <- model.matrix(fixed.form, frm)
           mmats <- c(lapply(random, "[[", 1),
-                     .fixed = list(cbind(model.matrix(fixed.form, frm),
-                     .response = model.response(frm))))
+                     .fixed = list(cbind(Xmat, .response = model.response(frm))))
+          ## FIXME: Use Xfrm and Xmat to get the terms and assign
+          ## slots, pass them to lmer_create, then destroy them
           obj <- .Call("lmer_create", lapply(random, "[[", 2), mmats, PACKAGE = "Matrix")
+          obj@terms <- attr(model.frame(fixed.form, data), "terms")
+          obj@assign <- attr(Xmat, "assign")
           obj@call <- match.call()
           obj@REML <- REML
+          rm(Xmat)
           .Call("lmer_initial", obj, PACKAGE="Matrix")
           .Call("lmer_ECMEsteps", obj, 
                 controlvals$niterEM,
@@ -308,31 +313,34 @@ setMethod("anova", signature(object = "lmer"),
                           sep = ": "),"")
               return(val)
           } else {
-#               mCall$terms <- object@terms
-#               mCall$assign <- object@assign
-          foo <- object
-          foo@status["factored"] <- FALSE
-          .Call("lmer_factor", foo, PACKAGE="Matrix")
-          dfr <- getFixDF(foo)
-          rcol <- ncol(foo@RXX)
-          ss <- foo@RXX[ , rcol]^2
-          ssr <- ss[[rcol]]
-          ss <- ss[seq(along = dfr)]
-          names(ss) <- object@cnames[[".fixed"]][seq(along = dfr)]
-          # FIXME: This only gives single degree of freedom tests
-          ms <- ss
-          df <- rep(1, length(ms))
-          f <- ms/(ssr/dfr)
-          P <- pf(f, df, dfr, lower.tail = FALSE)
-          table <- data.frame(df, ss, ms, dfr, f, P)
-          dimnames(table) <-
-              list(names(ss),
-                   c("Df", "Sum Sq", "Mean Sq", "Denom", "F value", "Pr(>F)"))
-          if (any(match(names(ss), "(Intercept)", nomatch = 0)))
-              table <- table[-1,]
-          attr(table, "heading") <- "Analysis of Variance Table"
-          class(table) <- c("anova", "data.frame")
-          table
+              foo <- object
+              foo@status["factored"] <- FALSE
+              .Call("lmer_factor", foo, PACKAGE="Matrix")
+              dfr <- getFixDF(foo)
+              rcol <- ncol(foo@RXX)
+              ss <- foo@RXX[ , rcol]^2
+              ssr <- ss[[rcol]]
+              ss <- ss[seq(along = dfr)]
+              names(ss) <- object@cnames[[".fixed"]][seq(along = dfr)]
+              asgn <- foo@assign
+              terms <- foo@terms
+              nmeffects <- attr(terms, "term.labels")
+              if ("(Intercept)" %in% names(ss))
+                  nmeffects <- c("(Intercept)", nmeffects)
+              ss <- unlist(lapply(split(ss, asgn), sum))
+              df <- unlist(lapply(split(asgn,  asgn), length))
+              dfr <- unlist(lapply(split(dfr, asgn), function(x) x[1]))
+              ms <- ss/df
+              f <- ms/(ssr/dfr)
+              P <- pf(f, df, dfr, lower.tail = FALSE)
+              table <- data.frame(df, ss, ms, dfr, f, P)
+              dimnames(table) <-
+                  list(nmeffects,
+                       c("Df", "Sum Sq", "Mean Sq", "Denom", "F value", "Pr(>F)"))
+              if ("(Intercept)" %in% nmeffects) table <- table[-1,]
+              attr(table, "heading") <- "Analysis of Variance Table"
+              class(table) <- c("anova", "data.frame")
+              table
           }
       })
 

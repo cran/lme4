@@ -94,9 +94,4 @@ or, more commonly, via the \code{lmer} function.}
       the decomposed matrices.}
   }
 }
-%\references{}
-%\author{}
-%\note{}
-%\seealso{}
-%\examples{}
 \keyword{classes}

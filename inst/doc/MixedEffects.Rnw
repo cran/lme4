@@ -45,9 +45,11 @@
 
 \end{abstract}
 <<preliminaries,echo=FALSE,print=FALSE>>=
-options(width=75)
+options(width=75, show.signif.stars = FALSE)
+library(latticeExtra)
+library(Matrix)
 library(lme4)
-data(ScotsSec, package = "Matrix")
+data(ScotsSec, package = "mlmRev")
 @
 
 \section{Introduction}

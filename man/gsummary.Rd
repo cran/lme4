@@ -75,16 +75,14 @@ gsummary(object, FUN, form, level, groups, omitGroupingFactor = FALSE, invariant
   factor.  The number of columns is at most the number of columns in
   \code{object}.
 }
-%\references{ ~put references to the literature/web site here ~ }
-%\author{ ~~who you are~~ }
-%\note{ ~~further notes~~ }
 \seealso{\code{\link{summary}}, \code{\link{groupedData}},
   \code{\link{getGroups}}} 
 \examples{
-data(Early)
-class(Early)
-gsummary(Early, groups = Early$id)
-gsummary(Early, groups = Early$id, invariantsOnly = TRUE)
+ChickWeight <- do.call("data.frame", ChickWeight)
+class(ChickWeight)
+gsummary(ChickWeight, groups = ChickWeight$Chick)
+gsummary(ChickWeight, groups = ChickWeight$Chick,
+          invariantsOnly = TRUE)
 }
 \keyword{manip}
 \keyword{methods}

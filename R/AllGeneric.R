@@ -1,20 +1,20 @@
 ## The generics Names, and Names<- will be deprecated in nlme_4.0
-if (!isGeneric("Names")) {
-    setGeneric("Names", function(object, ...)
-           {
-               .Deprecated("names")
-               standardGeneric("Names")
-           })
-}
+# if (!isGeneric("Names")) {
+#     setGeneric("Names", function(object, ...)
+#            {
+#                .Deprecated("names")
+#                standardGeneric("Names")
+#            })
+# }
 
-if (!isGeneric("Names<-")) {
-    setGeneric("Names<-",
-               function(object, value)
-           {
-               .Deprecated("names<-")
-               standardGeneric("Names<-")
-           })
-}
+# if (!isGeneric("Names<-")) {
+#     setGeneric("Names<-",
+#                function(object, value)
+#            {
+#                .Deprecated("names<-")
+#                standardGeneric("Names<-")
+#            })
+# }
 
 if (!isGeneric("getGroups")) {
     ## Return the groups associated with object according to form.
@@ -103,11 +103,11 @@ setMethod("BIC", "logLik",
           )
 
 ## FIXME: Can this be replaced by confint?
-if (!isGeneric("intervals")) {
-    setGeneric("intervals",
-               function(object, level = 0.95, ...)
-               standardGeneric("intervals"))
-}
+# if (!isGeneric("intervals")) {
+#     setGeneric("intervals",
+#                function(object, level = 0.95, ...)
+#                standardGeneric("intervals"))
+# }
 
 if (!isGeneric("lmList")) {
     setGeneric("lmList",

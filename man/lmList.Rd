@@ -56,9 +56,7 @@ lmList(formula, data, level, subset, na.action, pool)
 \code{\link[base:lm]{lm}}
 }
 \examples{
-data(Orthodont)
-fm1 <- lmList(distance ~ age | Subject, Orthodont)
-fm1
+(fm1 <- lmList(weight ~ Time | Chick, do.call("data.frame", ChickWeight)))
 }
 \keyword{models}
 

@@ -13,8 +13,8 @@
 %%\VignetteDepends{Matrix}
 %%\VignetteDepends{lme4}
 \begin{document}
-\SweaveOpts{engine=R,eps=FALSE,pdf=TRUE,strip.white=TRUE}
-\SweaveOpts{prefix=TRUE,prefix.string=figs/Example,include=FALSE}
+
+
 \setkeys{Gin}{width=\textwidth}
 \title{Linear mixed model implementation in lme4}
 \author{Douglas Bates\\Department of Statistics\\University of
@@ -32,15 +32,6 @@
   package for R.
 \end{abstract}
 
-<<preliminaries,echo=FALSE,print=FALSE>>=
-library(lattice)
-library(Matrix)
-library(latticeExtra)
-library(lme4)
-data("Early", package = "mlmRev")
-options(width=80, show.signif.stars = FALSE,
-        lattice.theme = function() canonical.theme("pdf", color = FALSE))
-@
 \section{Introduction}
 \label{sec:Intro}
 
@@ -568,20 +559,20 @@ and 2 years (\code{age}) on 103 infants (identified by \code{id}); 58
 of whom were in the treatment group and 45 in the control group
 (identified by \code{trt}).  We convert the \code{age} measurement to
 ``time on study'', \code{tos} as the treatment began at age 0.5 years.
-<<EarlyDataLoad>>=
-Early$tos <- Early$age - 0.5
-str(Early)
-@ 
-<<EarlyData,fig=TRUE,echo=FALSE,height=7.2,width=7>>=
-print(xyplot(cog ~ age | id, Early, type = 'b', aspect = 'xy',
-             layout = c(23,5), between = list(y = c(0,0,0.5)),
-             skip = rep(c(0,1),c(58,11)),
-             xlab = "Age (yr)",
-             ylab = "Cognitive development score",
-             scales = list(x = list(tick.number = 3, alternating = TRUE,
-                           labels = c("1","","2"), at = c(1,1.5,2))),
-             par.strip.text = list(cex = 0.7)))
-@ 
+\begin{Schunk}
+\begin{Sinput}
+> Early$tos <- Early$age - 0.5
+> str(Early)
+\end{Sinput}
+\begin{Soutput}
+`data.frame':	309 obs. of  5 variables:
+ $ id : Factor w/ 103 levels "86","87","77",..: 12 12 12 17 17 17 22 22 22 8 ...
+ $ cog: int  103 119 96 106 107 96 112 86 73 100 ...
+ $ age: num  1 1.5 2 1 1.5 2 1 1.5 2 1 ...
+ $ trt: Factor w/ 2 levels "N","Y": 2 2 2 2 2 2 2 2 2 2 ...
+ $ tos: num  0.5 1 1.5 0.5 1 1.5 0.5 1 1.5 0.5 ...
+\end{Soutput}
+\end{Schunk}
 A lattice plot of the longitudinal scores is given in Figure~\ref{fig:EarlyData}.
 \begin{figure}[tbp]
   \centering
@@ -603,19 +594,73 @@ subjects are themselves grouped into a treatment group and a control
 group but that dichotomy would be modeled with fixed effects, not
 random effects.)  As an initial model an analyst may fit an
 \emph{unconditional growth} model~\cite[ch.~4]{Sing:Will:2003}
-<<EarlyUncGrowth>>=
-fm1 <- lmer(cog ~ tos + (tos|id), Early)
-@ 
+\begin{Schunk}
+\begin{Sinput}
+> fm1 <- lmer(cog ~ tos + (tos | id), Early)
+\end{Sinput}
+\end{Schunk}
 or proceed immediately to a model that allows for the effects of the
 treatment 
-<<EarlyTrt>>=
-fm2 <- lmer(cog ~ tos * trt + (tos|id), Early)
-@ 
+\begin{Schunk}
+\begin{Sinput}
+> fm2 <- lmer(cog ~ tos * trt + (tos | id), Early)
+\end{Sinput}
+\end{Schunk}
 
 The structure of the resulting object is
-<<EarlyTrtStr>>=
-str(fm2)
-@ 
+\begin{Schunk}
+\begin{Sinput}
+> str(fm2)
+\end{Sinput}
+\begin{Soutput}
+Formal class 'lmer' [package "lme4"] with 21 slots
+  ..@ flist   :List of 1
+  .. ..$ id: Factor w/ 103 levels "86","87","77",..: 12 12 12 17 17 17 22 22 22 8 ...
+  ..@ perm    :List of 1
+  .. ..$ id: int [1:103] 0 1 2 3 4 5 6 7 8 9 ...
+  ..@ Parent  :List of 1
+  .. ..$ id:List of 2
+  .. .. ..$ index: int [1:103] -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 ...
+  .. .. ..$ block: int [1:103] -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 ...
+  ..@ D       :List of 1
+  .. ..$ id: num [1:2, 1:2, 1:103]  0.502  0.000 -0.639  0.526  0.502 ...
+  ..@ bVar    :List of 1
+  .. ..$ id: num [1:2, 1:2, 1:103]  0.661  0.000 -0.336  0.277  0.661 ...
+  ..@ L       :List of 1
+  .. ..$ :Formal class 'dgBCMatrix' [package "Matrix"] with 3 slots
+  .. .. .. ..@ p: int [1:104] 0 0 0 0 0 0 0 0 0 0 ...
+  .. .. .. ..@ i: int(0) 
+  .. .. .. ..@ x: num[1:2, 1:2, 0 ] 
+  ..@ ZZpO    :List of 1
+  .. ..$ id:Formal class 'dgBCMatrix' [package "Matrix"] with 3 slots
+  .. .. .. ..@ p: int [1:104] 0 1 2 3 4 5 6 7 8 9 ...
+  .. .. .. ..@ i: int [1:103] 0 1 2 3 4 5 6 7 8 9 ...
+  .. .. .. ..@ x: num [1:2, 1:2, 1:103] 3.96 0.00 4.82 9.48 3.96 ...
+  ..@ Omega   :List of 1
+  .. ..$ id: num [1:2, 1:2] 1.00e+10 0.00e+00 3.97e+10 1.58e+11
+  ..@ REML    : logi TRUE
+  ..@ RXX     : num [1:5, 1:5] 0.126 0.000 0.000 0.000 0.000 ...
+  ..@ RZX     : num [1:206, 1:5] -0.1226  0.0225 -0.1226  0.0225 -0.1226 ...
+  ..@ XtX     : num [1:5, 1:5] 309   0   0   0   0 ...
+  ..@ ZtZ     :List of 1
+  .. ..$ :Formal class 'dgBCMatrix' [package "Matrix"] with 3 slots
+  .. .. .. ..@ p: int [1:104] 0 1 2 3 4 5 6 7 8 9 ...
+  .. .. .. ..@ i: int [1:103] 0 1 2 3 4 5 6 7 8 9 ...
+  .. .. .. ..@ x: num [1:2, 1:2, 1:103] 3 0 3 3.5 3 0 3 3.5 3 0 ...
+  ..@ ZtX     : num [1:206, 1:5] 3 3 3 3 3 3 3 3 3 3 ...
+  ..@ cnames  :List of 2
+  .. ..$ id    : chr [1:2] "(Intercept)" "tos"
+  .. ..$ .fixed: chr [1:5] "(Intercept)" "tos" "trtY" "tos:trtY" ...
+  ..@ devComp : num [1:4] 274.28  92.37  13.01   9.98
+  ..@ deviance: Named num [1:2] 2371 2360
+  .. ..- attr(*, "names")= chr [1:2] "ML" "REML"
+  ..@ nc      : int [1:3] 2 5 309
+  ..@ Gp      : int [1:2] 0 206
+  ..@ status  : Named logi [1:2] FALSE FALSE
+  .. ..- attr(*, "names")= chr [1:2] "factored" "inverted"
+  ..@ call    : language lmer(formula = cog ~ tos * trt + (tos | id), data = Early)
+\end{Soutput}
+\end{Schunk}
 
 \section{Frechet derivatives}
 \label{sec:Frechet}
