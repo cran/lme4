@@ -93,6 +93,14 @@ setMethod("LMEgradient",
           .Call("pdLogChol_LMEgradient", x, A, nlev, PACKAGE="lme4")
           )
 
+setMethod("LMEhessian",
+          signature(x="pdLogChol", A="matrix", H="array",
+                    nlev="numeric"),
+          function(x, A, H, nlev)
+      {
+          .Call("pdLogChol_LMEhessian", x, A, H, nlev, PACKAGE="lme4")
+      })
+
 setReplaceMethod("EMupdate",
                  signature(x="pdLogChol", nlev="numeric", value="matrix"),
                  function(x, nlev, value) {

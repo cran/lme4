@@ -60,6 +60,15 @@ setReplaceMethod("coef", signature(object="lmeLevel", value="numeric"),
                  object
              })
 
+setMethod("LMEhessian", signature(x="lmeLevel", A="missing",
+                                  H="missing",
+                                  nlev="missing"),
+          function(x, A, H, nlev)
+      {
+          LMEhessian(x@precision, x@updateFactor, x@hessianArray,
+                     nlev=x@nlev)
+      })
+
 setMethod("LMEgradient", signature(x="lmeLevel", A="missing", nlev="missing"),
           function(x, A, nlev)
       {

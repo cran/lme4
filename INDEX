@@ -3,12 +3,14 @@ EMstepsGets             Perform EM iterations
 EMupdateGets            Update an object in the EM algorithm
 GLMM                    Fit Generalized Linear Mixed Models via PQL
 Hsb82                   High School and Beyond - 1982
-LMEgradient             The gradient in lme optimization
+LMEgradient             The gradient and Hessian in lme
+                        optimization-method
 LMEoptimizeGets         Optimize linear mixed-effects
 Names                   Extract or assign Names
 VarCorr-class           Class "VarCorr"
 VarCorr                 Extract variance and correlation components
 coefGets                Assign parameters
+coerce-methods          Coercion methods and assignments
 corFactor               Extract the correlation factor
 corMatrix               Generate the correlation matrix
 corrmatrix-class        Class "corrmatrix"

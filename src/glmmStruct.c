@@ -68,112 +68,112 @@ nlme_glmmLa2_penalty(SEXP glmmStruct)
     return -0.5*ans;
 }
 
-static void
-nlme_glmmLa2_calculateCorrection(SEXP original, SEXP weighted, SEXP stored,
-                                 SEXP random, const SEXPREC* eta, SEXP fam,
-                                 SEXP w)
-{
-    SEXP origRows_sym = install("originalRows");
-    SEXP storedRows_sym = install("storedRows");
-    SEXP columns_sym = install("columns");
-    int nlevel = LENGTH(random)-2;
-    double* dorig = REAL(original);
-    double* dstored = REAL(stored);
-    int* dim = INTEGER(GET_DIM(original));
-    int nrow = dim[0];
-    int ncol = dim[1];
-    int ncol_ranef =
-        asInteger(GET_SLOT(VECTOR_ELT(random, nlevel), columns_sym))-1;
-    double* dorig_last = dorig+nrow*(ncol-1);
-    int nrowStored = INTEGER(GET_DIM(stored))[0];
-    double* dstored_last = dstored+nrowStored*(ncol-1);
-    const double zero = 0.0;
-    const double one = 1.0;
-    const double neg_one = -1.0;
-    const int i_one = 1;
-    double* wt2;
-    double* dorig_copy = Calloc(nrow*ncol_ranef, double);
-    int lev, i;
+/* static void */
+/* nlme_glmmLa2_calculateCorrection(SEXP original, SEXP weighted, SEXP stored, */
+/*                                  SEXP random, const SEXPREC* eta, SEXP fam, */
+/*                                  SEXP w) */
+/* { */
+/*     SEXP origRows_sym = install("originalRows"); */
+/*     SEXP storedRows_sym = install("storedRows"); */
+/*     SEXP columns_sym = install("columns"); */
+/*     int nlevel = LENGTH(random)-2; */
+/*     double* dorig = REAL(original); */
+/*     double* dstored = REAL(stored); */
+/*     int* dim = INTEGER(GET_DIM(original)); */
+/*     int nrow = dim[0]; */
+/*     int ncol = dim[1]; */
+/*     int ncol_ranef = */
+/*         asInteger(GET_SLOT(VECTOR_ELT(random, nlevel), columns_sym))-1; */
+/*     double* dorig_last = dorig+nrow*(ncol-1); */
+/*     int nrowStored = INTEGER(GET_DIM(stored))[0]; */
+/*     double* dstored_last = dstored+nrowStored*(ncol-1); */
+/*     const double zero = 0.0; */
+/*     const double one = 1.0; */
+/*     const double neg_one = -1.0; */
+/*     const int i_one = 1; */
+/*     double* wt2; */
+/*     double* dorig_copy = Calloc(nrow*ncol_ranef, double); */
+/*     int lev, i; */
 
-    memset(dorig_last, 0, nrow*sizeof(double));
-    memset(dstored_last, 0, nrowStored*sizeof(double));
-    memcpy(dorig_copy, dorig, nrow*ncol_ranef*sizeof(double));
-    for (lev = 0; lev < nlevel; lev++) {
-        const SEXPREC* lmeLevel = VECTOR_ELT((SEXP)random, lev);
-        const SEXPREC* origLevelRows = GET_SLOT((SEXP)lmeLevel,
-                                                origRows_sym);
-        const SEXPREC* storedLevelRows = GET_SLOT((SEXP)lmeLevel,
-                                                  storedRows_sym);
-        SEXP columns = GET_SLOT((SEXP)lmeLevel, columns_sym);
-        int startCol = INTEGER(columns)[0]-1;
-        int q = LENGTH(columns);
-        int M = LENGTH((SEXP) origLevelRows);
+/*     memset(dorig_last, 0, nrow*sizeof(double)); */
+/*     memset(dstored_last, 0, nrowStored*sizeof(double)); */
+/*     memcpy(dorig_copy, dorig, nrow*ncol_ranef*sizeof(double)); */
+/*     for (lev = 0; lev < nlevel; lev++) { */
+/*         const SEXPREC* lmeLevel = VECTOR_ELT((SEXP)random, lev); */
+/*         const SEXPREC* origLevelRows = GET_SLOT((SEXP)lmeLevel, */
+/*                                                 origRows_sym); */
+/*         const SEXPREC* storedLevelRows = GET_SLOT((SEXP)lmeLevel, */
+/*                                                   storedRows_sym); */
+/*         SEXP columns = GET_SLOT((SEXP)lmeLevel, columns_sym); */
+/*         int startCol = INTEGER(columns)[0]-1; */
+/*         int q = LENGTH(columns); */
+/*         int M = LENGTH((SEXP) origLevelRows); */
 /*         int maxRow = nlme_scratchRowSize(origLevelRows); */
-        int ncolRest = ncol_ranef - startCol - q;
-        for (i = 0; i < M; i++) {
-            SEXP origChunkRows = VECTOR_ELT((SEXP)origLevelRows, i);
-            int n = LENGTH(origChunkRows);
-            int origStartRow = INTEGER(origChunkRows)[0]-1;
-            int storedStartRow = INTEGER(VECTOR_ELT((SEXP)storedLevelRows, i))[0]-1;
-            double* a = dorig_last+origStartRow;
-            double* dZ = dorig_copy + nrow*startCol+origStartRow;
-            double* dR = dstored+nrowStored*startCol+storedStartRow;
-            int j;
+/*         int ncolRest = ncol_ranef - startCol - q; */
+/*         for (i = 0; i < M; i++) { */
+/*             SEXP origChunkRows = VECTOR_ELT((SEXP)origLevelRows, i); */
+/*             int n = LENGTH(origChunkRows); */
+/*             int origStartRow = INTEGER(origChunkRows)[0]-1; */
+/*             int storedStartRow = INTEGER(VECTOR_ELT((SEXP)storedLevelRows, i))[0]-1; */
+/*             double* a = dorig_last+origStartRow; */
+/*             double* dZ = dorig_copy + nrow*startCol+origStartRow; */
+/*             double* dR = dstored+nrowStored*startCol+storedStartRow; */
+/*             int j; */
 
-            F77_CALL(dtrsm)("R", "U", "N", "N", &n, &q, &one, dR,
-                            &nrowStored, dZ, &nrow);
-            for (j = 0; j < n; j++) {
-                double* tmp2 = dZ + j;
-                double tmp1 = 0.0;
-                int k;
+/*             F77_CALL(dtrsm)("R", "U", "N", "N", &n, &q, &one, dR, */
+/*                             &nrowStored, dZ, &nrow); */
+/*             for (j = 0; j < n; j++) { */
+/*                 double* tmp2 = dZ + j; */
+/*                 double tmp1 = 0.0; */
+/*                 int k; */
 
-                for (k = 0; k < q; k++, tmp2 += n) {
-                    tmp1 += *tmp2 * *tmp2;
-                }
-                a[j] += tmp1;
-            }
-            if (ncolRest > 0)
-                F77_CALL(dgemm)("N", "N", &n, &ncolRest, &q, &neg_one,
-                                dZ, &nrow, dR+nrowStored*q, &nrowStored,
-                                &one, dZ+nrow*q, &nrow);
-        }
-    }
-    Free(dorig_copy);
+/*                 for (k = 0; k < q; k++, tmp2 += n) { */
+/*                     tmp1 += *tmp2 * *tmp2; */
+/*                 } */
+/*                 a[j] += tmp1; */
+/*             } */
+/*             if (ncolRest > 0) */
+/*                 F77_CALL(dgemm)("N", "N", &n, &ncolRest, &q, &neg_one, */
+/*                                 dZ, &nrow, dR+nrowStored*q, &nrowStored, */
+/*                                 &one, dZ+nrow*q, &nrow); */
+/*         } */
+/*     } */
+/*     Free(dorig_copy); */
 
-    wt2 = REAL(eval(lang4(install("glmmLa2Wt2"), fam, (SEXP)eta, w), R_GlobalEnv));
-    for (i = 0; i < nrow; i++) {
-        dorig_last[i] *= wt2[i];
-    }
-    for (lev = 0; lev <= nlevel; lev++) {
-        const SEXPREC* lmeLevel = VECTOR_ELT((SEXP)random, lev);
-        const SEXPREC* origLevelRows = GET_SLOT((SEXP)lmeLevel,
-                                                origRows_sym);
-        const SEXPREC* storedLevelRows = GET_SLOT((SEXP)lmeLevel,
-                                                  storedRows_sym);
-        SEXP columns = GET_SLOT((SEXP)lmeLevel, columns_sym);
-        int startCol = INTEGER(columns)[0]-1;
-        int q = LENGTH(columns);
-        int M = LENGTH((SEXP) origLevelRows);
-        double* Z = dorig + startCol*nrow;
-        double* Rs = dstored+nrowStored*startCol;
+/*     wt2 = REAL(eval(lang4(install("glmmLa2Wt2"), fam, (SEXP)eta, w), R_GlobalEnv)); */
+/*     for (i = 0; i < nrow; i++) { */
+/*         dorig_last[i] *= wt2[i]; */
+/*     } */
+/*     for (lev = 0; lev <= nlevel; lev++) { */
+/*         const SEXPREC* lmeLevel = VECTOR_ELT((SEXP)random, lev); */
+/*         const SEXPREC* origLevelRows = GET_SLOT((SEXP)lmeLevel, */
+/*                                                 origRows_sym); */
+/*         const SEXPREC* storedLevelRows = GET_SLOT((SEXP)lmeLevel, */
+/*                                                   storedRows_sym); */
+/*         SEXP columns = GET_SLOT((SEXP)lmeLevel, columns_sym); */
+/*         int startCol = INTEGER(columns)[0]-1; */
+/*         int q = LENGTH(columns); */
+/*         int M = LENGTH((SEXP) origLevelRows); */
+/*         double* Z = dorig + startCol*nrow; */
+/*         double* Rs = dstored+nrowStored*startCol; */
 
-        for (i = 0; i < M; i++) {
-            SEXP origChunkRows = VECTOR_ELT((SEXP)origLevelRows, i);
-            int n = LENGTH(origChunkRows);
-            int origStartRow = INTEGER(origChunkRows)[0]-1;
-            int storedStartRow = INTEGER(VECTOR_ELT((SEXP)storedLevelRows, i))[0]-1;
-            double* R = Rs+storedStartRow;
-            double* u = dstored_last+storedStartRow;
+/*         for (i = 0; i < M; i++) { */
+/*             SEXP origChunkRows = VECTOR_ELT((SEXP)origLevelRows, i); */
+/*             int n = LENGTH(origChunkRows); */
+/*             int origStartRow = INTEGER(origChunkRows)[0]-1; */
+/*             int storedStartRow = INTEGER(VECTOR_ELT((SEXP)storedLevelRows, i))[0]-1; */
+/*             double* R = Rs+storedStartRow; */
+/*             double* u = dstored_last+storedStartRow; */
 
-            F77_CALL(dgemv)("T", &n, &q, &one, Z+origStartRow, &nrow,
-                            dorig_last+origStartRow, &i_one,
-                            &zero, u, &i_one);
-            F77_CALL(dtrsv)("U", "T", "N", &q, R, &nrowStored, u, &i_one);
-            if (lev < nlevel)
-                F77_CALL(dtrsv)("U", "N", "N", &q, R, &nrowStored, u, &i_one);
-        }
-    }
-}
+/*             F77_CALL(dgemv)("T", &n, &q, &one, Z+origStartRow, &nrow, */
+/*                             dorig_last+origStartRow, &i_one, */
+/*                             &zero, u, &i_one); */
+/*             F77_CALL(dtrsv)("U", "T", "N", &q, R, &nrowStored, u, &i_one); */
+/*             if (lev < nlevel) */
+/*                 F77_CALL(dtrsv)("U", "N", "N", &q, R, &nrowStored, u, &i_one); */
+/*         } */
+/*     } */
+/* } */
 
 /** 
  * Decompose the decomposed matrix and populate the stored matrix
@@ -308,7 +308,7 @@ nlme_glmm_ranefIRLS(SEXP glmm,
 {
   int niter = asInteger((SEXP)nIRLS);
   int nFixedLevs = asInteger((SEXP)fixedLevels);
-  SEXP logLik, eta;
+  SEXP eta;
   if (NAMED(glmm) && !asLogical(GET_SLOT(GET_SLOT(glmm, install("reStruct")),
                                          install("dontCopy"))))
       glmm = duplicate(glmm);

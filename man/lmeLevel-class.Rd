@@ -31,6 +31,9 @@
     \item{\code{updateFactor}:}{Object of class \code{"matrix"} - the
       matrix \code{A} used to evaluate the gradient of the
       log-likelihood and to formulate the ECME step.}
+    \item{\code{hessianArray}:}{Object of class \code{"array"} - the
+      array \code{H} used to evaluate the Hessian of the
+      log-likelihood.}
     \item{\code{nlev}:}{\code{integer}: the number of levels in the
       grouping factor}
   }

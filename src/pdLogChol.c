@@ -87,6 +87,115 @@ gradient(const int nc, const double *factor, const double *pars,
 
 }
 
+SEXP
+pdLogChol_LMEhessian(const SEXPREC* x, const SEXPREC* Ain,
+                     const SEXPREC* Hin, const SEXPREC* nlev)
+{
+    SEXP param = GET_SLOT((SEXP) x, install("param"));
+    double* pars;
+    int parlen = LENGTH(param);
+    int ncol = asInteger(GET_SLOT((SEXP) x, install("Ncol")));
+    int ncolsq = ncol*ncol;
+    SEXP retval = PROTECT(allocMatrix(REALSXP, parlen, parlen));
+    double* dretval = REAL(retval);
+    double* factor = REAL(GET_SLOT((SEXP) x, install("factor")));
+    int nlevVal = asInteger((SEXP) nlev);
+    int* dims = INTEGER(getAttrib((SEXP)Ain, R_DimSymbol));
+    int m = dims[0];
+    int n = dims[1];
+    double *grad = Calloc(ncol * ncol * parlen, double);
+    double* Amat = REAL(PROTECT((TYPEOF((SEXP)Ain) == REALSXP) ?
+                                duplicate((SEXP) Ain):
+                                coerceVector((SEXP) Ain, REALSXP)));
+    double* Hmat = REAL(PROTECT((TYPEOF((SEXP)Hin) == REALSXP) ?
+                                duplicate((SEXP) Hin):
+                                coerceVector((SEXP) Hin, REALSXP)));
+    int j, k;
+
+    if (parlen <= 0) {
+	error("Uninitialized pdLogChol object");
+    }
+    if (m != n || m != ncol) {
+	error("A must be a %d by %d matrix", ncol, ncol);
+    }
+    if (nlevVal <= 0) {
+	error("nlev must be > 0");
+    }
+
+    gradient(ncol, factor, REAL(param), grad);
+
+    /* The terms not involving D_iD_j */
+    for (j = 0; j < parlen; j++) {
+        double* col = dretval + j*parlen;
+        double* grad_j = grad + ncolsq*j;
+        int i;
+        
+        for (i = j; i < parlen; i++, col++) {
+            double* grad_i = grad + ncolsq*i;
+            double sum = 0.0;
+
+            for (k = 0; k < ncolsq; k++) {
+                double grad_ik = grad_i[k];
+                double* H_k = Hmat+k*ncolsq;
+                int l;
+                for (l = 0; l < ncolsq; l++) {
+                    sum += grad_ik*grad_j[l]*H_k[l];
+                }
+            }
+
+            *col = sum;
+        }
+    }
+
+    /* The terms involving D_iD_j */
+
+    pars = REAL(param);
+
+    /* both parameters are from diagonal and they are same */
+    for (j = 0; j < ncol; j++) {
+        double sum = 4*exp(2*pars[j]);
+        double* grad_j = grad+j*(ncolsq+ncol);
+        int i;
+        for (i = j+1; i < ncol; i++) {
+            sum += grad_j[i]*(Amat[i+j*ncol]+Amat[j+i*ncol]);
+        }
+        dretval[i*(parlen+1)] += sum;
+    }
+    /* one is from diagonal and the other from off-diagonal */
+    for (j = 0; j < ncol; j++) {
+        double tmp = exp(pars[j]);
+        double* col = dretval + parlen*j + ncol + j*(j-3)/2 - 1;
+        int i;
+        for (i = j+1; j < ncol; j++) {
+            col[i] += tmp*(Amat[i+j*ncol]+Amat[j+i*ncol]);
+        }
+    }
+    /* both parameters are off diagonal and they are same */
+    k = 0;
+    for (j = 1; j < ncol; j++) {
+        int i;
+        for (i = 0; i < j; i++) {
+            dretval[k*(parlen+1)] += 2.0*Amat[j*(ncol+1)];
+            k++;
+        }
+    }
+    /* two different off diagonals */
+    for (j = 1; j < ncol; j++) {
+        int i;
+        for (i = 1; i < j; i++) {
+            double tmp = Amat[i+j*ncol]+Amat[j+i*ncol];
+            for (k = 0; k < i; k++) {
+                int ki = ncol+i*(i-1)/2+k;
+                int kj = ncol+j*(j-1)/2+k;
+                dretval[kj + ki*parlen] += tmp;
+            }
+        }
+    }
+    nlme_symmetrize(dretval, parlen);
+    UNPROTECT(3);
+    return retval;
+}
+
 /** 
  * LMEgradient implementation for the pdLogChol class
  * 

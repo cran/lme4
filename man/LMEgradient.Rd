@@ -8,14 +8,22 @@
 \alias{LMEgradient,pdNatural,matrix,numeric-method}
 \alias{LMEgradient,lmeLevel,matrix,missing-method}
 \alias{LMEgradient,lmeLevel,missing,missing-method}
-\title{The gradient in lme optimization}
+\alias{LMEhessian}
+\alias{LMEhessian-methods}
+\alias{LMEhessian,pdDiag,matrix,array,numeric-method}
+\alias{LMEhessian,pdLogChol,matrix,array,numeric-method}
+\alias{LMEhessian,lmeLevel,missing,missing,missing-method}
+\alias{LMEhessian,reStruct,missing,missing,missing-method}
+\title{The gradient and Hessian in lme optimization-method}
 \description{
-  This generic function returns the gradient of the log-likelihood or
-  log-restricted-likelihood in an lme model with respect to the
-  parameters of the object represented by \code{x}.
+  The LMEgradient and LMEhessian generic functions return the gradient
+  and the Hessian of the
+  log-likelihood or log-restricted-likelihood in an lme model with
+  respect to the parameters of the object represented by \code{x}.
 }
 \usage{
 LMEgradient(x, A, nlev)
+LMEhessian(x, A, H, nlev)
 }
 \arguments{
   \item{x}{a parameterized component of an lme model, usually the
@@ -23,12 +31,18 @@ LMEgradient(x, A, nlev)
     inherit from the \code{pdMat} class.}
   \item{A}{an upper triangular matrix with the same number of columns as
     the matrix represented by \code{x}}
+  \item{H}{an array of four dimensions with each dimension same as the
+    number of columns of the matrix represented by \code{x}}
   \item{nlev}{integer: the number of levels of the grouping factor
     corresponding to the random-effects structure}
 }
 %\details{}
 \value{
+  LMEgradient returns
   a numeric vector of length \code{length(coef(x))}.
+
+  LMEhessian returns
+  a symmetric matrix with number of columns \code{length(coef(x))}.
 }
 %\references{}
 \author{Douglas Bates \email{bates@stat.wisc.edu}

@@ -5,9 +5,11 @@ setMethod("reStruct", signature(fixed = "formula",
                                 data = "data.frame",
                                 weights = "missing",
                                 REML = "logical"),
-          function(fixed, random, data, weights, REML, nextraCols)
+          function(fixed, random, data, weights, REML, nextraCols,
+                   analyticHessian)
       {
-          reStruct(fixed, random, data, weights=numeric(0), REML, nextraCols)
+          reStruct(fixed, random, data, weights=numeric(0), REML,
+                                nextraCols, analyticHessian)
       })
 
 setMethod("reStruct", signature(fixed = "formula",
@@ -15,7 +17,8 @@ setMethod("reStruct", signature(fixed = "formula",
                                 data = "data.frame",
                                 weights = "numeric",
                                 REML = "logical"),
-          function(fixed, random, data, weights, REML, nextraCols)
+          function(fixed, random, data, weights, REML, nextraCols,
+                   analyticHessian)
       {
           ## given a matrix of no. of rows needed in the last row of a
           ## level for each column, create the storedRows or
@@ -43,9 +46,11 @@ setMethod("reStruct", signature(fixed = "formula",
               }
           ## order from inner to outer groups
           random <- rev(random)
+          analyticHessian <- as.logical(analyticHessian)
           self <- new("reStruct",
                       fixed=fixed,
-                      REML=REML)
+                      REML=REML,
+                      analyticHessian=analyticHessian)
 
           ## Get the grouping factors
           groups <- as.data.frame(lapply(names(random),
@@ -121,6 +126,13 @@ setMethod("reStruct", signature(fixed = "formula",
                                     if (self@useWeighted)
                                     self@weighted
                                     else self@original))
+          if (analyticHessian) {
+              for (i in seq(along=random)) {
+                  q <- length(random[[i]]@columns)
+                  random[[i]]@hessianArray <-
+                      array(0.0, rep(q, 4))
+              }
+          }
           class(random) <- "lmeLevelList"
           self@random <- random
           rm(random)
@@ -397,6 +409,18 @@ setMethod("LMEgradient", signature(x="reStruct", A="missing", nlev="missing"),
                         LMEgradient))
       })
 
+setMethod("LMEhessian", signature(x="reStruct", A="missing",
+                                  H="missing",
+                                  nlev="missing"),
+          function(x, A, H, nlev)
+      {
+          if (!x@analyticHessian)
+              stop("Can not calculate analytic hessian")
+          x <- .Call("nlme_commonDecompose", x, NULL)
+          lapply(x@random[seq(length=length(x@random)-2)],
+                 LMEhessian)
+      })
+
 setMethod("fitted", signature(object="reStruct"),
           function(object, ...)
       {
@@ -622,7 +646,12 @@ setMethod("show", signature(object="summary.reStruct"),
               cat("\nFixed effects:",
                   paste(deparse(object@fixed),
                         sep = '\n', collapse = '\n'), "\n")
-              printCoefmat(cm, tst.ind = 4, zap.ind = 3)
+              if (R.version$major > 1 || R.version$major == "1" &&
+                  R.version$minor >= 8) {
+                  printCoefmat(cm, tst.ind = 4, zap.ind = 3)
+              } else {
+                  print.coefmat(cm, tst.ind = 4, zap.ind = 3)
+              }
               if (length(object@showCorrelation) > 0 && object@showCorrelation[1]) {
                   correl = object@corFixed
                   rn = rownames(cm)

@@ -55,6 +55,7 @@ setClass("lmeLevel",
                         nrow="integer",
                         updateFactor="matrix", # used for EM update
                                                # and gradient calculation
+                        hessianArray="array",
                         nlev="integer"))
 
                        # basic LME object representation
@@ -64,6 +65,7 @@ setClass("reStruct",
                         dirtyDecomposed="logical", useWeighted="logical",
                         dirtyStored="logical", dirtyBbetas="logical",
                         logLik="numeric",
+                        analyticHessian="logical",
                         REML="logical",
                         reverseOrder="integer",
                         origOrder="integer",
@@ -74,7 +76,7 @@ setClass("reStruct",
          prototype=list(fixed = formula(NULL), dirtyBbetas = TRUE,
                         dirtyDecomposed=TRUE, REML=FALSE, dirtyStored=TRUE,
                         useWeighted=FALSE, logLik=as.numeric(NA),
-                        dontCopy = FALSE))
+                        dontCopy = FALSE, analyticHessian=FALSE))
 
 setClass("lmeLevelList", contains="list")
 

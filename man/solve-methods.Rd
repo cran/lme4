@@ -21,7 +21,6 @@
     \item{a = pdLogChol, b = missing}{invert a \code{pdLogChol} object}
     \item{a = pdMat, b = missing}{invert a \code{pdMat} object}
     \item{a = pdNatural, b = missing}{invert a \code{pdNatural} object}
-%    \item{a = pdScalar, b = missing}{invert a \code{pdScalar} object}
   }
 }
 \keyword{manip}

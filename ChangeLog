@@ -1,3 +1,57 @@
+2003-09-30  Douglas Bates  <bates@stat.wisc.edu>
+
+	* src/reStruct.c (nlme_getFixDF): Commented out declarations of
+	unused variables here and in other functions.
+
+	* src/glmmStruct.c: Commented out nlme_glmm_calculateCorrection,
+	which was not being used.
+
+2003-09-25  Saikat DebRoy  <saikat@stat.wisc.edu>
+
+	* man/LMEgradient.Rd: Add LMEhessian documentation.
+
+	* INDEX: Update INDEX
+
+	* R/pdDiag.R, R/pdLogChol.R, src/Makevars, src/pdLogChol.c, src/reStruct.c:
+	Changes to make LMEhessian work for for one level models using pdDiag and method="ML"
+
+2003-09-20  Saikat DebRoy  <saikat@stat.wisc.edu>
+
+	* man/lmeLevel-class.Rd, man/reStruct-class.Rd, man/reStruct.Rd:
+	Add documentation for analytic gradient
+
+	* man/lmeControl.Rd: Add entry for analyticHessian argument.
+
+	* DESCRIPTION: Update the date.
+
+	* DESCRIPTION: Bump version.
+
+	* ChangeLog: Update ChangeLog.
+
+	* src/reStruct.c:
+	Add a new function nlme_hessian_level that calculates the hessianArray
+	slot for a particular level.
+
+	Modify nlme_commonDecompose suitably to call nlme_hessian_level when
+	analyticGradient is TRUE. If the method is ML, do an extra step of
+	REML calculation for use in nlme_hessian_level.
+
+	* R/pdDiag.R: Add an LMEhessian method for pdDiag.
+
+	* R/reStruct.R: Add support for analytic hessian.
+
+	* R/reLevel.R: Add an LMEhessian method.
+
+	* R/lme.R: Add support for analyticHessian.
+
+	* R/AllGeneric.R:
+	Add LMEhessian generic. Add new argument analyticHessian to the
+	reStruct generic.
+
+	* R/AllClass.R:
+	Add a hessianArray slot to lmeLevel and an analyticHessian slot to
+	reStruct.
+
 2003-09-01  Douglas Bates  <bates@stat.wisc.edu>
 
 	* src/reStruct.c (nlme_reStructEMsteps): Correction to calculation

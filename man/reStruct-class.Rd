@@ -44,6 +44,9 @@
       current parameter values.}
     \item{\code{REML}:}{\code{"logical"}: if \code{TRUE} the parameters
       will be estimated according to the REML criterion}
+    \item{\code{analyticHessian}:}{\code{"logical"}: if \code{TRUE} the
+      \code{hessianArray} slot of the lmeLevel objects are calculated
+      during optimization.}
     \item{\code{reverseOrder}:}{\code{"integer"}: the permutation of the
       rows that provides the original order.}
     \item{\code{origOrder}:}{\code{"integer"}: the inverse of the

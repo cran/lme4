@@ -111,6 +111,12 @@ if (!isGeneric("LMEgradient")) {
                function(x, A, nlev) standardGeneric("LMEgradient"))
 }
 
+if (!isGeneric("LMEhessian")) {
+    setGeneric("LMEhessian",
+               function(x, A, H, nlev)
+               standardGeneric("LMEhessian"))
+}
+
 setGeneric("lme",
            function(formula, data, random, correlation, weights, subset,
                     method, na.action, control, model, x)
@@ -123,7 +129,8 @@ if (!isGeneric("EMupdate<-")) {
 
 if (!isGeneric("reStruct")) {
     setGeneric("reStruct",
-               function(fixed, random, data, weights, REML, nextraCols=0)
+               function(fixed, random, data, weights, REML,
+                        nextraCols=0, analyticHessian=FALSE)
                standardGeneric("reStruct"))
 }
 

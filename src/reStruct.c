@@ -2,7 +2,7 @@
  * @file   reStruct.c
  * @author Saikat DebRoy <saikat@stat.wisc.edu>
  * @author Douglas Bates <bates@stat.wisc.edu>
- * @date   $Date: 2003/09/01 19:22:47 $
+ * @date   $Date: 2003/09/25 20:56:18 $
  * 
  * @brief  functions for handling reStruct objects.
  * 
@@ -864,6 +864,122 @@ nlme_factor_level(SEXP stored, SEXP lmeLevel, SEXP bbetas,
     Free(pivot);
 }
 
+void
+nlme_hessian_level(SEXP stored, SEXP lmeLevel,
+                   SEXP bbetas, double sigmainv, int fixedStartColREML,
+                   int fixedStartColML, int ntotal, int REML)
+{
+    int nlev = asInteger(GET_SLOT((SEXP) lmeLevel, install("nlev")));
+    const SEXPREC* columns = GET_SLOT(lmeLevel, install("columns"));
+    const SEXPREC* storedRows = GET_SLOT((SEXP) lmeLevel,
+                                         install("storedRows"));
+    int ldstored = INTEGER(GET_DIM(stored))[0];
+    int ncol = LENGTH((SEXP)columns);
+    int srcStartCol = INTEGER((SEXP)columns)[0] - 1;
+
+/*     int nxcolREML = fixedStartColREML - srcStartCol; */
+    int nxcolML = fixedStartColML - srcStartCol;
+    int p = fixedStartColREML - fixedStartColML;
+
+    double* dStored = REAL(stored) + ldstored*srcStartCol - 1;
+    double* dBbetas = REAL(bbetas) - 1;
+    int ncolsq = ncol*ncol;
+    double* scratch;
+    double* scratch1;
+    double* scratch2;
+    double* scratch3;
+    double* hessarray;
+    double sigma2inv = sigmainv*sigmainv;
+    const double one = 1.0;
+    const double zero = 0.0;
+    int j, k;
+    int lev;
+
+    hessarray = Calloc(ncolsq*ncolsq, double);
+    scratch = Calloc(ncolsq, double);
+    scratch1 = Calloc(ncolsq, double);
+    scratch2 = Calloc(ncolsq, double);
+    scratch3 = Calloc(p*ncolsq, double);
+
+    for (lev = 0; lev < nlev; lev++) {
+        int srcStartRow = INTEGER(VECTOR_ELT((SEXP) storedRows, lev))[0];
+        double* R = dStored + srcStartRow;
+        double* Rmore = R + nxcolML*ldstored;
+        double* this_b = dBbetas + srcStartRow;
+
+        for (j = 0, k = 0; j < ncol; j++) {
+            double b_j = this_b[j]*sigma2inv;
+            int i;
+            for (i = 0; i < ncol; i++) {
+                double tmp = this_b[i]*b_j;
+                scratch[k] += tmp;
+                scratch1[k++] = tmp;
+            }
+        }
+        F77_CALL(dgemm)("N", "T", &ncol, &ncol, &nxcolML, &one,
+                        R, &ldstored, R, &ldstored, &zero,
+                        scratch2, &ncol);
+        for (j = 0, k = 0; j < ncolsq; j++) {
+            double RR_j = scratch2[j];
+            int i;
+            for (i = 0; i < ncolsq; i++) {
+                hessarray[k++] += scratch2[i]*RR_j;
+            }
+        }
+
+        for (j = 0, k = 0; j < ncolsq; j++) {
+            double bb_j = scratch1[j];
+            /* double RR_j = scratch2[j]; */
+            int i;
+            for (i = 0; i < ncolsq; i++) {
+                hessarray[k++] += 2*scratch2[i]*bb_j;
+            }
+        }
+
+        for (j = 0; j < ncol; j++) {
+            double b_j = this_b[j]*sigma2inv;
+            int i;
+            for (i = 0; i < ncol; i++) {
+                double* tmp = scratch3 + p*(ncol*j+i);
+                for (k = 0; k < p; k++) {
+                    tmp[k] += b_j*Rmore[ldstored*i+k];
+                }
+            }
+        }
+    }
+
+    Free(scratch1);
+    Free(scratch2);
+
+    scratch1 = REAL(GET_SLOT(lmeLevel, install("hessianArray")));
+    /* This is basically aperm(hessarray, c(4, 1:3)) */
+    for (j = 0, k = 0; j < ncol; j++) {
+        double* tmp = hessarray+j*ncolsq*ncol;
+        int i;
+        for (i = 0; i < ncolsq*ncol; i++) {
+            scratch1[i*ncol+j] = tmp[i];
+        }
+    }
+    Free(hessarray);
+    hessarray = scratch1;
+    for (j = 0, k = 0; j < ncolsq; j++) {
+        double* tmp1 = scratch3+p*j;
+        double tmp = scratch[j]/ntotal;
+        int i;
+        for (i = 0; i < ncolsq; i++) {
+            double* tmp2 = scratch3+p*i;
+            double sum = scratch[i]*tmp;
+            int l;
+            for (l = 0; l < p; l++) {
+                sum += tmp1[k]*tmp2[k];
+            }
+            hessarray[k++] += sum;
+        }
+    }
+    Free(scratch3);
+    Free(scratch);
+}
+
 /**
  * Decomposition routine common to EM and gradient computation.
  *
@@ -881,7 +997,11 @@ SEXP
 nlme_commonDecompose(SEXP reStruct, const SEXPREC* pars)
 {
     int newPars = length((SEXP)pars) > 0 && nlme_setParameters(&reStruct, pars);
+    int analyticHessian = asLogical(GET_SLOT(reStruct,
+                                             install("analyticHessian")));
+    int REML = asLogical(GET_SLOT(reStruct, install("REML")));
     SEXP logLik;
+
     if (!(newPars || ISNA(asReal(GET_SLOT(reStruct, install("logLik")))) ||
           asLogical(GET_SLOT(reStruct, install("dirtyBbetas"))) ||
           asLogical(GET_SLOT(reStruct, install("dirtyStored")))))
@@ -890,30 +1010,35 @@ nlme_commonDecompose(SEXP reStruct, const SEXPREC* pars)
     if (NAMED(reStruct) && !asLogical(GET_SLOT(reStruct, install("dontCopy"))))
         reStruct = duplicate(reStruct);
     PROTECT(reStruct);
+    
     logLik = GET_SLOT(reStruct, install("logLik"));
-    REAL(logLik)[0] = nlme_logLikelihood_internal(reStruct, 1, 0);
 
     {
-
         SEXP random = GET_SLOT(reStruct, install("random"));
         SEXP stored = GET_SLOT(reStruct, install("stored"));
         SEXP bbetas = GET_SLOT(reStruct, install("bbetas"));
-        int REML = asLogical(GET_SLOT(reStruct, install("REML")));
         int* dim = INTEGER(GET_DIM(stored));
         int nlevel = LENGTH(random) - 2;
         int ncol_levels = asInteger(GET_SLOT(VECTOR_ELT(random, nlevel+1),
                                              install("columns")));
-        int fixedStartCol = 
-            asInteger(GET_SLOT(VECTOR_ELT(random, REML ? nlevel+1 : nlevel),
+        int fixedStartColREML = 
+            asInteger(GET_SLOT(VECTOR_ELT(random, nlevel+1),
                                install("columns")))-1;
-        int nrows =  asInteger(GET_DIM(GET_SLOT(reStruct,
-                                                install("original"))));
+        int fixedStartColML = 
+            asInteger(GET_SLOT(VECTOR_ELT(random, nlevel),
+                               install("columns")))-1;
+        int fixedStartCol = REML?fixedStartColREML:fixedStartColML;
+        int df =  asInteger(GET_DIM(GET_SLOT(reStruct,
+                                             install("original"))));
         double sqrtDF, sigmainv;
         int lev;
 
-        sqrtDF = sqrt((double) nrows - 
-                      (REML ? asInteger(GET_SLOT(VECTOR_ELT(random, nlevel),
-                                                 install("columns"))) : 0));
+        REAL(logLik)[0] = nlme_logLikelihood_internal(reStruct, 1, 0);
+
+        if (REML)
+            df -= LENGTH(GET_SLOT(VECTOR_ELT(random, nlevel),
+                                  install("columns")));
+        sqrtDF = sqrt((double) df);
         if (asLogical(GET_SLOT(reStruct, install("dirtyBbetas")))) {
             for (lev = nlevel; lev >= 0; lev--) {
                 nlme_estimate_level(stored, VECTOR_ELT(random, lev), bbetas);
@@ -928,7 +1053,14 @@ nlme_commonDecompose(SEXP reStruct, const SEXPREC* pars)
         for (lev = 0; lev < nlevel; lev++) {
             nlme_factor_level(stored, VECTOR_ELT(random, lev), bbetas,
                               sigmainv, fixedStartCol);
+            if (analyticHessian) {
+                nlme_hessian_level(stored,
+                                   VECTOR_ELT(random, lev), bbetas,
+                                   sigmainv, fixedStartColREML,
+                                   fixedStartColML, df, REML);
+            }
         }
+
         LOGICAL(GET_SLOT(reStruct, install("dirtyStored")))[0] = 0;
     }
     UNPROTECT(1);
@@ -1082,7 +1214,7 @@ SEXP
 nlme_reStruct_fitted_internal(const SEXPREC* reStruct, SEXP ans,
                               const SEXPREC* level)
 {
-    int nUsedLevel = asInteger((SEXP)level);
+/*     int nUsedLevel = asInteger((SEXP)level); */
     const SEXPREC* offset = GET_SLOT((SEXP)reStruct, install("offset"));
     const SEXPREC* random = GET_SLOT((SEXP)reStruct, install("random"));
     const SEXPREC* original = GET_SLOT((SEXP)reStruct, install("original"));
@@ -1302,7 +1434,7 @@ SEXP nlme_getFixDF(const SEXPREC* reStruct)
     SEXP columns = GET_SLOT(VECTOR_ELT(random, Q), install("columns"));
     int pp = LENGTH(columns);
     SEXP valX = PROTECT(allocVector(INTSXP, pp));
-    SEXP valXnames = PROTECT(allocVector(STRSXP, pp));
+/*     SEXP valXnames = PROTECT(allocVector(STRSXP, pp)); */
     SEXP valTerms;
     SEXP val = PROTECT(allocVector(VECSXP, 2));
     SEXP valnames = PROTECT(allocVector(STRSXP, 2));
@@ -1365,7 +1497,7 @@ SEXP nlme_getFixDF(const SEXPREC* reStruct)
     SET_VECTOR_ELT(val, 1, valTerms);
     SET_STRING_ELT(valnames, 0, mkChar("X"));
     SET_STRING_ELT(valnames, 1, mkChar("terms"));
-    UNPROTECT(5);
+    UNPROTECT(4);
     Free(level); Free(dflev); Free(ngrps);
     return namesgets(val, valnames);
 }

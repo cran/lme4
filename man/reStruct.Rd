@@ -9,7 +9,7 @@
   Create an \code{reStruct} object from values for its slots.
 }
 \usage{
-reStruct(fixed, random, data, weights, REML, nextraCols)
+reStruct(fixed, random, data, weights, REML, nextraCols, analyticHessian)
 }
 \arguments{
   \item{fixed}{a formula of the form \code{response ~ terms} where
@@ -30,6 +30,9 @@ reStruct(fixed, random, data, weights, REML, nextraCols)
     criterion will be used.}
   \item{nextraCols}{an \code{integer} giving the number of extra columns
     to be added to the stored matrices.}
+  \item{analyticHessian}{a \code{ilogical} value: if \code{TRUE} the
+    analytic Hessian of the objective can be calculated using the
+    LMEhessian function.}
 }
 %\details{}
 \value{

@@ -7,7 +7,8 @@ lmeControl <-
            .relStep = (.Machine$double.eps)^(1/3), minAbsParApVar = 0.05,
            nlmStepMax = NULL,
            natural = TRUE, optimizer="nlm", EMverbose=FALSE,
-           analyticGradient = TRUE)
+           analyticGradient = TRUE,
+           analyticHessian=FALSE)
 {
     if (missing(msScale)) msScale = function(start) {
         scale <- abs(start)
@@ -27,7 +28,9 @@ lmeControl <-
          gradHess = gradHess , apVar = apVar, .relStep = .relStep,
          nlmStepMax = nlmStepMax,
          minAbsParApVar = minAbsParApVar, natural = natural,
-         optimizer=optimizer, EMverbose=EMverbose, analyticGradient=analyticGradient)
+         optimizer=optimizer, EMverbose=EMverbose,
+         analyticHessian=analyticHessian,
+         analyticGradient=analyticGradient)
 }
 
 setMethod("lme", signature(data = "missing"),
@@ -117,9 +120,14 @@ setMethod("lme", signature(formula = "formula", random = "list"),
           data <- eval(mCall, parent.frame())
           re <- reStruct(fixed = formula, random = random,
                          data = data,
-                         REML = method != "ML")
+                         REML = method != "ML",
+                         analyticHessian=controlvals$analyticHessian)
           .Call("nlme_replaceSlot", re, "dontCopy", TRUE, PACKAGE = "lme4")
+          .Call("nlme_replaceSlot", re, "analyticHessian",
+                FALSE, PACKAGE = "lme4")
           EMsteps(re) <- controlvals
+          .Call("nlme_replaceSlot", re, "analyticHessian",
+                controlvals$analyticHessian, PACKAGE = "lme4")
           LMEoptimize(re) <- controlvals
           .Call("nlme_replaceSlot", re, "dontCopy", FALSE, PACKAGE = "lme4")
           ## zero some of the matrix slots

@@ -1,4 +1,4 @@
-% $Id: lmeControl.Rd,v 1.4 2003/06/06 13:29:01 bates Exp $
+% $Id: lmeControl.Rd,v 1.5 2003/09/20 11:54:43 saikat Exp $
 \name{lmeControl}
 \alias{lmeControl}
 \title{Control values for lme}
@@ -11,7 +11,7 @@
 lmeControl(maxIter, msMaxIter, tolerance, niterEM, msTol,
            msScale, msVerbose, returnObject, gradHess, apVar,
            .relStep, minAbsParApVar, nlmStepMax, natural, optimizer,
-           EMverbose, analyticGradient)
+           EMverbose, analyticGradient, analyticHessian)
 }
 \arguments{
  \item{maxIter}{maximum number of iterations for the \code{lme}
@@ -67,6 +67,10 @@ lmeControl(maxIter, msMaxIter, tolerance, niterEM, msTol,
    gradient of the objective should be used.  This option is for testing
    purposes and would not normally be changed from the default.  Default
    is \code{TRUE}.}
+ \item{analyticHessian}{a logical value indicating if the analytic
+   hessian of the objective should be calculated. This is an
+   experimental feature and at present the default is \code{FALSE}. In
+   future we may use the analytic Hessian in the optimization.}
 }
 \value{
   a list with a component for each of the possible arguments.
