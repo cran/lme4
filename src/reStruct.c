@@ -2,7 +2,7 @@
  * @file   reStruct.c
  * @author Saikat DebRoy <saikat@stat.wisc.edu>
  * @author Douglas Bates <bates@stat.wisc.edu>
- * @date   $Date: 2003/07/17 17:21:09 $
+ * @date   $Date: 2003/09/01 19:22:47 $
  * 
  * @brief  functions for handling reStruct objects.
  * 
@@ -1217,69 +1217,6 @@ nlme_solveOnly(SEXP reStruct)
     return reStruct;
 }
 
-/* This function are directly from nlme 3.1 */
-/* functions for calculating df's for fixed effects tests */
-
-/* static double */
-/* nlme_inner_perc(const double* x, const int* grp, int n) */
-       /* percentage of groups for which x is inner */
-/* { */
-     /* x - column of X matrix to be assessed
-        grp - integer vector with groups
-        n - length of x and grp
-        data are assumed to be ordered by grp */
-
-/*     int currGrp, nn = 0, isInner; */
-/*     double nInner = 0., nGrp = 0., currVal; */
-
-/*     while (nn < n) { */
-/*         currGrp = grp[nn]; */
-/*         currVal = x[nn]; */
-/*         nGrp++; */
-/*         isInner = 0; */
-/*         do { */
-/*             if (isInner == 0 && x[nn] != currVal) { */
-/*                 nInner++; */
-/*                 isInner = 1; */
-/*             } */
-/*             nn++; */
-/*         } while (nn < n && currGrp == grp[nn]); */
-/*     } */
-/*     return(nInner/nGrp); */
-/* } */
-
-/* This is from nlme-3.1, changed to .Call interface */
-/* SEXP */
-/* nlme_inner_perc_table(SEXP reStruct) */
-      /* constructs an p x Q "inner-percentage" table for a fixed effects
- 	matrix X and a set of grouping vectors grps */
-/* { */
-/*     SEXP rpTable; */
-/*     SEXP groups_sym = install("groups"); */
-/*     SEXP original = GET_SLOT(reStruct, install("original")); */
-/*     SEXP random = GET_SLOT(reStruct, install("random")); */
-/*     int Q = LENGTH(random)-2; */
-/*     SEXP columns = GET_SLOT(VECTOR_ELT(random, Q), install("columns")); */
-/*     int pp = LENGTH(columns); */
-/*     int nn = INTEGER(GET_DIM(original))[0]; */
-/*     double* X = REAL(original) + nn*(INTEGER(columns)[0]-1); */
-/*     int i, j, ipp = 0; */
-/*     double* pTable; */
-
-/*     rpTable = allocMatrix(REALSXP, pp, Q+1); */
-/*     pTable = REAL(rpTable); */
-/*     for (i = 0; i < pp; i++) */
-/*         *pTable++ = 1.0; */
-/*     for(i = Q-1; i >= 0; i--) { */
-/*         int* grps = INTEGER(GET_SLOT(VECTOR_ELT(random, i), groups_sym)); */
-/*         for(j = 0; j < pp; j++) { */
-/*             pTable[j + ipp] = nlme_inner_perc(X + j * nn, grps, nn); */
-/*         } */
-/*         ipp += pp; */
-/*     } */
-/*     return(rpTable); */
-/* } */
-
 SEXP
 nlme_reStructEMsteps(SEXP reStruct, SEXP niter, SEXP isVerbose)
 {
@@ -1396,7 +1333,7 @@ SEXP nlme_getFixDF(const SEXPREC* reStruct)
 	if (nterms < asgn) nterms = asgn; /* keep track of max(asgn) */
 	level[j] = 0;
 	if (asgn == 0) {	/* intercept is special case */
-	    dflev[0]--;
+	    dflev[Q]--;
 	    continue;
 	}
 	for (i = 0; i < Q; i++) {

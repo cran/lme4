@@ -1,6 +1,15 @@
+2003-09-01  Douglas Bates  <bates@stat.wisc.edu>
+
+	* src/reStruct.c (nlme_reStructEMsteps): Correction to calculation
+	of denominator df for a model with an intercept.
+
+	* DESCRIPTION (Date): Version 0.3-7
+
+	* R/reStruct.R: Use printCoefmat instead of print.coefmat
+
 2003-08-27  Douglas Bates  <bates@stat.wisc.edu>
 
-	* R/zzz.R (.First.lib): require methods package
+	* R/AAA.R: require methods package
 
 2003-08-12  Douglas Bates  <bates@stat.wisc.edu>
 

@@ -622,7 +622,7 @@ setMethod("show", signature(object="summary.reStruct"),
               cat("\nFixed effects:",
                   paste(deparse(object@fixed),
                         sep = '\n', collapse = '\n'), "\n")
-              print.coefmat(cm, tst.ind = 4, zap.ind = 3)
+              printCoefmat(cm, tst.ind = 4, zap.ind = 3)
               if (length(object@showCorrelation) > 0 && object@showCorrelation[1]) {
                   correl = object@corFixed
                   rn = rownames(cm)
