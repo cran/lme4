@@ -80,7 +80,7 @@ summary(fm1)
 fm2 = GLMM(immun ~ kid2p + mom25p + ord + ethn +
                   momEd + husEd + momWork + rural + pcInd81,
           data = guImmun, family = binomial,
-          random = ~1|comm/mom, method = 'Laplace')
+          random = ~1|comm, method = 'Laplace')
 summary(fm2)
 }
 \keyword{models}

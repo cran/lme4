@@ -67,14 +67,14 @@ setClass("reStruct",
                         REML="logical",
                         reverseOrder="integer",
                         origOrder="integer",
-                        groups="data.frame", original="matrix",
+                        original="matrix",
                         weighted="matrix", stored="matrix",
                         decomposed="matrix", bbetas="numeric",
                         dontCopy = "logical", assign.X = "ANY"),
          prototype=list(fixed = formula(NULL), dirtyBbetas = TRUE,
                         dirtyDecomposed=TRUE, REML=FALSE, dirtyStored=TRUE,
                         useWeighted=FALSE, logLik=as.numeric(NA),
-                        dontCopy = FALSE, groups=data.frame()))
+                        dontCopy = FALSE))
 
 setClass("lmeLevelList", contains="list")
 

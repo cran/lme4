@@ -48,29 +48,29 @@ setMethod("reStruct", signature(fixed = "formula",
                       REML=REML)
 
           ## Get the grouping factors
-          self@groups <- as.data.frame(lapply(names(random),
-                                              function(expr)
-                                              eval(parse(text=expr),
-                                                   data,
-                                                   environment(fixed))))
-          for (i in seq(to=1, length=length(self@groups)-1, by = -1)) {
-              self@groups[, i] <-
-                  as.factor(paste(as.character(self@groups[[i+1]]),
-                                  as.character(self@groups[[i]]),
+          groups <- as.data.frame(lapply(names(random),
+                                         function(expr)
+                                         eval(parse(text=expr),
+                                              data,
+                                              environment(fixed))))
+          for (i in seq(to=1, length=length(groups)-1, by = -1)) {
+              groups[, i] <-
+                  as.factor(paste(as.character(groups[[i+1]]),
+                                  as.character(groups[[i]]),
                                   sep = "/"))
           }
-          names(self@groups) <- names(random)
+          names(groups) <- names(random)
           ## save the old ordering
-          row.names(self@groups) <- row.names(data)
+          row.names(groups) <- row.names(data)
           ## generate the new ordering for the model.frame
-          self@origOrder <- do.call("order", self@groups)
-          self@groups[, 1] <- as.factor(self@groups[,1])
+          self@origOrder <- do.call("order", groups)
+          groups[, 1] <- as.factor(groups[,1])
           self@reverseOrder <- order(self@origOrder)
           ## Reorder the model.frame
           data[,] <- data[self@origOrder, , drop = FALSE]
-          row.names(data) <- row.names(self@groups)[self@origOrder]
-          self@groups[,] <- self@groups[self@origOrder, , drop = FALSE]
-          row.names(self@groups) <- row.names(data)
+          row.names(data) <- row.names(groups)[self@origOrder]
+          groups[,] <- groups[self@origOrder, , drop = FALSE]
+          row.names(groups) <- row.names(data)
           ## Create the model.matrix for fixed and response
           self@original <- model.matrix(fixed, data)
           self@assign.X <- attr(self@original, "assign")
@@ -113,10 +113,10 @@ setMethod("reStruct", signature(fixed = "formula",
               weighted(self) <- weights[self@origOrder]
               rm(weights)
           }
-          Q <- ncol(self@groups)
+          Q <- ncol(groups)
           random <- lapply(indx, function(i)
                            lmeLevel(random[[i]],
-                                    self@groups[[i]],
+                                    groups[[i]],
                                     reStructColumns[[i]],
                                     if (self@useWeighted)
                                     self@weighted
@@ -136,7 +136,7 @@ setMethod("reStruct", signature(fixed = "formula",
                                                modelMatrix=self@original)
           self@random[["*response*"]] <- lmeLevel(columns=reStructColumns[[Q+2]],
                                                   modelMatrix=self@original)
-          N <- nrow(self@groups)
+          N <- nrow(groups)
 
           self <- .Call("nlme_reStructDims", self, PACKAGE="lme4")
 

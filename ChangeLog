@@ -1,8 +1,35 @@
-2003-07-17  Douglas Bates  <bates@stat.wisc.edu>
+2003-07-20  Douglas Bates  <bates@stat.wisc.edu>
+
+	* man/GLMM.Rd:
+	Simplify example with Laplace.  The ill-conditioned example takes too
+	long.
+
+	* ChangeLog: *** empty log message ***
+
+	* man/fixed.effects.Rd: Added documentation for fixef<-.
+
+2003-07-20  Douglas Bates  <bates@stat.wisc.edu>
+
+	* man/fixed.effects.Rd: Added documentation for fixef<-.
+
+2003-07-18  Douglas Bates  <bates@stat.wisc.edu>
+
+	* DESCRIPTION, R/AllGeneric.R, R/glmm.R, man/GLMM.Rd: release 0.3-2
+
+2003-07-18  Saikat DebRoy  <saikat@stat.wisc.edu>
+
+	* R/AllClass.R, R/reStruct.R:
+	Remove the groups slot from the reStruct class. We do not
+	currently use it and the information is also in the groups
+	slot of relevel class.
+
+2003-07-17  bates  <bates@stat.wisc.edu>
+
+	* ChangeLog, DESCRIPTION: Release 0.3-1
 
 	* man/VarCorr.Rd: Remove argument documentation from generic
 
-2003-07-17  Saikat DebRoy  <saikat@bates4>
+2003-07-17  Saikat DebRoy  <saikat@stat.wisc.edu>
 
 	* src/glmmStruct.c:
 	Fix some problems in calculating second order Laplace
@@ -584,7 +611,7 @@
 
 	* DESCRIPTION: Increment the version, change the description and title
 
-2002-12-18  Saikat DebRoy  <saikat@bates4.stat.wisc.edu>
+2002-12-18  Saikat DebRoy  <saikat@stat.wisc.edu>
 
 	* src/reStruct.c:
 	Change nlme_logLikelihhod and nlme_commonDecompose so that they accept an
