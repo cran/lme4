@@ -38,8 +38,10 @@ exportMethods(
               "plot",
               "ranef",
               "residuals",
+              "resid",
               "show",
               "summary",
               "update",
-              "vcov"
+              "vcov",
+              "with"
               )

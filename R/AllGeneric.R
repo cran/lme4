@@ -54,7 +54,7 @@ fixed.effects <- function(object, ...) {
 }
 
 if (!isGeneric("ranef")) {
-    setGeneric("ranef", function(object, accumulate = FALSE, ...)
+    setGeneric("ranef", function(object, ...)
                standardGeneric("ranef"))
 }
 

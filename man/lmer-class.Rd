@@ -12,12 +12,14 @@
 \alias{fitted,lmer-method}
 \alias{logLik,lmer-method}
 \alias{residuals,lmer-method}
+\alias{resid,lmer-method}
 \alias{show,lmer-method}
 \alias{summary,lmer-method}
 \alias{update,lmer-method}
 \alias{vcov,lmer-method}
 \alias{plot,lmer.ranef-method}
 \alias{plot,lmer.coef-method}
+\alias{with,lmer-method}
 \title{lmer model representation}
 \description{A representation of a linear mixed-effects model using a
   blocked, sparse, symmetric, column-oriented matrix and dense matrices.}

@@ -1,3 +1,10 @@
+2005-04-05  Douglas Bates  <bates@bates1-home>
+
+	* R/lmer.R: Update of the "with" method.
+	* : Removed humongous PDF file accidently included in tarball.
+	Created release 0.95-3.
+	
+
 2005-02-27  Douglas Bates  <bates@bates1-home>
 
 	* R/lme.R: Removed the stubs of the plot methods.

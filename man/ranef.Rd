@@ -9,7 +9,8 @@
 \alias{ranef,lmer-method}
 \title{Extract Random Effects}
 \usage{
-ranef(object, accumulate, \dots)
+ranef(object, \dots)
+\S4method{ranef}{lmer}(object, accumulate, \dots)
 random.effects(object, \dots)   # deprecated
 }
 \description{
