@@ -50,6 +50,7 @@ Wafer                   Modeling of Analog MOS Circuits
 Wheat                   Yields by growing conditions
 Wheat2                  Wheat Yield Trials
 bdf                     Language scores
+contr.SAS               Contrast Matrices for SAS-like Results
 egsingle                US Sustaining Effects study
 ergoStool               Ergometrics experiment with stool types
 fixed.effects           Extract Fixed Effects

@@ -4,8 +4,8 @@
 cco2Omega <- function(cco, k) {
     if (k < 2) return(matrix(1/cco, ncol = 1, nrow = 1))
     Lt <- diag(k)
-    Lt[upper.tri(Lt)] <- cco[-(1:k)]
-    ans <- t(Lt) %*% (1/(cco[1:k]) * Lt)
+    Lt[lower.tri(Lt)] <- cco[-(1:k)]
+    ans <- Lt %*% (1/(cco[1:k]) * t(Lt))
     ans[lower.tri(ans)] <- 0
     ans
 }

@@ -1,5 +1,4 @@
 importFrom("graphics", "plot")
-## importFrom("lattice", "gplot")  ## loading lattice via Depends for now
 
 importFrom("stats",
            "anova",
@@ -40,6 +39,7 @@ export(
        "Names",
        "Names<-",
        "VarCorr",
+       "contr.SAS",
        "fixef",
        "getCovariateFormula",
        "getGroups",

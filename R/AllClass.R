@@ -9,6 +9,7 @@
 setOldClass("data.frame")
 setOldClass("family")
 setOldClass("logLik")
+setOldClass("terms")
 
 setClass("lme", representation(call = "call",
                                facs = "list",
@@ -17,7 +18,9 @@ setClass("lme", representation(call = "call",
                                REML = "logical",
                                rep = "ssclme",
                                fitted = "numeric",
-                               residuals = "numeric"))
+                               residuals = "numeric",
+                               terms = "terms",
+                               assign = "integer"))
 
 setClass("GLMM", representation(family = "family",
                                 logLik = "numeric",

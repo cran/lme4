@@ -13,20 +13,17 @@ lmeControl(maxIter = 50,
            tolerance = sqrt((.Machine$double.eps)),
            niterEM = 20,
            msTol = sqrt(.Machine$double.eps),
-           msScale,
            msVerbose = getOption("verbose"),
            PQLmaxIt = 20,
            .relStep = (.Machine$double.eps)^(1/3), 
            nlmStepMax = NULL,
-           optimizer="nlm",
            EMverbose = getOption("verbose"),
            analyticGradient = TRUE,
            analyticHessian=FALSE))
 }
 \usage{
 lmeControl(maxIter, msMaxIter, tolerance, niterEM, msTol,
-           msScale, msVerbose, PQLmaxIt, .relStep,
-           nlmStepMax, optimizer,
+           msVerbose, PQLmaxIt, .relStep, nlmStepMax, 
            EMverbose, analyticGradient, analyticHessian)
 }
 \arguments{
@@ -43,9 +40,6 @@ lmeControl(maxIter, msMaxIter, tolerance, niterEM, msTol,
  \item{msTol}{tolerance for the convergence criterion in \code{nlm},
    passed as the \code{rel.tolerance} argument to the function (see
    documentation on \code{nlm}). Default is 1e-7. }
- \item{msScale}{scale function passed as the \code{scale} argument to
-   the \code{nlm} function (see documentation on that function). Default
-   is \code{lmeScale}.}
  \item{msVerbose}{a logical value passed as the \code{trace} argument to
    \code{nlm} (see documentation on that function). Default is
    \code{getOption("verbose")}.} 
@@ -55,8 +49,6 @@ lmeControl(maxIter, msMaxIter, tolerance, niterEM, msTol,
    calculations. Default is \code{.Machine$double.eps^(1/3)}.}
  \item{nlmStepMax}{stepmax value to be passed to nlm. See
      \code{\link{nlm}} for details. Default is 100.0}
- \item{optimizer}{the optimizer to be used - either \code{"optim"}, the
-   default, or \code{"nlm"}}
  \item{EMverbose}{a logical value indicating if verbose output should be
    produced during the EM iterations.  Default is \code{getOption("verbose"}.}
  \item{analyticGradient}{a logical value indicating if the analytic

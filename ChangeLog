@@ -1,3 +1,7 @@
+2004-12-16  Douglas Bates  <bates@bates1-home>
+
+	* R/lme.R (make.mf.call): Omit control values that are no longer used.
+
 2004-12-13  Douglas Bates  <bates@bates1-home>
 
 	* R/lme.R (lmeControl): Change msVerbose to an integer value.

@@ -8,7 +8,7 @@ setMethod("GLMM", signature(formula = "missing"),
                    offset,
                    model = TRUE, x = FALSE, y = FALSE, ...)
       {
-          nCall = mCall = match.call()
+          Call = match.call()
           resp = getResponseFormula(data)[[2]]
           cov = getCovariateFormula(data)[[2]]
           nCall$formula = eval(substitute(resp ~ cov))
@@ -101,10 +101,10 @@ setMethod("GLMM",
           ## linear predictor scale
 
 
-          data <- eval(make.mf.call(match.call(expand.dots = FALSE),
+          ndat <- eval(make.mf.call(match.call(expand.dots = FALSE),
                                     formula, random), parent.frame())
           facs <- lapply(names(random),
-                         function(x) as.factor(eval(as.name(x), envir = data)))
+                         function(x) as.factor(eval(as.name(x), envir = ndat)))
           names(facs) <- names(random)
           ## order factor list by decreasing number of levels
           ford <- rev(order(sapply(facs, function(fac) length(levels(fac)))))
@@ -113,12 +113,11 @@ setMethod("GLMM",
               random <- random[ford]
           }
           ## creates model matrices
+          Xmat <- model.matrix(formula, data)
           mmats.unadjusted <-
               c(lapply(random,
-                       function(x) model.matrix(formula(x), data = data)),
-                list(.Xy =
-                     cbind(model.matrix(formula, data = data),
-                           .response = glm.fit$y))) #  WAS: model.response(data)
+                       function(x) model.matrix(formula(x), data = ndat)),
+                list(.Xy = cbind(Xmat, .response = glm.fit$y)))
           responseIndex <- ncol(mmats.unadjusted$.Xy)
           obj <-  ## creates ssclme structure
               .Call("ssclme_create", facs,
@@ -353,77 +352,70 @@ setMethod("GLMM",
 
           if (method == "Laplace")
           {
-              cat(paste("Using optimizer", controlvals$optim), "\n")
-
               ## no analytic gradients or hessians
-              if (controlvals$optimizer == "optim")
-              {
-                  optimRes =
-                      optim(fn = devLaplace,
-                            par = c(fixef(obj), coef(obj, unconst = TRUE)),
-                            method = "BFGS", hessian = TRUE,
-                            control = list(trace = getOption("verbose"),
-                                           reltol = controlvals$msTol,
-                                           maxit = controlvals$msMaxIter))
-                  if (optimRes$convergence != 0)
-                      warning("optim failed to converge")
-                  optpars <- optimRes$par
-                  Hessian <- optimRes$hessian
+              optimRes <-
+                  optim(fn = devLaplace,
+                        par = c(fixef(obj), coef(obj, unconst = TRUE)),
+                        method = "BFGS", hessian = TRUE,
+                        control = list(trace = getOption("verbose"),
+                        reltol = controlvals$msTol,
+                        maxit = controlvals$msMaxIter))
+              if (optimRes$convergence != 0)
+                  warning("optim failed to converge")
+              optpars <- optimRes$par
+              Hessian <- optimRes$hessian
                   
-                  ##fixef(obj) <- optimRes$par[seq(length = responseIndex - 1)]
-                  if (getOption("verbose")) {
-                      cat(paste("optim convergence code",
-                                optimRes$convergence, "\n"))
-                      cat("Fixed effects:\n")
-                      print(fixef(obj))
-                      print(optimRes$par[seq(length = responseIndex - 1)])
-                      cat("(Unconstrained) variance coefficients:\n")
-                      print(coef(obj, unconst = TRUE))
-                      coef(obj, unconst = TRUE) <-
-                          optimRes$par[responseIndex:length(optimRes$par)]
-                      print(coef(obj, unconst = TRUE))
-                  }
+              ##fixef(obj) <- optimRes$par[seq(length = responseIndex - 1)]
+              if (getOption("verbose")) {
+                  cat(paste("optim convergence code",
+                            optimRes$convergence, "\n"))
+                  cat("Fixed effects:\n")
+                  print(fixef(obj))
+                  print(optimRes$par[seq(length = responseIndex - 1)])
+                  cat("(Unconstrained) variance coefficients:\n")
+                  print(coef(obj, unconst = TRUE))
+                  coef(obj, unconst = TRUE) <-
+                      optimRes$par[responseIndex:length(optimRes$par)]
+                  print(coef(obj, unconst = TRUE))
               }
-              else if (controlvals$optimizer == "nlm")
-              {
-                  ## not sure what the next few lines are for. Copied from Saikat's code
-                  ## typsize <- 1/controlvals$msScale(coef(obj))
-                  typsize <- rep(1.0, length(coef(obj, unconst = TRUE)) +
-                                 responseIndex - 1)
-                  if (is.null(controlvals$nlmStepMax))
-                      controlvals$nlmStepMax <-
-                          max(100 * sqrt(sum((c(fixef(obj),
-                                                coef(obj, unconst = TRUE))/
-                                              typsize)^2)), 100)
-                  nlmRes =
-                      nlm(f = devLaplace, 
-                          p = c(fixef(obj), coef(obj, unconst = TRUE)),
-                          hessian = TRUE,
-                          print.level = if (getOption("verbose")) 2 else 0,
-                          steptol = controlvals$msTol,
-                          gradtol = controlvals$msTol,
-                          stepmax = controlvals$nlmStepMax,
-                          typsize=typsize,
-                          ## fscale=xval,
-                          iterlim = controlvals$msMaxIter)
-                  if (nlmRes$code > 3)
-                      warning("nlm probably failed to converge")
-                  optpars <- nlmRes$estimate
-                  Hessian <- nlmRes$hessian
+#               else if (controlvals$optimizer == "nlm")
+#               {
+#                   typsize <- rep(1.0, length(coef(obj, unconst = TRUE)) +
+#                                  responseIndex - 1)
+#                   if (is.null(controlvals$nlmStepMax))
+#                       controlvals$nlmStepMax <-
+#                           max(100 * sqrt(sum((c(fixef(obj),
+#                                                 coef(obj, unconst = TRUE))/
+#                                               typsize)^2)), 100)
+#                   nlmRes =
+#                       nlm(f = devLaplace, 
+#                           p = c(fixef(obj), coef(obj, unconst = TRUE)),
+#                           hessian = TRUE,
+#                           print.level = if (getOption("verbose")) 2 else 0,
+#                           steptol = controlvals$msTol,
+#                           gradtol = controlvals$msTol,
+#                           stepmax = controlvals$nlmStepMax,
+#                           typsize=typsize,
+#                           ## fscale=xval,
+#                           iterlim = controlvals$msMaxIter)
+#                   if (nlmRes$code > 3)
+#                       warning("nlm probably failed to converge")
+#                   optpars <- nlmRes$estimate
+#                   Hessian <- nlmRes$hessian
                   
-                  if (getOption("verbose")) {
-                      cat(paste("nlm convergence code", nlmRes$code, "\n"))
-                      cat("Fixed effects:\n")
-                      print(fixef(obj))
-                      print(nlmRes$estimate[seq(length = responseIndex - 1)])
-                      cat("(Unconstrained) variance coefficients:\n")
-                      print(coef(obj, unconst = TRUE))
-                      coef(obj, unconst = TRUE) <-
-                          nlmRes$estimate[responseIndex:
-                                          length(nlmRes$estimate)]
-                      print(coef(obj, unconst = TRUE))
-                  }
-              }
+#                   if (getOption("verbose")) {
+#                       cat(paste("nlm convergence code", nlmRes$code, "\n"))
+#                       cat("Fixed effects:\n")
+#                       print(fixef(obj))
+#                       print(nlmRes$estimate[seq(length = responseIndex - 1)])
+#                       cat("(Unconstrained) variance coefficients:\n")
+#                       print(coef(obj, unconst = TRUE))
+#                       coef(obj, unconst = TRUE) <-
+#                           nlmRes$estimate[responseIndex:
+#                                           length(nlmRes$estimate)]
+#                       print(coef(obj, unconst = TRUE))
+#                   }
+#               }
               
               ## need to calculate likelihood also need to store new
               ## estimates of fixed effects somewhere (probably cannot
@@ -459,10 +451,13 @@ setMethod("GLMM",
               call = match.call(),
               facs = facs,
               x = mmats,
-              model = if(model) data else data.frame(list()),
+              model = if(model) ndat else data.frame(list()),
               REML = FALSE,
               rep = if(method == 'Laplace') reducedObj else obj,
-              fitted = eta)
+              fitted = eta,
+              terms = attr(model.frame(formula, data), "terms"),
+              assign = attr(Xmat, "assign")
+              )
       })
 
 setMethod("logLik", signature(object = "GLMM"),

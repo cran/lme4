@@ -1,3 +1,9 @@
+contr.SAS <- function(n, contrasts = TRUE)
+{
+    if (is.numeric(n) && length(n) == 1) contr.treatment(n, n, contrasts)
+    else contr.treatment(n, length(n), contrasts)
+}
+
 facshuffle <- function(sslm, facs)       # unexported utility
 {
     s2 <- sslm[[2]]
@@ -51,39 +57,23 @@ lmeControl <-                            # Control parameters for lme
            tolerance = sqrt((.Machine$double.eps)),
            niterEM = 20,
            msTol = sqrt(.Machine$double.eps),
-           msScale,
            msVerbose = as.integer(getOption("verbose")),
            PQLmaxIt = 20,
            .relStep = (.Machine$double.eps)^(1/3),
            nlmStepMax = NULL,
-           optimizer="nlm",
            EMverbose = getOption("verbose"),
            analyticGradient = TRUE,
            analyticHessian=FALSE)
 {
-    if (missing(msScale)) msScale <- function(start) {
-        scale <- abs(start)
-        nonzero <- scale > 0
-        if (any(nonzero)) {
-            scale[nonzero] <- 1/scale[nonzero]
-            scale[!nonzero] <- median(scale[nonzero])
-        }
-        else {
-            scale <- rep(1, length(scale))
-        }
-        scale
-    }
     list(maxIter = maxIter,
          msMaxIter = msMaxIter,
          tolerance = tolerance,
          niterEM = niterEM,
          msTol = msTol,
-         msScale = msScale,
          msVerbose = msVerbose,
          PQLmaxIt = PQLmaxIt,
          .relStep = .relStep,
          nlmStepMax = nlmStepMax,
-         optimizer=optimizer,
          EMverbose=EMverbose,
          analyticHessian=analyticHessian,
          analyticGradient=analyticGradient)
@@ -94,7 +84,7 @@ setMethod("lme", signature(formula = "missing"),
                    method = c("REML", "ML"),
                    control = list(),
                    subset, weights, na.action, offset,
-                   model = TRUE, x = FALSE, y = FALSE,...)
+                   model = TRUE, x = FALSE, y = FALSE, ...)
       {
           nCall <- mCall <- match.call()
           resp <- getResponseFormula(data)[[2]]
@@ -135,10 +125,11 @@ setMethod("lme", signature(formula = "formula",
           random <- lapply(random, formula) # formula function, not argument
           controlvals <- do.call("lmeControl", control)
           controlvals$REML <- method == "REML"
-          data <- eval(make.mf.call(match.call(expand.dots = FALSE),
+          datf <- eval(make.mf.call(match.call(expand.dots = FALSE),
                                     formula, random), parent.frame())
+          Xmat <- model.matrix(formula, data = datf)
           facs <- lapply(names(random),
-                         function(x) as.factor(eval(as.name(x), envir = data)))
+                         function(x) as.factor(eval(as.name(x), envir = datf)))
           names(facs) <- names(random)
           ## order factor list by decreasing number of levels
           ford <- rev(order(sapply(facs, function(fac) length(levels(fac)))))
@@ -147,9 +138,8 @@ setMethod("lme", signature(formula = "formula",
               random <- random[ford]
           }
           mmats <- c(lapply(random,
-                            function(x) model.matrix(formula(x), data = data)),
-                     list(.Xy = cbind(model.matrix(formula, data = data),
-                          .response = model.response(data))))
+                            function(x) model.matrix(formula(x), data = datf)),
+                     list(.Xy = cbind(Xmat, .response = model.response(datf))))
           obj <- .Call("ssclme_create", facs, sapply(mmats, ncol),
                        PACKAGE = "Matrix")
           facs <- facshuffle(obj, facs)
@@ -164,8 +154,11 @@ setMethod("lme", signature(formula = "formula",
           if (as.logical(x)[1]) x <- mmats else x <- list()
           rm(mmats)
           .Call("ssclme_to_lme", match.call(), facs, x,
-                if(model) data else data.frame(list()),
-                method == "REML", obj, fitted, residuals, PACKAGE = "Matrix")
+                if(model) datf else data.frame(list()),
+                method == "REML", obj, fitted, residuals,
+                attr(model.frame(formula, data), "terms"),
+                attr(Xmat, "assign"),
+                PACKAGE = "Matrix")
       })
 
 setMethod("fitted", signature(object="lme"),
@@ -278,6 +271,8 @@ setMethod("anova", signature(object = "lme"),
           if (length(dots))
               modp <- sapply(dots, inherits, "lme") | sapply(dots, inherits, "lm")
           if (!any(modp)) {             # only one model - use terms
+              mCall$terms <- object@terms
+              mCall$assign <- object@assign
               mCall$object <- substitute(object@rep)
               return(eval(mCall, parent.frame()))
           }
@@ -412,7 +407,6 @@ lme1Control <-                            # Control parameters for lme
            tolerance = sqrt((.Machine$double.eps)),
            niterEM = 20,
            msTol = sqrt(.Machine$double.eps),
-           msScale,
            msVerbose = getOption("verbose"),
            PQLmaxIt = 20,
            .relStep = (.Machine$double.eps)^(1/3),
@@ -422,24 +416,11 @@ lme1Control <-                            # Control parameters for lme
            analyticGradient = TRUE,
            analyticHessian=FALSE)
 {
-    if (missing(msScale)) msScale = function(start) {
-        scale <- abs(start)
-        nonzero <- scale > 0
-        if (any(nonzero)) {
-            scale[nonzero] <- 1/scale[nonzero]
-            scale[!nonzero] <- median(scale[nonzero])
-        }
-        else {
-            scale <- rep(1, length(scale))
-        }
-        scale
-    }
     list(maxIter = maxIter,
          msMaxIter = msMaxIter,
          tolerance = tolerance,
          niterEM = niterEM,
          msTol = msTol,
-         msScale = msScale,
          msVerbose = msVerbose,
          PQLmaxIt = PQLmaxIt,
          .relStep = .relStep,

@@ -45,7 +45,7 @@ data(egsingle)
 str(egsingle)
 fm1 <- lme(math~year*size+female, egsingle,
            random = ~1|schoolid/childid,
-           control = list(EMv = TRUE, msV = TRUE, opt = 'optim'))
+           control = list(EMv = TRUE, msV = TRUE))
 summary(fm1)
 }
 \keyword{datasets}
