@@ -2,7 +2,7 @@
  * @file   glmmStruct.c
  * @author Saikat DebRoy <saikat@stat.wisc.edu>
  * @author Douglas Bates <bates@stat.wisc.edu>
- * @date   $Date: 2003/07/17 17:21:58 $
+ * @date   $Date: 2003/09/30 16:27:38 $
  * 
  * @brief  functions for handling glmmStruct objects.
  * 

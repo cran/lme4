@@ -1,3 +1,7 @@
+2003-10-14  Douglas Bates  <bates@stat.wisc.edu>
+
+	* R/reStruct.R: Missing a PACKAGE= in a .Call
+
 2003-09-30  Douglas Bates  <bates@stat.wisc.edu>
 
 	* src/reStruct.c (nlme_getFixDF): Commented out declarations of

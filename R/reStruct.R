@@ -416,7 +416,7 @@ setMethod("LMEhessian", signature(x="reStruct", A="missing",
       {
           if (!x@analyticHessian)
               stop("Can not calculate analytic hessian")
-          x <- .Call("nlme_commonDecompose", x, NULL)
+          x <- .Call("nlme_commonDecompose", x, NULL, PACKAGE="lme4")
           lapply(x@random[seq(length=length(x@random)-2)],
                  LMEhessian)
       })
