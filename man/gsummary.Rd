@@ -83,8 +83,8 @@ gsummary(object, FUN, form, level, groups, omitGroupingFactor = FALSE, invariant
 \examples{
 data(Early)
 class(Early)
-gsummary(Early)
-gsummary(Early, invariantsOnly = TRUE)
+gsummary(Early, groups = Early$id)
+gsummary(Early, groups = Early$id, invariantsOnly = TRUE)
 }
 \keyword{manip}
 \keyword{methods}

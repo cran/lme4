@@ -251,9 +251,10 @@ setMethod("GLMM",
                   }
                   else
                   {
-                      .Call("ssclme_coefGetsUnc",
+                      .Call("ssclme_coefGets",
                             reducedObj,
                             as.double(pars[responseIndex:length(pars)]),
+                            TRUE,
                             PACKAGE = "Matrix")
                       off <- drop(mmats.unadjusted$.Xy %*%
                                   c(pars[1:(responseIndex-1)], 0)) + offset

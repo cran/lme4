@@ -34,7 +34,7 @@ setMethod("gsummary", signature(object = "data.frame", groups = "factor"),
           row.names(value) <- as.character(gunique)
           varying <-
               unlist(lapply(object,
-                            function(x, first) any(!identical(x, x[first])),
+                            function(x, first) any(x != x[first]),
                             first = asFirst))
           if (any(varying) && (!invariantsOnly)) {
               Mode <- function(x) names(which.max(table(x)))
@@ -91,8 +91,3 @@ setMethod("gsummary", signature(object = "data.frame", groups = "factor"),
           }
           value
       })
-
-
-
-
-        

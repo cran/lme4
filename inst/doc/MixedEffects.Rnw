@@ -158,7 +158,7 @@ $\bOmega$ is itself block diagonal and these diagonal blocks are $m_i$
 repetitions of a $q_i\times q_i$ matrix $\bOmega_i$, $i=1,\dots,k$, providing
 \begin{equation}
   \label{eq:OmegaDet}
-  |\bOmega|=\sum_{i=1}^k m_i |\bOmega_i|
+  \log|\bOmega|=\sum_{i=1}^k m_i \log|\bOmega_i|
 \end{equation}
 
 For a variance components model the matrices $\bOmega_i,i=1,\dots,k$
@@ -166,7 +166,7 @@ are $1\times 1$ positive definite matrices which we can consider to be
 positive scalars $\omega_i,i=1,\dots,k$.  The matrix $\bOmega$ is
 block-diagonal of size $\sum_{i=1}^k m_i$ and the diagonal blocks are
 $\omega_i\bI_{m_i}$ where $\bI_{m_i}$ is the $m_i\times m_i$ identity
-matrix.  Thus $\left|\bOmega\right|=\sum_{i=1}^k m_i\omega_i$. The
+matrix.  Thus $\log\left|\bOmega\right|=\sum_{i=1}^k m_i\log\omega_i$. The
 $k$-dimensional vector $\btheta$ where
 $\theta_i=\log\omega_i,i=1,\dots,k$ can be used as the unconstrained
 parameter vector.

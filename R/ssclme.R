@@ -96,7 +96,7 @@ setMethod("fixef", signature(object = "ssclme"),
 setMethod("vcov", signature(object = "ssclme"),
           function(object, REML = TRUE, useScale = TRUE,...) {
               ## force an "ssclme_invert"
-              sc = .Call("ssclme_sigma", object, PACKAGE = "Matrix")
+              sc = .Call("ssclme_sigma", object, REML, PACKAGE = "Matrix")
               rr = object@RXX
               nr = nrow(rr)
               rr = rr[-nr, -nr, drop = FALSE]

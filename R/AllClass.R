@@ -8,12 +8,9 @@
     require("Matrix", quietly = TRUE)
 }
 
-setClass("summary.pdMat", representation(cor = "corrmatrix",
-                                         structName = "character",
-                                         noCorrelation = "logical",
-                                         formula = "formula"),
-         prototype=list(structName="", formula=formula(NULL)))
-
+setOldClass("data.frame")
+setOldClass("family")
+setOldClass("logLik")
 
 setClass("lme", representation(call = "call",
                                facs = "list",
@@ -62,8 +59,6 @@ setClass("summary.ssclme",
                         useScale="logical",
                         showCorrelation="logical"
                         ))
-
-setOldClass("logLik")
 
 setClass("summary.lme",
          representation(call = "call",
