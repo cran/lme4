@@ -1,0 +1,66 @@
+BIC                     Bayesian Information Criterion
+EMstepsGets             Perform EM iterations
+EMupdateGets            Update an object in the EM algorithm
+GLMM                    Fit Generalized Linear Mixed Models via PQL
+Hsb82                   High School and Beyond - 1982
+LMEgradient             The gradient in lme optimization
+LMEoptimizeGets         Optimize linear mixed-effects
+Names                   Extract or assign Names
+VarCorr-class           Class "VarCorr"
+VarCorr                 Extract variance and correlation components
+coefGets                Assign parameters
+corFactor               Extract the correlation factor
+corMatrix               Generate the correlation matrix
+corrmatrix-class        Class "corrmatrix"
+family-class            Class "family"
+fixed.effects           Extract Fixed Effects
+formulas                Utilities for formulas
+glmm-class              Class "glmm"
+glmmStruct              Create a glmm object
+groupedData-class       Class "groupedData"
+guImmun                 Immunization in Guatemala
+guPrenat                Prenatal care in Guatemala
+intervals               Confidence Intervals on Coefficients
+isInitialized           Check for initialization
+lmList-class            Class "lmList"
+lmList                  List of lm Objects with a Common Model
+lme-class               Class "lme"
+lme                     Fit linear mixed-effects models
+lmeControl              Control values for lme
+lmeLevel-class          Class "lmeLevel"
+lmeLevel                Construct an lmeLevel object
+logDet                  Logarithm of the determinant
+logLik-methods          Methods for Function logLik
+matrixGets              Assign the matrix
+model.matrixGets        Assign the model.matrix
+nfGroupedData-class     Class "nfGroupedData"
+nffGroupedData-class    Class "nffGroupedData"
+nfnGroupedData-class    Class "nfnGroupedData"
+nlme-internal           Internal nlme functions
+nlmeInternal-class      Some internal classes
+nmGroupedData-class     Class "nmGroupedData"
+pdBlocked-class         Class "pdBlocked", blocked pd matrices
+pdCompSymm-class        Class "pdCompSymm"
+pdDiag-class            Class "pdDiag"
+pdFactor                Square-root factor
+pdIdent-class           Class "pdIdent"
+pdLogChol-class         Class "pdLogChol", positive-definite matrices
+pdMat-class             Class pdMat, positive-definite matrices
+pdMatrix                Return the positive-definite matrix
+pdNatural-class         Class "pdNatural", positive-definite matrices
+pdfactor-class          Factors of positive-definite matrices
+pdgradNumeric           Evaluate the pdmatrix gradient numerically
+pdgradient              Evaluated the pdmatrix gradient
+pdmatrix-class          Positive-definite matrices
+pooledSD                Extract pooled standard deviation
+random.effects          Extract Random Effects
+reStruct-class          Class "reStruct"
+reStruct                Create an reStruct object
+responseGets            Modify the response
+s3bbx                   Covariates in the Rodriguez and Goldman
+                        simulation
+s3bby                   Responses simulated by Rodriguez and Goldman
+solve-methods           Methods for Function solve
+summary.reStruct-class
+                        Class "summary.reStruct"
+weightedGets            Modify the weights

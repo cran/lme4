@@ -1,0 +1,22 @@
+\name{VarCorr-class}
+\docType{class}
+\alias{VarCorr-class}
+\title{Class "VarCorr"}
+\description{The variance and correlation information for a
+  random-effects model.}
+\section{Objects from the Class}{
+Objects can be created by calls of the form \code{new("VarCorr", ...)}.
+}
+\section{Slots}{
+  \describe{
+    \item{\code{scale}:}{The estimated standard deviation of the lowest
+      level noise term in the model.}
+    \item{\code{reSumry}:}{Object of class \code{"list"}, a list
+      containing the summary of the positive-definte matrices for the
+      random-effects levels.}
+    \item{\code{useScale}:}{Object of class \code{"logical"}, if TRUE
+      the slot \code{scale} is the estimated within-groups standard deviation.}
+  }
+}
+
+\keyword{classes}

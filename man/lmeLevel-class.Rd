@@ -1,0 +1,53 @@
+\name{lmeLevel-class}
+\docType{class}
+\alias{lmeLevel-class}
+\title{Class "lmeLevel"}
+\description{An object representing a single level of random effects in
+  a linear mixed-effects model.}
+\section{Objects from the Class}{
+  Objects can be created by calls of the form \code{new("lmeLevel",
+    ...)} or by calls to the generic constructor \code{lmeLevel}.
+}
+\section{Slots}{
+  \describe{
+    \item{\code{precision}:}{A precision matrix of class \code{"pdMat"}}
+    \item{\code{groups}:}{The grouping factor for the level \code{"factor"}}
+    \item{\code{columns}:}{An \code{"integer"} vector of the columns for
+      this level in the model matrix }
+    \item{\code{originalRows}:}{A list of integer vectors of row
+      numbers in the original model matrix that correspond to each of the
+      levels of the grouping factor.}
+    \item{\code{decomposedRows}:}{A list of integer vectors of row
+      numbers in the decomposed model matrix that correspond to each of the
+      levels of the grouping factor.}
+    \item{\code{storedRows}:}{A list of integer vectors of row
+      numbers in the stored data matrix that correspond to each of the
+      levels of the grouping factor.}
+    \item{\code{nrow}:}{\code{integer}: the number of rows in the
+      precision matrix.}
+    \item{\code{nlev}:}{\code{integer}: the number of levels in the
+      grouping factor}
+  }
+}
+\section{Methods}{
+  \describe{
+    \item{EMupdate<-}{\code{signature(x = "lmeLevel", nlev = "missing",
+	value = "matrix")}: update the level within the EM or ECME algorithm}
+    \item{LMEgradient}{\code{signature(x = "lmeLevel", A = "matrix",
+	nlev = "missing")}: calculate the gradient of the log-likelihood
+    with respect to the parameters from the decomposition of the scaled
+    BLUPs and their variances.}
+  }
+}
+\note{In \code{reStruct} objects the random-effects terms and the
+  fixed-effects terms and the response are all represented by
+  \code{lmeLevel} objects.  The \code{precision} slot in the
+  fixed-effects and response objects is an uninitialized \code{pdMat}
+  objects and the \code{nrow} slot is zero.}
+%\references{}
+\author{Saikat DebRoy \email{saikat@stat.wisc.edu} and Douglas Bates
+  \email{bates@stat.wisc.edu}}
+\seealso{\code{\link{lmeLevel}}}
+\examples{
+}
+\keyword{classes}
