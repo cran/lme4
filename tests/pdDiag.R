@@ -1,6 +1,6 @@
 library(lme4)
 showClass('pdDiag')
-data(Oxboys, package = "nlme")
+data(Oxboys)
 m1 <- pdDiag(~ 1)
 m1
 ## These method calls should produce error messages
@@ -22,7 +22,7 @@ corMatrix(m1)
 dim(m1)
 ## Initialize from a model matrix
 m2 <- pdDiag(~ 1)
-as(m2, 'matrix') <- crossprod(model.matrix(height ~ 1, Oxboys))
+as(m2, 'matrix') <- crossprod(model.matrix(height ~ 1, as(Oxboys, "data.frame")))
 pdMatrix(m2)
 pdFactor(m2)
 as(m2, 'matrix')
@@ -32,7 +32,7 @@ corMatrix(m2)
 dim(m2)
 ## Check for dimensions > 1
 m3 <- pdDiag(~ age)
-as(m3, 'matrix') <- crossprod(model.matrix(formula(m3), Oxboys))
+as(m3, 'matrix') <- crossprod(model.matrix(formula(m3), as(Oxboys, "data.frame")))
 pdMatrix(m3)
 pdFactor(m3)
 as(m3, 'matrix')

@@ -1,6 +1,7 @@
 \name{coerce-methods}
 \docType{methods}
 \alias{coerce-methods}
+\alias{coerce,groupedData,data.frame}
 \alias{coerce,lme,reStruct-method}
 \alias{coerce,matrix,pdmatrix-method}
 \alias{coerce,pdCompSymm,pdmatrix-method}

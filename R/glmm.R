@@ -124,16 +124,27 @@ setMethod("GLMM", signature(formula = "formula", random = "list"),
                 TRUE, PACKAGE = "lme4")
           fit <- .Call("nlme_glmmLaplace_solveOnly", fit,
                        500, 1, PACKAGE="lme4")
-          .Call("nlme_replaceSlot", fit, "reStruct",
-                .Call("nlme_commonDecompose", fit@reStruct,
-                      NULL, PACKAGE="lme4"), PACKAGE = "lme4")
-          .Call("nlme_replaceSlot", fit, c("reStruct", "dontCopy"),
-                FALSE, PACKAGE = "lme4")
+          ## dirtyStored is FALSE but should be TRUE
+#          .Call("nlme_replaceSlot", fit, c("reStruct", "dirtyStored"),
+#                TRUE, PACKAGE = "lme4")
+#          .Call("nlme_replaceSlot", fit, "reStruct",
+#                .Call("nlme_commonDecompose", fit@reStruct,
+#                      NULL, PACKAGE="lme4"), PACKAGE = "lme4")
+#          .Call("nlme_replaceSlot", fit, c("reStruct", "dontCopy"),
+#                FALSE, PACKAGE = "lme4")
 
           if (method != "PQL") {
               ## Do the 2nd order Laplace fit here
               LMEoptimize(fit) <- control
           }
+          ## dirtyStored is FALSE but should be TRUE
+          .Call("nlme_replaceSlot", fit, c("reStruct", "dirtyStored"),
+                TRUE, PACKAGE = "lme4")
+          .Call("nlme_replaceSlot", fit, "reStruct",
+                .Call("nlme_commonDecompose", fit@reStruct,
+                      NULL, PACKAGE="lme4"), PACKAGE = "lme4")
+          .Call("nlme_replaceSlot", fit, c("reStruct", "dontCopy"),
+                FALSE, PACKAGE = "lme4")
           ## zero some of the matrix slots
           if (!missing(x) && x == FALSE)
               .Call("nlme_replaceSlot", fit, c("reStruct", "original"),

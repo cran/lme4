@@ -1,4 +1,4 @@
-% $Id: lmList.Rd,v 1.3 2003/08/11 18:39:01 bates Exp $
+% $Id: lmList.Rd,v 1.4 2003/11/01 04:13:18 deepayan Exp $
 \name{lmList}
 \alias{lmList}
 \alias{lmList,formula,data.frame-method}
@@ -56,7 +56,7 @@ lmList(formula, data, level, subset, na.action, pool)
 \code{\link[base:lm]{lm}}
 }
 \examples{
-data(Orthodont, package = 'nlme')
+data(Orthodont)
 fm1 <- lmList(distance ~ age | Subject, Orthodont)
 fm1
 }

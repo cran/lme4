@@ -1,6 +1,6 @@
 library(lme4)
 showClass('pdNatural')
-data(Oxboys, package = "nlme")
+data(Oxboys)
 m1 <- pdNatural(~ 1)
 m1
 isInitialized(m1)   # should return FALSE

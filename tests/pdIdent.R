@@ -1,5 +1,5 @@
 library(lme4)
-data(Oxboys, package = "nlme")
+data(Oxboys)
 m1 <- pdIdent(~ 1)
 m1
 ## These method calls should produce error messages
@@ -28,7 +28,7 @@ try(corMatrix(m1))
 try(dim(m1))
 ## Initialize from a matrix
 m2 <- pdIdent(~ 1)
-as(m2, "matrix") <- crossprod(model.matrix(height ~ 1, Oxboys))
+as(m2, "matrix") <- crossprod(model.matrix(height ~ 1, as(Oxboys, "data.frame")))
 as(m2, "pdmatrix")
 as(m2, "pdfactor")
 as(m2, "corrmatrix")

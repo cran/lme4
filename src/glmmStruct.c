@@ -2,7 +2,7 @@
  * @file   glmmStruct.c
  * @author Saikat DebRoy <saikat@stat.wisc.edu>
  * @author Douglas Bates <bates@stat.wisc.edu>
- * @date   $Date: 2003/09/30 16:27:38 $
+ * @date   $Date: 2004/01/14 20:38:44 $
  * 
  * @brief  functions for handling glmmStruct objects.
  * 
@@ -534,7 +534,8 @@ nlme_glmmLaplace_solveOnly(SEXP glmm,
     }
 
     LOGICAL(GET_SLOT(reStruct, install("dirtyBbetas")))[0] = 0;
-    LOGICAL(GET_SLOT(reStruct, install("dirtyStored")))[0] = 0;
+				/* FIXME - part of stored is dirty */
+    LOGICAL(GET_SLOT(reStruct, install("dirtyStored")))[0] = 0; 
     UNPROTECT(1);
     return glmm;
 }

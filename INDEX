@@ -1,25 +1,67 @@
+Alfalfa                 Split-Plot Experiment on Varieties of Alfalfa
+Assay                   Bioassay on Cell Culture Plate
 BIC                     Bayesian Information Criterion
+BodyWeight              Rat weight over time for different diets
+Cefamandole             Pharmacokinetics of Cefamandole
+Dialyzer                High-Flux Hemodialyzer
 EMstepsGets             Perform EM iterations
 EMupdateGets            Update an object in the EM algorithm
+Earthquake              Earthquake Intensity
+Fatigue                 Cracks caused by metal fatigue
 GLMM                    Fit Generalized Linear Mixed Models via PQL
+Gasoline                Refinery yield of gasoline
+Glucose                 Glucose levels over time
+Glucose2                Glucose Levels Following Alcohol Ingestion
+Gun                     Methods for firing naval guns
 Hsb82                   High School and Beyond - 1982
+IGF                     Radioimmunoassay of IGF-I Protein
 LMEgradient             The gradient and Hessian in lme
                         optimization-method
 LMEoptimizeGets         Optimize linear mixed-effects
+Machines                Productivity Scores for Machines and Workers
+MathAchSchool           School demographic data for MathAchieve
+MathAchieve             Mathematics achievement scores
+Meat                    Tenderness of meat
+Milk                    Protein content of cows' milk
+Muscle                  Contraction of heart muscle sections
 Names                   Extract or assign Names
+Nitrendipene            Assay of nitrendipene
+Oats                    Split-plot Experiment on Varieties of Oats
+Orthodont               Growth curve data on an orthdontic measurement
+Ovary                   Counts of Ovarian Follicles
+Oxboys                  Heights of Boys in Oxford
+Oxide                   Variability in Semiconductor Manufacturing
+PBG                     Effect of Phenylbiguanide on Blood Pressure
+Phenobarb               Phenobarbitol Kinetics
+Pixel                   X-ray pixel intensities over time
+Quinidine               Quinidine Kinetics
+Rail                    Evaluation of Stress in Railway Rails
+RatPupWeight            The weight of rat pups
+Relaxin                 Assay for Relaxin
+Remifentanil            Pharmacokinetics of remifentanil
+Soybean                 Growth of soybean plants
+Spruce                  Growth of Spruce Trees
+Tetracycline1           Pharmacokinetics of tetracycline
+Tetracycline2           Pharmacokinetics of tetracycline
 VarCorr-class           Class "VarCorr"
 VarCorr                 Extract variance and correlation components
+Wafer                   Modeling of Analog MOS Circuits
+Wheat                   Yields by growing conditions
+Wheat2                  Wheat Yield Trials
+bdf                     Language scores
 coefGets                Assign parameters
 coerce-methods          Coercion methods and assignments
 corFactor               Extract the correlation factor
 corMatrix               Generate the correlation matrix
 corrmatrix-class        Class "corrmatrix"
+ergoStool               Ergometrics experiment with stool types
 family-class            Class "family"
 fixed.effects           Extract Fixed Effects
 formulas                Utilities for formulas
 glmm-class              Class "glmm"
 glmmStruct              Create a glmm object
 groupedData-class       Class "groupedData"
+groupedData             Creation of groupedData objects
 guImmun                 Immunization in Guatemala
 guPrenat                Prenatal care in Guatemala
 intervals               Confidence Intervals on Coefficients

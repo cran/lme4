@@ -1,4 +1,10 @@
-#require(methods)
+# Ensure that the stats4 and lattice packages are available
+.onLoad <- function(lib, pkg)
+{
+    require("methods")
+#    require("stats4")
+    require("lattice")
+}
 
 setClass("pdMat",      # parameterized positive-definite matrices
          representation(form="formula",    # a model-matrix formula
@@ -92,7 +98,6 @@ setClass("summary.reStruct",
                         scale="numeric",
                         denomDF="integer",
                         REML="logical",
-                        random="lmeLevelList",
                         ngrps="integer",
                         nobs="integer",
                         corFixed="corrmatrix",
@@ -115,18 +120,7 @@ setClass("summary.glmm", representation(method="character",
                                         link="character"),
          contains="summary.lme")
 
-## Temporarily added so that groupedData objects are also data.frame objects
-setOldClass(c("nfnGroupedData", "nfGroupedData", "groupedData",
-              "data.frame"))
-
-setOldClass(c("nffGroupedData", "nfGroupedData", "groupedData",
-              "data.frame"))
-
-setOldClass(c("nmGroupedData", "groupedData", "data.frame"))
-
 ## Current versions of the methods package define
-
-#setOldClass("logLik")
 
 setClass("lme",
          representation(reStruct = "reStruct",
@@ -160,3 +154,37 @@ setClass("VarCorr",
                         reSumry="list",
                         useScale="logical"),
          prototype = list(scale = 1.0, useScale = TRUE))
+
+
+
+
+
+
+
+
+
+
+## deepayan experimenting with possible groupedData structures:
+
+
+
+setClass("groupedData",
+         representation(data = "data.frame",
+                        formula = "formula",
+                        outer = "formula",
+                        inner = "formula",
+                        labels = "list",
+                        units = "list"))
+
+
+## these are now obsolete: (nlme data are now in lme4 as S4 groupedData objects)
+
+# ## Temporarily added so that groupedData objects are also data.frame objects
+# setOldClass(c("nfnGroupedData", "nfGroupedData", "groupedData",
+#               "data.frame"))
+
+# setOldClass(c("nffGroupedData", "nfGroupedData", "groupedData",
+#               "data.frame"))
+
+# setOldClass(c("nmGroupedData", "groupedData", "data.frame"))
+

@@ -51,9 +51,9 @@ LMEhessian(x, A, H, nlev)
 \seealso{\code{\link{pdMat-class}}, \code{\link{lmeLevel-class}}}
 \examples{
 library(lme4)
-data(Oxboys, package = "nlme")
+data(Oxboys)
 m3 <- pdLogChol(~ age)
-as(m3, 'pdmatrix') <- crossprod(model.matrix(formula(m3), Oxboys))
+as(m3, 'pdmatrix') <- crossprod(model.matrix(formula(m3), as(Oxboys, "data.frame")))
 LMEgradient(m3, diag(2), 19)
 }
 \keyword{models}

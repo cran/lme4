@@ -34,10 +34,10 @@ EMupdate(x, nlev) <- value
 %\seealso{}
 \examples{
 library(lme4)
-data(Oxboys, package = "nlme")
+data(Oxboys)
 m3 <- pdLogChol(~ age)
 m3
-as(m3, 'pdmatrix') <- crossprod(model.matrix(formula(m3), Oxboys))
+as(m3, 'pdmatrix') <- crossprod(model.matrix(formula(m3), as(Oxboys, "data.frame")))
 show(m3)
 EMupdate(m3, length(levels(Oxboys$Subject))) <- diag(2)
 show(m3)

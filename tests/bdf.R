@@ -1,5 +1,5 @@
 library(lme4)
-data(bdf, package = "nlme")
+data(bdf)
 system.time(fm5 <- lme(langPOST ~ IQ.ver.cen + avg.IQ.ver.cen,
            data = bdf, random = ~ IQ.ver.cen | schoolNR))
 summary(fm5)

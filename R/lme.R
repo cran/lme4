@@ -77,6 +77,9 @@ setMethod("lme", signature(formula = "formula", random = "formula"),
           nCall$random = lapply(getGroupsFormula(random, asList = TRUE),
                                 function(x, form) form,
                                 form = pdLogChol(getCovariateFormula(random)))
+
+          nCall$data <- as(data, "data.frame")
+
           .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
                 mCall, PACKAGE = "lme4")
       })

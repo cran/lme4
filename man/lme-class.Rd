@@ -70,7 +70,7 @@ Class \code{"lme"}, directly.
   and Douglas Bates \email{bates@stat.wisc.edu}}
 \examples{
 library(lme4)
-data(bdf, package = "nlme")
+data(bdf)
 # This returns an object of class lme
 fm <- lme(langPOST ~ IQ.ver.cen + avg.IQ.ver.cen, data = bdf,
           random = ~ IQ.ver.cen | schoolNR)

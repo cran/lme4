@@ -92,7 +92,7 @@ lme(formula, data, random, correlation, weights, subset,
 %\note{}
 %\seealso{\code{\link{lme-class}}}
 \examples{
-data(bdf, package = "nlme")
+data(bdf)
 fm <- lme(langPOST ~ IQ.ver.cen + avg.IQ.ver.cen, data = bdf,
           random = ~ IQ.ver.cen | schoolNR)
 summary(fm)

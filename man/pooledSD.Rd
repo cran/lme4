@@ -1,4 +1,4 @@
-% $Id: pooledSD.Rd,v 1.1 2003/06/03 18:31:34 bates Exp $
+% $Id: pooledSD.Rd,v 1.2 2003/11/01 04:13:19 deepayan Exp $
 \name{pooledSD}
 \title{Extract pooled standard deviation}
 \usage{
@@ -22,8 +22,8 @@ pooledSD(object)
 %\author{Jose Pinheiro \email{Jose.Pinheiro@pharma.novartis.com} and Douglas Bates \email{bates@stat.wisc.edu}}
 \seealso{\code{\link{lmList}}, \code{\link{lm}}}
 \examples{
-data(Orthodont, package = "nlme")
-fm = lmList(distance ~ age | Subject, Orthodont)
+data(Orthodont)
+fm <- lmList(distance ~ age | Subject, Orthodont)
 pooledSD(fm)
 }
 \keyword{models}
