@@ -1,5 +1,13 @@
+2003-08-12  Douglas Bates  <bates@stat.wisc.edu>
+
+	* DESCRIPTION: Version 0.3-5
+
+	* R/glmm.R, R/lme.R, R/reStruct.R: Add PACKAGE on all .Call
+
 2003-08-11  Douglas Bates  <bates@stat.wisc.edu>
 
+	* man/corMatrix.Rd: Add alias for method.
+	
 	* man/guImmun.Rd: docs for rural were missing
 
 	* DESCRIPTION: Version 0.3-4

@@ -4,7 +4,8 @@ setMethod("GLMM", signature(data = "missing"),
       {
           nCall = mCall = match.call()
           nCall$data = list()
-          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call", mCall)
+          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
+                mCall, PACKAGE = "lme4")
       })
 
 setMethod("GLMM", signature(formula = "missing", data = "groupedData"),
@@ -15,7 +16,8 @@ setMethod("GLMM", signature(formula = "missing", data = "groupedData"),
           resp = getResponseFormula(data)[[2]]
           cov = getCovariateFormula(data)[[2]]
           nCall$formula = eval(substitute(resp ~ cov))
-          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call", mCall)
+          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
+                mCall, PACKAGE = "lme4")
       })
 
 setMethod("GLMM", signature(formula = "formula", data = "groupedData",
@@ -27,7 +29,8 @@ setMethod("GLMM", signature(formula = "formula", data = "groupedData",
           cov = formula[[3]]
           grps = getGroupsFormula(data)[[2]]
           nCall$random = eval(substitute(~ cov | grps))
-          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call", mCall)
+          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
+                mCall, PACKAGE = "lme4")
       })
 
 
@@ -39,7 +42,8 @@ setMethod("GLMM", signature(formula = "formula", random = "formula"),
           nCall$random = lapply(getGroupsFormula(random, asList = TRUE),
                                 function(x, form) form,
                                 form = pdLogChol(getCovariateFormula(random)))
-          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call", mCall)
+          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
+                mCall, PACKAGE = "lme4")
       })
 
 setMethod("GLMM", signature(formula = "formula", random = "list"),
@@ -112,16 +116,19 @@ setMethod("GLMM", signature(formula = "formula", random = "list"),
               stop("IRLS iterations in GLMM failed to converge")
           ## We recreate the glmm object and set the reStruct slot
           .Call("nlme_replaceSlot", fit, "logLik",
-                as.numeric(NA))
-          .Call("nlme_replaceSlot", fit, "dontCopy", TRUE)
+                as.numeric(NA), PACKAGE = "lme4")
+          .Call("nlme_replaceSlot", fit, "dontCopy", TRUE, PACKAGE = "lme4")
           fit <- .Call("nlme_replaceSlot", eval(m, parent.frame()),
-                       "reStruct", fit)
-          .Call("nlme_replaceSlot", fit, c("reStruct", "dontCopy"), TRUE)
+                       "reStruct", fit, PACKAGE = "lme4")
+          .Call("nlme_replaceSlot", fit, c("reStruct", "dontCopy"),
+                TRUE, PACKAGE = "lme4")
           fit <- .Call("nlme_glmmLaplace_solveOnly", fit,
                        500, 1, PACKAGE="lme4")
           .Call("nlme_replaceSlot", fit, "reStruct",
-                .Call("nlme_commonDecompose", fit@reStruct, NULL, PACKAGE="lme4"))
-          .Call("nlme_replaceSlot", fit, c("reStruct", "dontCopy"), FALSE)
+                .Call("nlme_commonDecompose", fit@reStruct,
+                      NULL, PACKAGE="lme4"), PACKAGE = "lme4")
+          .Call("nlme_replaceSlot", fit, c("reStruct", "dontCopy"),
+                FALSE, PACKAGE = "lme4")
 
           if (method != "PQL") {
               ## Do the 2nd order Laplace fit here
@@ -130,22 +137,22 @@ setMethod("GLMM", signature(formula = "formula", random = "list"),
           ## zero some of the matrix slots
           if (!missing(x) && x == FALSE)
               .Call("nlme_replaceSlot", fit, c("reStruct", "original"),
-                    matrix(0.0, nrow = 0, ncol = 0))
+                    matrix(0.0, nrow = 0, ncol = 0), PACKAGE = "lme4")
           .Call("nlme_replaceSlot", fit, c("reStruct", "decomposed"),
-                matrix(0.0, nrow = 0, ncol = 0))
+                matrix(0.0, nrow = 0, ncol = 0), PACKAGE = "lme4")
           .Call("nlme_replaceSlot", fit, c("reStruct", "weighted"),
-                matrix(0.0, nrow = 0, ncol = 0))
+                matrix(0.0, nrow = 0, ncol = 0), PACKAGE = "lme4")
 
           if (!missing(model) && model == FALSE)
               .Call("nlme_replaceSlot", fit, "frame",
-                    data.frame())
+                    data.frame(), PACKAGE = "lme4")
           .Call("nlme_replaceSlot", fit, "fitted",
                 fam$linkinv(if (is.null(fit@na.action)) {
                     fitted(fit@reStruct)[fit@reStruct@reverseOrder]
                 } else {
                     napredict(attr(data, "na.action"),
                               fitted(fit@reStruct)[fit@reStruct@reverseOrder])
-                }))
+                }), PACKAGE = "lme4")
           fit
       })
 

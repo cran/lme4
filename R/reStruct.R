@@ -474,7 +474,7 @@ setMethod("getFixDF", signature(object="reStruct"),
 #          ngrps = unlist(lapply(object@random, function(lmeLevel)
 #                                 lmeLevel@nlev))
 #          names(ngrps) = names(object@random)
-          val = .Call("nlme_getFixDF", object)
+          val = .Call("nlme_getFixDF", object, PACKAGE = "lme4")
           names(val$X) =
               colnames(object@original)[object@random[["*fixed*"]]@columns]
                                         # Convert R's assign to S-PLUS style

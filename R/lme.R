@@ -36,7 +36,8 @@ setMethod("lme", signature(data = "missing"),
       {
           nCall = mCall = match.call()
           nCall$data = list()
-          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call", mCall)
+          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
+                mCall, PACKAGE = "lme4")
       })
 
 setMethod("lme", signature(formula = "missing", data = "groupedData"),
@@ -47,7 +48,8 @@ setMethod("lme", signature(formula = "missing", data = "groupedData"),
           resp = getResponseFormula(data)[[2]]
           cov = getCovariateFormula(data)[[2]]
           nCall$formula = eval(substitute(resp ~ cov))
-          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call", mCall)
+          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
+                mCall, PACKAGE = "lme4")
       })
 
 setMethod("lme", signature(formula = "formula", data = "groupedData",
@@ -59,7 +61,8 @@ setMethod("lme", signature(formula = "formula", data = "groupedData",
           cov = formula[[3]]
           grps = getGroupsFormula(data)[[2]]
           nCall$random = eval(substitute(~ cov | grps))
-          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call", mCall)
+          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
+                mCall, PACKAGE = "lme4")
       })
 
 
@@ -71,7 +74,8 @@ setMethod("lme", signature(formula = "formula", random = "formula"),
           nCall$random = lapply(getGroupsFormula(random, asList = TRUE),
                                 function(x, form) form,
                                 form = pdLogChol(getCovariateFormula(random)))
-          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call", mCall)
+          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
+                mCall, PACKAGE = "lme4")
       })
 
 setMethod("lme", signature(formula = "formula", random = "list"),
@@ -114,18 +118,18 @@ setMethod("lme", signature(formula = "formula", random = "list"),
           re <- reStruct(fixed = formula, random = random,
                          data = data,
                          REML = method != "ML")
-          .Call("nlme_replaceSlot", re, "dontCopy", TRUE)
+          .Call("nlme_replaceSlot", re, "dontCopy", TRUE, PACKAGE = "lme4")
           EMsteps(re) <- controlvals
           LMEoptimize(re) <- controlvals
-          .Call("nlme_replaceSlot", re, "dontCopy", FALSE)
+          .Call("nlme_replaceSlot", re, "dontCopy", FALSE, PACKAGE = "lme4")
           ## zero some of the matrix slots
           if (x == FALSE)
               .Call("nlme_replaceSlot", re, "original",
-                    matrix(0.0, nrow = 0, ncol = 0))
+                    matrix(0.0, nrow = 0, ncol = 0), PACKAGE = "lme4")
           .Call("nlme_replaceSlot", re, "decomposed",
-                matrix(0.0, nrow = 0, ncol = 0))
+                matrix(0.0, nrow = 0, ncol = 0), PACKAGE = "lme4")
           .Call("nlme_replaceSlot", re, "weighted",
-                matrix(0.0, nrow = 0, ncol = 0))
+                matrix(0.0, nrow = 0, ncol = 0), PACKAGE = "lme4")
           if (model == FALSE)
               data = data.frame()
           new("lme", reStruct = re, call = match.call(),
