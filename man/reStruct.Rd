@@ -2,8 +2,8 @@
 \docType{methods}
 \docType{genericFunction}
 \alias{reStruct}
-\alias{reStruct,formula,list,data.frame,missing,logical,missing-method}
-\alias{reStruct,formula,list,data.frame,numeric,logical,missing-method}
+\alias{reStruct,formula,list,data.frame,missing,logical-method}
+\alias{reStruct,formula,list,data.frame,numeric,logical-method}
 \title{Create an reStruct object}
 \description{
   Create an \code{reStruct} object from values for its slots.
@@ -33,7 +33,7 @@ reStruct(fixed, random, data, weights, REML, nextraCols)
 }
 %\details{}
 \value{
-  An \code{reStruct} object.
+  An \code{\link[lme4:reStruct-class]{reStruct}} object.
 }
 %\references{}
 %\author{}

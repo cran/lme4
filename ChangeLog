@@ -1,3 +1,29 @@
+2003-08-11  Douglas Bates  <bates@stat.wisc.edu>
+
+	* man/guImmun.Rd: docs for rural were missing
+
+	* DESCRIPTION: Version 0.3-4
+
+	* man/pdCompSymm-class.Rd, man/pdDiag-class.Rd,
+	man/pdIdent-class.Rd, man/pdLogChol-class.Rd, man/pdMat-class.Rd,
+	man/pdNatural-class.Rd, man/pdgradient.Rd, man/reStruct-class.Rd,
+	man/reStruct.Rd, man/summary.reStruct-class.Rd, man/glmm-class.Rd,
+	man/glmmStruct.Rd, man/groupedData-class.Rd, man/lmList-class.Rd,
+	man/lmList.Rd, man/lme-class.Rd, man/lme.Rd,
+	man/lmeLevel-class.Rd, man/logDet.Rd, man/logLik-methods.Rd,
+	man/nlme-internal.Rd, man/nlmeInternal-class.Rd, man/GLMM.Rd,
+	man/LMEgradient.Rd, man/LMEoptimizeGets.Rd, man/VarCorr-class.Rd,
+	man/formulas.Rd: aliases for methods
+
+2003-07-21  Douglas Bates  <bates@stat.wisc.edu>
+
+	* R/glmm.R, R/reStruct.R: Complete the argument name change
+
+	* DESCRIPTION: 0.3-3
+
+	* R/AllGeneric.R, R/glmm.R, R/reStruct.R:
+	consistent name for first argument of fixef and fixef<-
+
 2003-07-21  Douglas Bates  <bates@stat.wisc.edu>
 
 	* DESCRIPTION (Version): 0.3-3
@@ -11,8 +37,6 @@
 	Simplify example with Laplace.  The ill-conditioned example takes too
 	long.
 
-	* ChangeLog: *** empty log message ***
-
 	* man/fixed.effects.Rd: Added documentation for fixef<-.
 
 2003-07-20  Douglas Bates  <bates@stat.wisc.edu>
@@ -20,8 +44,6 @@
 	* man/GLMM.Rd:
 	Simplify example with Laplace.  The ill-conditioned example takes too
 	long.
-
-	* ChangeLog: *** empty log message ***
 
 	* man/fixed.effects.Rd: Added documentation for fixef<-.
 
@@ -85,8 +107,6 @@
 	reStruct to C code.
 
 2003-06-24  Saikat DebRoy  <saikat@stat.wisc.edu>
-
-	* man/nlme-internal.Rd: *** empty log message ***
 
 	* man/lme.Rd: Add documentation for model and x arguments.
 
@@ -328,8 +348,6 @@
 	* data/Machines.rda, data/MathAchSchool.rda, data/MathAchieve.rda, data/Oxboys.rda, man/bdf.Rd, data/bdf.rda:
 	Already available in nlme package
 
-	* ChangeLog: *** empty log message ***
-
 	* man/lme.Rd, R/AllClass.R, R/reStruct.R:
 	Summary and show methods for lme and reStruct
 
@@ -553,8 +571,6 @@
 
 	* src/reStruct.c: Fixed up logic in nlme_logPenalty.
 
-	* DESCRIPTION, ChangeLog: *** empty log message ***
-
 	* cleanup: No longer want to remove src/Makevars
 
 	* configure.ac, configure.win, data/00Index, configure, aclocal.m4, src/Makevars, src/Makevars.in, src/Makevars.win:
@@ -676,8 +692,6 @@
 
 	* man/model.matrixGets.Rd, man/responseGets.Rd:
 	Added more documentation of generics
-
-	* INDEX, ChangeLog: *** empty log message ***
 
 	* man/reStruct-class.Rd: Remove redundant \alias{reStruct}
 

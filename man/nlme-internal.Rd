@@ -36,9 +36,9 @@ glmmLa2Wt2(fam, eta, w)
 \arguments{
   \item{object}{An object of a suitable class.}
   \item{x}{An object of class glmm}
-  \item{fam}{A family object}
   \item{eta}{The linear predictors}
-  \\item{origy}{The original response}
+  \item{fam}{A family object}
+  \item{origy}{The original response}
   \item{w}{The initial weights}
   \item{off}{The initial offset}
 }

@@ -1,6 +1,7 @@
 \name{groupedData-class}
 \docType{class}
 \alias{groupedData-class}
+\alias{formula,groupedData-method}
 \title{Class "groupedData"}
 \description{A \code{groupedData} object is at least a data.frame and a
   display  formula that provides a grouping structure.  At present we

@@ -8,6 +8,7 @@
 \alias{logDet,pdDiag,missing-method}
 \alias{logDet,pdIdent,missing-method}
 \alias{logDet,pdLogChol,missing-method}
+\alias{logDet,pdMat-method}
 \alias{logDet,pdNatural,missing-method}
 %\alias{logDet,pdScalar,missing-method}
 \title{Logarithm of the determinant}

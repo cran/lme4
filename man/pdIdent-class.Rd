@@ -2,6 +2,7 @@
 \docType{class}
 \alias{pdIdent-class}
 \alias{pdIdent}
+\alias{pdIdent,formula,missing,missing,missing-method}
 \title{Class "pdIdent"}
 \description{A class of parameterized positive-definite
   matrices that are multiples of the identity matrix.}

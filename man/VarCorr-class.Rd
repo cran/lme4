@@ -1,6 +1,7 @@
 \name{VarCorr-class}
 \docType{class}
 \alias{VarCorr-class}
+\alias{show,VarCorr-method}
 \title{Class "VarCorr"}
 \description{The variance and correlation information for a
   random-effects model.}
@@ -18,5 +19,10 @@ Objects can be created by calls of the form \code{new("VarCorr", ...)}.
       the slot \code{scale} is the estimated within-groups standard deviation.}
   }
 }
-
+\section{Methods}{
+  \describe{
+    \item{\link[methods:show]{show}}{\code{signature(object =
+	"VarCorr")}: show the object.}
+  }
+}
 \keyword{classes}

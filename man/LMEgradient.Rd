@@ -5,8 +5,9 @@
 \alias{LMEgradient,pdDiag,matrix,numeric-method}
 \alias{LMEgradient,pdIdent,matrix,numeric-method}
 \alias{LMEgradient,pdLogChol,matrix,numeric-method}
-%\alias{LMEgradient,pdScalar,matrix,numeric-method}
+\alias{LMEgradient,pdNatural,matrix,numeric-method}
 \alias{LMEgradient,lmeLevel,matrix,missing-method}
+\alias{LMEgradient,lmeLevel,missing,missing-method}
 \title{The gradient in lme optimization}
 \description{
   This generic function returns the gradient of the log-likelihood or

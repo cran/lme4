@@ -2,7 +2,7 @@
 \docType{methods}
 \docType{genericFunction}
 \alias{glmmStruct}
-\alias{glmmStruct,formula,list,ANY,ANY,ANY,ANY-method}
+\alias{glmmStruct,formula,list-method}
 \title{Create a glmm object}
 \description{
   Create a \code{glmm} object from values for its slots.

@@ -15,9 +15,9 @@
     \item{immun}{a factor indicating if the child received a
       complete set of immunizations. All children in this data frame
       received at least one immunization.}
-    \item{kid2p}{an factor indicating if the child was 2 years or older
+    \item{kid2p}{a factor indicating if the child was 2 years or older
       at the time of the survey.}
-    \item{mom2p}{a factor indicating if the mother was 25 years or older.}
+    \item{mom25p}{a factor indicating if the mother was 25 years or older.}
     \item{ord}{an factor indicating the child's birth's order within the
       family.  Levels are \code{01} - first child, \code{23} - second or
       third child, \code{46} - fourth to sixth child, \code{7p} -
@@ -32,6 +32,8 @@
       Levels are the same as for \code{momEd} plus \code{U} - unknown.}
     \item{momWork}{a factor indicating if the mother had ever
       worked outside the home.}
+    \item{rural}{a factor indicating if the family's location is
+      considered rural or urban.}
     \item{pcInd81}{the percentage of indigenous population in the
       community at the 1981 census.}
   }

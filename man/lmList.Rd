@@ -1,10 +1,11 @@
-% $Id: lmList.Rd,v 1.2 2003/06/12 00:35:55 saikat Exp $
+% $Id: lmList.Rd,v 1.3 2003/08/11 18:39:01 bates Exp $
 \name{lmList}
+\alias{lmList}
+\alias{lmList,formula,data.frame-method}
 \title{List of lm Objects with a Common Model}
 \usage{
 lmList(formula, data, level, subset, na.action, pool)
 }
-\alias{lmList}
 \arguments{
   \item{formula}{For \code{lmList},
     a linear formula object of the form \code{y ~ x1+...+xn | g}.

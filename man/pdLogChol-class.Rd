@@ -2,6 +2,7 @@
 \docType{class}
 \alias{pdLogChol-class}
 \alias{pdLogChol}
+\alias{pdLogChol,formula,missing,missing,missing-method}
 \title{Class "pdLogChol", positive-definite matrices}
 \description{A class of general, positive-definite
   symmetric matrices parameterized by the non-zero elements in the

@@ -2,6 +2,7 @@
 \docType{class}
 \alias{pdCompSymm-class}
 \alias{pdCompSymm}
+\alias{pdCompSymm,formula,missing,missing,missing-method}
 \title{Class "pdCompSymm"}
 \description{A class of parameterized positive-definite symmetric
   matrices that have compound symmetry.  That is, the diagonal entries

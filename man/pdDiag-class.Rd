@@ -2,6 +2,7 @@
 \docType{class}
 \alias{pdDiag-class}
 \alias{pdDiag}
+\alias{pdDiag,formula,missing,missing,missing-method}
 \title{Class "pdDiag"}
 \description{A class of parameterized diagonal positive-definite
   matrices.}

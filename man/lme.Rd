@@ -1,9 +1,12 @@
 \name{lme}
 \docType{genericFunction}
 \alias{lme}
-\alias{lme-methods}
-\alias{lme,formula,data.frame,list,missing,missing,ANY,character,ANY,missing-method}
-\alias{lme,formula,data.frame,list,missing,missing,ANY,character,ANY,list-method}
+\alias{lme,formula,data.frame,list-method}
+\alias{lme,ANY,missing,ANY-method}
+\alias{lme,missing,groupedData,ANY-method}
+\alias{lme,formula,groupedData,missing-method}
+\alias{lme,formula,ANY,formula-method}
+\alias{lme,formula,ANY,list-method}
 \title{Fit linear mixed-effects models}
 \description{
   This generic function fits a linear mixed-effects model in the

@@ -2,6 +2,7 @@
 \docType{genericFunction}
 \alias{LMEoptimize<-}
 \alias{LMEoptimize<-,reStruct,list-method}
+\alias{LMEoptimize<-,glmm,list-method}
 \title{Optimize linear mixed-effects}
 \description{
   Update the parameters in an object by using an optimizer such as

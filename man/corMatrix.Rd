@@ -1,6 +1,7 @@
 \name{corMatrix}
 \docType{genericFunction}
 \alias{corMatrix}
+\alias{corMatrix,pdMat-method}
 \title{Generate the correlation matrix}
 \description{
   This generic function generates a correlation matrix from an object of
@@ -19,13 +20,11 @@ corMatrix(object, ...)
 }
 %\details{}
 \value{
-  An object of class \code{corrmatrix}.
+  An object of class \code{\link[lme4:corrmatrix-class]{corrmatrix}}.
 }
 %\references{}
-\author{Douglas Bates \email{bates@stat.wisc.edu}
-  and Saikat DebRoy \email{saikat@stat.wisc.edu}}
+%\author{Douglas Bates \email{bates@stat.wisc.edu} and Saikat DebRoy \email{saikat@stat.wisc.edu}}
 %\note{}
-%\seealso{}
-%\examples{
-%}
+\seealso{\code{\link{corrmatrix-class}}}
+%\examples{}
 \keyword{models}

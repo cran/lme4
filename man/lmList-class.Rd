@@ -1,6 +1,13 @@
 \name{lmList-class}
 \docType{class}
 \alias{lmList-class}
+\alias{coef,lmList-method}
+\alias{formula,lmList-method}
+\alias{intervals,lmList-method}
+\alias{plot,lmList-method}
+\alias{pooledSD,lmList-method}
+\alias{show,lmList-method}
+\alias{update,lmList-method}
 \title{Class "lmList"}
 \description{A list of objects of class \code{lm} with a common model.}
 \section{Objects from the Class}{
@@ -33,6 +40,11 @@ Class \code{"vector"}, by class "list".
       models.}
     \item{pooledSD}{\code{signature(object = "lmList")}: the pooled
       standard deviation estimate from the fitted linear models.}
+    \item{\link[methods:show]{show}}{\code{signature(object =
+	"lmList")}: show the object.}
+    \item{\link[base:update]{update}}{\code{signature(object =
+	"lmList")}: update the fit.}
+    
   }
 }
 \keyword{classes}

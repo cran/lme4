@@ -5,7 +5,6 @@
 \alias{pdgradient,pdIdent-method}
 \alias{pdgradient,pdLogChol-method}
 \alias{pdgradient,pdMat-method}
-%\alias{pdgradient,pdScalar-method}
 \title{Evaluated the pdmatrix gradient}
 \description{
   This function is generic.  It returns the gradient of the positive

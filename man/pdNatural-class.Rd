@@ -2,6 +2,8 @@
 \docType{class}
 \alias{pdNatural-class}
 \alias{pdNatural}
+\alias{pdNatural,formula,missing,missing,missing-method}
+\alias{pdNatural,pdMat,missing,missing,missing-method}
 \title{Class "pdNatural", positive-definite matrices}
 \description{A class of general, positive-definite
   symmetric matrices parameterized by the logarithm of the diagonal
