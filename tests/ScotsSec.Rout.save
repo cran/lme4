@@ -1,6 +1,6 @@
 
 R : Copyright 2005, The R Foundation for Statistical Computing
-Version 2.1.0 Under development (unstable) (2005-01-20), ISBN 3-900051-07-0
+Version 2.1.0 Under development (unstable) (2005-02-15), ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -15,8 +15,16 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 Type 'q()' to quit R.
 
 > library(lme4)
-Loading required package: Matrix 
-Loading required package: latticeExtra 
+Loading required package: Matrix
+Loading required package: latticeExtra
+
+Attaching package 'lme4':
+
+
+	The following object(s) are masked from package:stats :
+
+	 contr.SAS 
+
 > fm1 <- lme(attain ~ verbal * sex, ScotsSec, ~1|primary+second,
 +            control = list(EMverbose=TRUE, niterEM=40, msVerbose=1))
   EM iterations
@@ -85,7 +93,7 @@ verbal      1.5833e-01 3.7874e-03 3431 41.8034   <2e-16 ***
 sexF        1.2159e-01 7.2410e-02 3431  1.6792   0.0932 .  
 verbal:sexF 2.5997e-03 5.3883e-03 3431  0.4825   0.6295    
 ---
-Signif. codes:  0 `***' 0.001 `**' 0.01 `*' 0.05 `.' 0.1 ` ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
 
 Correlation of Fixed Effects:
             (Intr) verbal sexF  
@@ -322,7 +330,7 @@ verbal      1.5865e-01 3.7845e-03 3431 41.9196  < 2e-16 ***
 sexF        1.2126e-01 7.2433e-02 3431  1.6742  0.09419 .  
 verbal:sexF 2.4881e-03 5.3893e-03 3431  0.4617  0.64435    
 ---
-Signif. codes:  0 `***' 0.001 `**' 0.01 `*' 0.05 `.' 0.1 ` ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
 
 Correlation of Fixed Effects:
             (Intr) verbal sexF  
@@ -375,5 +383,5 @@ verbal      1.5865e-01 3.7845e-03 3431 41.9196  < 2e-16 ***
 sexF        1.2126e-01 7.2433e-02 3431  1.6742  0.09419 .  
 verbal:sexF 2.4881e-03 5.3893e-03 3431  0.4617  0.64435    
 ---
-Signif. codes:  0 `***' 0.001 `**' 0.01 `*' 0.05 `.' 0.1 ` ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
 > q("no")

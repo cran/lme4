@@ -3,6 +3,8 @@
 \alias{lmer-class}
 \alias{VarCorr,lmer-method}
 \alias{anova,lmer-method}
+\alias{coerce,lmer,dsTMatrix-method}
+\alias{coerce,lmer,dtTMatrix-method}
 \alias{coef,lmer-method}
 \alias{deviance,lmer-method}
 \alias{formula,lmer-method}
@@ -79,6 +81,15 @@ or, more commonly, via the \code{lmer} function.}
       parameters that determine the Omega matrices.  The optional
       logical argument \code{unconstr} determines the constrained or
       unconstrained parameterization. }
+    \item{coerce}{\code{signature(from = "lmer", to = "dtTMatrix")}:
+      Ensure that the \code{lmer} object has been factored but not
+      inverted and extract the unit lower triangular matrix \eqn{L}{L}
+      from the LDL decomposition of \eqn{Z^\prime
+	Z+\Omega}{crossprod(Z)+Omega}.}
+    \item{coerce}{\code{signature(from = "lmer", to = "dsTMatrix")}:
+      Ensure that the \code{lmer} object has been factored but not
+      inverted and extract the symmetric matrix \eqn{Z^\prime
+	Z+\Omega}{crossprod(Z)+Omega}.}
     \item{solve}{\code{signature(a = "lmer", b = "missing")}: Invert
       the decomposed matrices.}
   }

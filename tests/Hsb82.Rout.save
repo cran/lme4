@@ -1,6 +1,6 @@
 
 R : Copyright 2005, The R Foundation for Statistical Computing
-Version 2.1.0 Under development (unstable) (2005-01-20), ISBN 3-900051-07-0
+Version 2.1.0 Under development (unstable) (2005-02-15), ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -15,8 +15,16 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 Type 'q()' to quit R.
 
 > library(lme4)
-Loading required package: Matrix 
-Loading required package: latticeExtra 
+Loading required package: Matrix
+Loading required package: latticeExtra
+
+Attaching package 'lme4':
+
+
+	The following object(s) are masked from package:stats :
+
+	 contr.SAS 
+
 > lme(mAch ~ meanses*cses + sector*cses,
 +     data = Hsb82, random = ~ cses|school)
 Linear mixed-effects model
@@ -60,5 +68,5 @@ sectorCatholic         1.22658    0.30623 7179  4.0054 6.253e-05 ***
 meanses:cses           1.03913    0.29898 7179  3.4755 0.0005128 ***
 cses:sectorCatholic   -1.64264    0.23985 7179 -6.8485 8.079e-12 ***
 ---
-Signif. codes:  0 `***' 0.001 `**' 0.01 `*' 0.05 `.' 0.1 ` ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
 > q("no")

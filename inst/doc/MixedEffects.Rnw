@@ -211,7 +211,7 @@ $\bZ\trans\bZ$ are shown in Figure~\ref{fig:ZtZ}
   \centering
 \setkeys{Gin}{width=\textwidth}
 <<FigZtZ,fig=TRUE,echo=FALSE,height=8,width=8.>>=
-ctab = sscCrosstab(list(ScotsSec$primary, ScotsSec$second), FALSE)
+ctab <- sscCrosstab(list(ScotsSec$primary, ScotsSec$second), FALSE)
 print(image(ctab, aspect='xy', xlim = c(-0.5,166.5),
            ylim = c(166.5, -0.5), colorkey = FALSE))
 @   
@@ -539,17 +539,17 @@ matrix in Figure~\ref{fig:ZtZ} onto the $19\times19$ block for the
   \centering
 \setkeys{Gin}{width=\textwidth}
 <<FigScotsProj,fig=TRUE,echo=FALSE,height=4,width=10>>=
-proj = .Call("sscCrosstab_project2", ctab)
-trp1 = as(proj, "tripletMatrix")
-trp2 = as(.Call("sscMatrix_ldl_symbolic", proj, FALSE)[[2]], "tripletMatrix")
-symb = .Call("sscMatrix_ldl_symbolic", proj, TRUE)
+proj <- .Call("sscCrosstab_project2", ctab)
+trp1 <- as(proj, "dgTMatrix")
+trp2 <- as(.Call("dsCMatrix_ldl_symbolic", proj, FALSE)[[2]], "dgTMatrix")
+symb <- .Call("dsCMatrix_ldl_symbolic", proj, TRUE)
 ## use the permutation to create the permuted symmetric matrix
-iperm = perm = symb[[3]]
-iperm[perm+1] = seq(a = perm) - as.integer(1)
-trp3 = trp1
-trp3@i = iperm[trp1@i + 1]
-trp3@j = iperm[trp1@j + 1]
-trp4 = as(symb[[2]], "tripletMatrix")
+iperm <- perm <- symb[[3]]
+iperm[perm+1] <- seq(a = perm) - as.integer(1)
+trp3 <- trp1
+trp3@i <- iperm[trp1@i + 1]
+trp3@j <- iperm[trp1@j + 1]
+trp4 <- as(symb[[2]], "dgTMatrix")
 df <- data.frame(i = c(trp1@i, trp2@i, trp3@i, trp4@i),
                  j = c(trp1@j, trp2@j, trp3@j, trp4@j),
                  x = c(trp1@x, trp2@x, trp3@x, trp4@x),
@@ -557,8 +557,8 @@ df <- data.frame(i = c(trp1@i, trp2@i, trp3@i, trp4@i),
                  c(length(trp1@x), length(trp2@x), length(trp3@x),
                    length(trp4@x))),
                  levels = c("Projected", "L", "Permuted", "L-perm")))
-df$x[] = 0.1
-df$x[df$i == df$j] = 1
+df$x[] <- 0.1
+df$x[df$i == df$j] <- 1
 print(levelplot(x ~ j + i | type, data = df,
                 sub = "Dimensions: 19 x 19",
                 xlim = c(-0.5, 18.5), ylim = c(18.5, -0.5), xlab = "Column",
@@ -846,42 +846,42 @@ sorted, say by column order, the column indices will occur in blocks
 of equal values.  In the \emph{compressed, sparse, column-oriented}
 format the entries are sorted in increasing column order and a set of
 pointers to the beginning of each column are used instead of the
-column values themselves.  The \var{tripletMatrix} class in the
+column values themselves.  The \var{dgTMatrix} class in the
 \var{Matrix} package provides the triplet format and the
-\var{cscMatrix} class provides the compressed, sparse column-oriented
+\var{dgCMatrix} class provides the compressed, sparse column-oriented
 format.  In both these classes indices are 0-based (for compatibility
 with the underlying C code) and not 1-based as is common in R.
 <<Matintro>>=
 library(Matrix)
-mm = new("tripletMatrix", 
+mm <- new("dgTMatrix", 
          i = as(c(0,2,3,1,2,0,3,4,3,4),"integer"),
          j = as(c(0,0,0,1,1,2,2,2,3,3),"integer"),
          x = (1:10)/10, Dim = as(c(5,4),"integer"))
-m1 = as(mm,"cscMatrix")
+m1 <- as(mm,"dgCMatrix")
 str(m1)
 as(m1, "matrix")
 diff(m1@p)
 @ 
-We see that the \var{p} slot in a \var{cscMatrix} with 4 columns has 5
+We see that the \var{p} slot in a \var{dgCMatrix} with 4 columns has 5
 elements.  The first element is always zero and the successive differences
 are the numbers of nonzero elements in each column.  The total number
 of nonzero elements is the value of the last element of the \var{p}
 slot.  This is also the length of the vector of row indices in the
 \var{i} slot.
 
-The validation method for the \var{cscMatrix} class ensures that the
+The validation method for the \var{dgCMatrix} class ensures that the
 row indices are increasing within columns and reorders the \var{i} and
 \var{x} slots if necessary to achieve this.  Technically, the objects
 in this class can be described as sorted, compressed, sparse,
 column-oriented matrices.
 
-Objects in the \var{tscMatrix} class represent triangular, sparse,
-column-oriented matrices and those in the \var{sscMatrix} class
+Objects in the \var{dtCMatrix} class represent triangular, sparse,
+column-oriented matrices and those in the \var{dsCMatrix} class
 represent symmetric, sparse, column-oriented matrices.  Only the
 upper triangle or the lower triangle, as indicated by \code{"U"} or
 \code{"L"} in the \var{uplo} slot, of a symmetric matrix is stored.
-The \var{crossprod} function applied to a \var{cscMatrix} produces an
-\var{sscMatrix}.
+The \var{crossprod} function applied to a \var{dgCMatrix} produces an
+\var{dsCMatrix}.
 <<crossprod>>=
 class(m2 <- crossprod(m1))
 as(m2, "matrix")
@@ -905,10 +905,10 @@ methods of determining a fill-minimizing order have been proposed.  We
 use a graph-based method implemented in the Metis package.
 
 The \var{chol} function generates the Cholesky decomposition.   When
-applied to an \var{sscMatrix} object it defaults to generating a
+applied to an \var{dsCMatrix} object it defaults to generating a
 fill-reducing permutation and the Cholesky factor of the permuted matrix.
 <<chols>>=
-m3 = chol(m2)
+m3 <- chol(m2)
 as(m3, "matrix")
 m3@perm
 @ 
@@ -1057,7 +1057,7 @@ effects part of the model (the model matrix $\bX$ and the coefficients
 $\bbeta$).
 
 <<fm1>>=
-fm1 = lme(attain~verbal*sex,ScotsSec,list(primary=~1,second=~1))
+fm1 <- lme(attain~verbal*sex,ScotsSec,list(primary=~1,second=~1))
 @ 
 
 

@@ -1,9 +1,3 @@
-contr.SAS <- function(n, contrasts = TRUE)
-{
-    if (is.numeric(n) && length(n) == 1) contr.treatment(n, n, contrasts)
-    else contr.treatment(n, length(n), contrasts)
-}
-
 facshuffle <- function(sslm, facs)       # unexported utility
 {
     s2 <- sslm[[2]]

@@ -1,6 +1,6 @@
 
 R : Copyright 2005, The R Foundation for Statistical Computing
-Version 2.1.0 Under development (unstable) (2005-01-20), ISBN 3-900051-07-0
+Version 2.1.0 Under development (unstable) (2005-02-15), ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -15,8 +15,16 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 Type 'q()' to quit R.
 
 > library(lme4)
-Loading required package: Matrix 
-Loading required package: latticeExtra 
+Loading required package: Matrix
+Loading required package: latticeExtra
+
+Attaching package 'lme4':
+
+
+	The following object(s) are masked from package:stats :
+
+	 contr.SAS 
+
 > lme(pixel ~ day + I(day^2), Pixel, list(Dog = ~ day, DS = ~ 1))
 Linear mixed-effects model
 Fixed: pixel ~ day + I(day^2) 
@@ -55,5 +63,5 @@ Fixed effects:
 day            6.129596    0.879328 99   6.9708 3.559e-10 ***
 I(day^2)      -0.367350    0.033946 99 -10.8216 < 2.2e-16 ***
 ---
-Signif. codes:  0 `***' 0.001 `**' 0.01 `*' 0.05 `.' 0.1 ` ' 1 
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
 > q("no")

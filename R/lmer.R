@@ -129,14 +129,13 @@ setMethod("ranef", signature(object = "lmer"),
 
 setMethod("fixef", signature(object = "lmer"),
           function(object, ...) {
-              val = .Call("lmer_fixef", object, PACKAGE = "Matrix")
-              names(val) = object@cnames[[".fixed"]]
+              val <- .Call("lmer_fixef", object, PACKAGE = "Matrix")
               val[-length(val)]
           })
 
 setMethod("VarCorr", signature(x = "lmer"),
           function(x, REML = TRUE, useScale = TRUE, ...) {
-              val = .Call("lmer_variances", x, PACKAGE = "Matrix")
+              val <- .Call("lmer_variances", x, PACKAGE = "Matrix")
               for (i in seq(along = val)) {
                   dimnames(val[[i]]) = list(x@cnames[[i]], x@cnames[[i]])
                   val[[i]] = as(as(val[[i]], "pdmatrix"), "corrmatrix")
@@ -157,7 +156,8 @@ setMethod("summary", signature(object = "lmer"),
 
 setMethod("show", signature(object = "lmer"),
           function(object)
-          show(new("summary.lmer", object, useScale = TRUE, showCorrelation = FALSE))
+          show(new("summary.lmer", object, useScale = TRUE,
+                   showCorrelation = FALSE))
           )
 
 setMethod("show", "summary.lmer",
@@ -333,7 +333,6 @@ setMethod("anova", signature(object = "lmer"),
           attr(table, "heading") <- "Analysis of Variance Table"
           class(table) <- c("anova", "data.frame")
           table
-
           }
       })
 
@@ -405,14 +404,13 @@ setMethod("chol", signature(x = "lmer"),
 
 setMethod("solve", signature(a = "lmer", b = "missing"),
           function(a, b, ...)
-          .Call("lmer_invert", a)
+          .Call("lmer_invert", a, PACKAGE = "Matrix")
           )
 
 setMethod("formula", "lmer", function(x, ...) x@call$formula)
 
 setMethod("vcov", signature(object = "lmer"),
           function(object, REML = object@REML, useScale = TRUE,...) {
-              ## force an "lmer_invert"
               sc <- .Call("lmer_sigma", object, REML, PACKAGE = "Matrix")
               rr <- object@RXX
               nms <- object@cnames[[".fixed"]]
@@ -426,3 +424,82 @@ setMethod("vcov", signature(object = "lmer"),
               rr
           })
 
+Lind <- function(i,j) {
+    if (i < j) stop(paste("Index i=", i,"must be >= index j=", j))
+    ((i - 1) * i)/2 + j
+}
+
+Dhalf <- function(from) {
+    D <- from@D
+    nf <- length(D)
+    Gp <- from@Gp
+    res <- array(0, rep(Gp[nf+1],2))
+    for (i in 1:nf) {
+        DD <- D[[i]]
+        dd <- dim(DD)
+        for (k in 1:dd[3]) {
+            mm <- array(DD[ , , k], dd[1:2])
+            base <- Gp[i] + (k - 1)*dd[1]
+            res[cbind(c(base + row(mm)), c(base + col(mm)))] <- c(mm)
+        }
+    }
+    res
+}
+
+## Extract the L matrix 
+setAs("lmer", "dtTMatrix",
+      function(from)
+  {
+      ## force a refactorization if the factors have been inverted
+      if (from@status["inverted"]) from@status["factored"] <- FALSE
+      .Call("lmer_factor", from, PACKAGE = "Matrix")
+      L <- lapply(from@L, as, "dgTMatrix")
+      nf <- length(from@D)
+      Gp <- from@Gp
+      nL <- Gp[nf + 1]
+      Li <- integer(0)
+      Lj <- integer(0)
+      Lx <- double(0)
+      for (i in 1:nf) {
+          for (j in 1:i) {
+              Lij <- L[[Lind(i, j)]]
+              Li <- c(Li, Lij@i + Gp[i])
+              Lj <- c(Lj, Lij@j + Gp[j])
+              Lx <- c(Lx, Lij@x)
+          }
+      }
+      new("dtTMatrix", Dim = as.integer(c(nL, nL)), i = Li, j = Lj, x = Lx,
+          uplo = "L", diag = "U")
+  })
+
+## Extract the ZZX matrix
+setAs("lmer", "dsTMatrix",
+      function(from)
+  {
+      .Call("lmer_inflate", from, PACKAGE = "Matrix")
+      ZZpO <- lapply(from@ZZpO, as, "dgTMatrix")
+      ZZ <- lapply(from@ZtZ, as, "dgTMatrix")
+      nf <- length(ZZpO)
+      Gp <- from@Gp
+      nZ <- Gp[nf + 1]
+      Zi <- integer(0)
+      Zj <- integer(0)
+      Zx <- double(0)
+      for (i in 1:nf) {
+          ZZpOi <- ZZpO[[i]]
+          Zi <- c(Zi, ZZpOi@i + Gp[i])
+          Zj <- c(Zj, ZZpOi@j + Gp[i])
+          Zx <- c(Zx, ZZpOi@x)
+          if (i > 1) {
+              for (j in 1:(i-1)) {
+                  ZZij <- ZZ[[Lind(i, j)]]
+                  ## off-diagonal blocks are transposed
+                  Zi <- c(Zi, ZZij@j + Gp[j])
+                  Zj <- c(Zj, ZZij@i + Gp[i])
+                  Zx <- c(Zx, ZZij@x)
+              }
+          }
+      }
+      new("dsTMatrix", Dim = as.integer(c(nZ, nZ)), i = Zi, j = Zj, x = Zx,
+          uplo = "U")
+  })

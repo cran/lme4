@@ -1,6 +1,6 @@
 
 R : Copyright 2005, The R Foundation for Statistical Computing
-Version 2.1.0 Under development (unstable) (2005-01-20), ISBN 3-900051-07-0
+Version 2.1.0 Under development (unstable) (2005-02-15), ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -15,8 +15,16 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 Type 'q()' to quit R.
 
 > library(lme4)
-Loading required package: Matrix 
-Loading required package: latticeExtra 
+Loading required package: Matrix
+Loading required package: latticeExtra
+
+Attaching package 'lme4':
+
+
+	The following object(s) are masked from package:stats :
+
+	 contr.SAS 
+
 > options(show.signif.stars = FALSE)
 > (fm1 <- lmer(math ~ year + (1|childid) + (1|schoolid), egsingle))
 Linear mixed-effects model fit by REML
