@@ -205,7 +205,7 @@ setMethod("show", signature(object="summary.ssclme"),
                       cm = cbind(cm, stat, pval)
                       colnames(cm) = c(nms, "t value", "Pr(>|t|)")
                   } else {
-                      cm = cm[, 1:2]
+                      cm = cm[, 1:2, drop = FALSE]
                       stat = cm[,1]/cm[,2]
                       pval = 2*pnorm(abs(stat), lower = FALSE)
                       nms = colnames(cm)

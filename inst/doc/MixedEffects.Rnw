@@ -187,7 +187,7 @@ model are the pairwise cross-tabulations of the corresponding grouping
 factors.
 
 
-\subsection{The Scottish secondary school example}
+\subsubsection{The Scottish secondary school example}
 \label{sec:Scottish}
 
 An example may help to clarify these descriptions.
@@ -214,10 +214,13 @@ ctab = sscCrosstab(list(ScotsSec$primary, ScotsSec$second), FALSE)
 print(image(ctab, aspect='xy', xlim = c(-0.5,166.5),
            ylim = c(166.5, -0.5), colorkey = FALSE))
 @   
-  \caption{Location of non-zero elements in
-    $\bZ\trans\bZ$ for model \var{fm1} fit to the \var{ScotsSec} data.
-    Darker squares indicate larger magnitudes. Rows and columns are
-    numbered from zero.}
+\caption{Location of non-zero elements in
+  $\bZ\trans\bZ$ for a variance components model for the
+  \var{ScotsSec} data.  Darker squares indicate larger magnitudes.
+  Rows and columns are numbered from zero.  The first 148 rows and
+  columns correspond to the levels of the \var{primary} grouping
+  factor and the last 19 rows and columns correspond to levels of the
+  \var{second} grouping factor.}
   \label{fig:ZtZ}
 \end{figure}
 for a
@@ -225,7 +228,7 @@ variance components model with these grouping factors.
 In the figure darker greys indicate larger magnitudes.
 
 
-\subsection{General structure of the sparse matrix}
+\subsubsection{General structure of the sparse matrix}
 \label{sec:Sparse}
 
 For the variance components model $bZ\trans\bZ$ is based on the
@@ -241,7 +244,7 @@ that we can determine the patterns of non-zeros in $\bZ\trans\bZ$
 knowing only the $q_i,i=1,\dots,k$ and the cross-tabulation of the
 grouping factors.
 
-\subsection{Crossed and nested grouping factors}
+\subsubsection{Crossed and nested grouping factors}
 \label{ssec:Crossed}
 
 In the Scottish secondary school example if all the students from a
@@ -412,15 +415,16 @@ or REML estimates for a linear mixed model:
 \item Use a moderate number of ECME steps, (\ref{eq:theta1}) or
   (\ref{eq:theta1R}), to refine these starting estimates.  Each ECME
   step requires evaluating $\bOmega(\btheta)$ followed by the
-  decomposition and solutions (\ref{eq:CrossProdGen}), (\ref{eq:RZX}),
-  (\ref{eq:RZZ}), (\ref{eq:betaHat}) and (\ref{eq:ConditionalExp}).
+  decomposition (\ref{eq:CrossProdGen}) and the solutions to (\ref{eq:RZX}),
+  (\ref{eq:RXX}), (\ref{eq:betaHat}) and (\ref{eq:ConditionalExp}).
 \item Use a Newton method to optimize the criterion
   (\ref{eq:ProfiledLogLik}) or (\ref{eq:ProfiledLogRestLik}) with
   gradient (\ref{eq:gradDev}) or (\ref{eq:gradDevRest}).  Each
   evaluation of the criterion requires evaluating $\bOmega(\btheta)$
-  followed by the decomposition and solutions (\ref{eq:CrossProdGen}),
-  (\ref{eq:RZX}), and (\ref{eq:RXX}).  Gradient evaluations require
-  the solutions to (\ref{eq:betaHat}) and (\ref{eq:ConditionalExp}).
+  followed by the decomposition (\ref{eq:CrossProdGen}) and the
+  solutions to (\ref{eq:RZX}), and (\ref{eq:RXX}).  Gradient
+  evaluations require the solutions to (\ref{eq:betaHat}) and
+  (\ref{eq:ConditionalExp}).
 \end{enumerate}
 In \citet{bate:debr:2004} we show that similar calculations can be
 used to evaluate the Hessian of the profiled criteria and that the
@@ -437,38 +441,39 @@ iterations is the sparse Cholesky decomposition (\ref{eq:CrossProdGen}).
 
 Although the decomposition (\ref{eq:CrossProdGen}) will be performed
 many times for different trial values of $\btheta$, the structure of
-$\bZ\trans\bZ+\bOmega$ -- in particular, the number and positions of the
-non-zeros in $\bZ\trans\bZ+\bOmega$ and in $\bL$ -- will be the same
-for each evaluation.  The LDL package provides one C function that
-performs the symbolic analysis to determine the number and position of
-the non-zeros in $\bL$ and another C function to determine the
-numerical values in the decomposition.  
+$\bZ\trans\bZ+\bOmega$ -- in particular, the number and positions of
+the non-zeros in $\bZ\trans\bZ+\bOmega$ and in $\bL$ -- will be the
+same for each evaluation.  Because the LDL package provides one C
+function to perform the symbolic analysis that determines the number
+and position of the non-zeros in $\bL$ and another C function that
+determines the numerical values in the decomposition, we can do
+the symbolic analysis separately.
 
 The number and positions of the nonzeros in $\bL$ depends on the
-positions of the nonzeros in $\bZ\trans\bZ$. There will potentially be
-a nonzero in $\bL$ anywhere there is a nonzero in the lower triangle
-of $\bZ\trans\bZ$ but other nonzeros in $\bL$ can be induced during
-the course of the decomposition.  This is called ``fill-in''.  The
-extent of the fill-in can be changed by reordering the components of
-$\bb$ and, correspondingly, the columns of $\bZ$.
+positions of the nonzeros in $\bZ\trans\bZ$. Any nonzero position in
+the lower triangle of $\bZ\trans\bZ$ is potentially nonzero in $\bL$.
+However other positions in $\bL$ can become nonzero during the course
+of the decomposition.  This is called ``fill-in''.  The extent of the
+fill-in can be changed by reordering the components of $\bb$ and,
+correspondingly, the columns of $\bZ$.
 
 Although there are general approaches, such as approximate minimal
-degree~\citep{Davis:1996} or approaches based on partitions of the
-adjacency graph~\citep{Metis}, to determining a fill-minimizing
+degree~\citep{Davis:1996} or graph-partitioning
+algorithms\citep{Metis}, for determining a fill-minimizing
 permutation, it is more effective for us to exploit the special
-structure of $\bZ\trans\bZ$ in searching for a permutation.
+structure of $\bZ\trans\bZ$ in searching for such a permutation.
 
 As mentioned above, when considering the structure of
-$\bZ\trans\bZ+\bOmega$ we only need to consider the structure for the
+$\bZ\trans\bZ+\bOmega$ we need only consider the structure for the
 variance components model because the structure for the general model
 is obtained from the structure for the variance components model by
 replacing each nonzero in the $(i,j)$ block of the variance components
 model by a $q_i\times q_j$ nonzero matrix.  Similarly we can derive
 the structure of the $\bL$ matrix for the general model from that of
-the variance components model we restrict our attention to
+the variance components model provided we restrict our attention to
 permutations that do not mix levels from different grouping factors.
 That is, we consider only those fill-reducing permutations that
-consists of a permutation of the grouping factors and permutations of
+consist of, at most, a permutation of the grouping factors and permutations of
 the levels within each grouping factor.
 
 In what follows we restrict our attention to the variance components model.
@@ -479,46 +484,107 @@ hence the elimination tree and the extent of the fill-in, column-wise
 starting with the first column.  We know that there will be
 ``original'' nonzeros in $\bL$ wherever there are nonzeros in the
 lower triangle of $\bZ\trans\bZ+\bOmega$ and, possibly, some
-additional, ``induced'' nonzeros.  At column $j$ if there are
-nonzeros, either original or induced, below the diagonal in rows $i$
-and $k$ then a nonzero is induced in the $(i,k)$ position of $\bL$.
-Consider again the division of $\bZ\trans\bZ+\bOmega$ and $\bL$ into a
-$k\times k$ array of blocks determined by the grouping factors.  For a
-variance components model, the diagonal blocks are themselves
-diagonal.  Because the $(1,1)$ block is diagonal the row numbers of
-any nonzeros below the diagonal must be greater than $m_1$.  That is,
-there will not be any induced nonzeros in the first $m_1$ columns and
-we choose the first grouping factor to make $m_1$ as large as possible.
+additional, ``induced'' nonzeros.  If there are nonzeros, either
+original or induced, in column $j$ below the diagonal, say, in rows
+$i$ and $k$, then a nonzero is induced in the $(i,k)$ position of
+$\bL$.  Consider again the division of $\bZ\trans\bZ+\bOmega$ and
+$\bL$ into a $k\times k$ array of blocks determined by the grouping
+factors.  For a variance components model, the diagonal blocks are
+themselves diagonal.  Because the $(1,1)$ block is diagonal the row
+numbers of any nonzeros below the diagonal must be greater than $m_1$.
+That is, there will not be any induced nonzeros in the first $m_1$
+columns. Because this first block of $m_1$ rows and columns will not
+experience any fill-in, we choose the first grouping factor to make
+$m_1$ as large as possible.
 
-In most examples there are just one or two grouping factors.  For the
-rare examples with three or more grouping factors we order the factors
-so that $m_1\ge m_2\ge\dots\ge m_k$.
+There will be no need to permute the levels of the first grouping
+factor.  This can be a considerable savings in the effort required to
+determine a fill-reducing permutation.  For the Scottish secondary
+school example we can leave the first 148 columns in their original
+order and consider only permutations of the last 19 columns.
 
-Because the columns corresponding to the first grouping factor do not
-experience any fill-in, there is no need to permute the levels of the
-first grouping factor.  This can be a considerable savings in the
-effort required to determine a fill-reducing permutation.  For the
-Scottish secondary school example we can leave the first 148 columns
-in their original order and consider only permutations of the last 19
-columns.
+We obtain the matrix to determine the permutation of the second and
+subsequent groups by ``projecting'' the first $m_1$ columns onto the
+last $q-m_1$ columns as described above.  If there are only two
+grouping factors this corresponds to recording the positions $(i,k)$
+with $i,k>m_1$ and both $(i,j)$ and $(i,k)$ are non-zero for some
+$j\le m_1$.  If there are more than two grouping factors then we
+record all of these plus any of the original nonzeros below the
+$m_1$st row and to the right of the $m_1$st column.
 
-For the purposes of determining the induced nonzeros we can
-``project'' the first $m_1$ columns onto the last $q-m_1$ columns as
-described above. 
+In the case of two nested grouping factors there will only be one
+nonzero element below the diagonal in the first $m_1$ columns, hence
+there is no fill-in.  For more than two nested grouping factors, any
+pair of nonzeros occuring in the first $m_1$ columns must be in rows
+that correspond to different grouping factors and that off-diagonal in
+the projected matrix must already be nonzero.  That is, nested
+grouping factors do not generate any fill-in.  Not only can the matrix
+$\bL$ be created ``in place'' (that is, with exactly the same
+positions of nonzero off-diagonal elements as in $\bZ\trans\bZ$) but
+also $\bL^{-1}$ has the same pattern of nonzeros.  This is unusual.
+In most cases $\bL^{-1}$ has many more nonzeros than does $\bL$.
 
-If the grouping factors are a nested sequence of factors there will be
-no fill-in.  In fact, both $\bL$ and its inverse will have exactly the
-same pattern of nonzeros as does the lower triangle of $\bZ\trans\bZ$.
-We do not seek a fill-reducing permutation if the grouping factors
-form a nested sequence.  The case $k=1$ (the random effects are
-determined by a single grouping factor) is, trivially, a nested
-sequence.
+Notice that a single grouping factor is, trivially, a nested sequence.
 
-\section{Generalizations of linear mixed models}
-\label{sec:Generalizations}
 
-\section{Further enhancements}
-\label{sec:Further}
+\subsection{Examples}
+\label{sec:ProjectionEx}
+
+In Figure~\ref{fig:ScotsProj} we show the projection of the pairwise
+crosstabulation of \var{primary} and \var{second} in the
+\var{ScotsSec} data, as shown in Figure~\ref{fig:ZtZ}, onto the
+$19\times19$ block for the \var{second} factor.
+\begin{figure}[tbp]
+  \centering
+\setkeys{Gin}{width=\textwidth}
+<<FigScotsProj,fig=TRUE,echo=FALSE,height=4,width=10>>=
+proj = .Call("sscCrosstab_project2", ctab)
+trp1 = as(proj, "tripletMatrix")
+trp2 = as(.Call("sscMatrix_ldl_symbolic", proj, FALSE)[[2]], "tripletMatrix")
+symb = .Call("sscMatrix_ldl_symbolic", proj, TRUE)
+## use the permutation to create the permuted symmetric matrix
+iperm = perm = symb[[3]]
+iperm[perm+1] = seq(a = perm) - as.integer(1)
+trp3 = trp1
+trp3@i = iperm[trp1@i + 1]
+trp3@j = iperm[trp1@j + 1]
+trp4 = as(symb[[2]], "tripletMatrix")
+df <- data.frame(i = c(trp1@i, trp2@i, trp3@i, trp4@i),
+                 j = c(trp1@j, trp2@j, trp3@j, trp4@j),
+                 x = c(trp1@x, trp2@x, trp3@x, trp4@x),
+                 type = factor(rep(c("Projected", "L", "Permuted", "L-perm"),
+                 c(length(trp1@x), length(trp2@x), length(trp3@x),
+                   length(trp4@x))),
+                 levels = c("Projected", "L", "Permuted", "L-perm")))
+df$x[] = 0.1
+df$x[df$i == df$j] = 1
+print(levelplot(x ~ j + i | type, data = df,
+                sub = "Dimensions: 19 x 19",
+                xlim = c(-0.5, 18.5), ylim = c(18.5, -0.5), xlab = "Column",
+                ylab = "Row", aspect = 'xy',
+                col.regions = grey(seq(from = 0.7, to = 0, length = 100)),
+                par.settings = list(background = list(col = "transparent")),
+                colorkey = FALSE, layout = c(4,1)))
+@   
+  \caption{Projection of the pairwise crosstabulation for the Scottish
+    secondary school data onto the $19\times 19$ lower right block for
+    the \var{second} factor.  The ``Projected'' panel shows the
+    original (black squares) and projected (gray squares) non-zero
+    positions.  The ``L'' panel shows the implicit diagonal (black
+    squares) and the non-zero off-diagonal (gray squares) for this
+    ordering of the levels of the factor.  The ``Permuted'' panel
+    shows the symmetric matrix after permuting the rows and columns
+    according to the fill-reducing permutation determined by the Metis
+    package and the ``L-perm'' panel shows the $\bL$ matrix from this
+    ordering.}
+  \label{fig:ScotsProj}
+\end{figure}
+
+%% \section{Generalizations of linear mixed models}
+%% \label{sec:Generalizations}
+
+%% \section{Further enhancements}
+%% \label{sec:Further}
 
 
 \section{Acknowledgements}
@@ -529,7 +595,7 @@ Command under Contract No.{} DAMD17-02-C-0119.  The views, opinions
 and/or findings contained in this report are those of the authors and
 should not be construed as an official Department of the Army
 position, policy or decision unless so designated by other
-documentation. 
+documentation.
 
 I thank Deepayan Sarkar and Tim Davis for helpful discussions and
 suggestions and Harold Doran for his suggestion of using sparse

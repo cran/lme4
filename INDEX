@@ -52,7 +52,6 @@ Wafer                   Modeling of Analog MOS Circuits
 Wheat                   Yields by growing conditions
 Wheat2                  Wheat Yield Trials
 bdf                     Language scores
-coerce-methods          Coercion methods and assignments
 egsingle                US Sustaining Effects study
 ergoStool               Ergometrics experiment with stool types
 fixed.effects           Extract Fixed Effects
@@ -72,6 +71,5 @@ random.effects          Extract Random Effects
 s3bbx                   Covariates in the Rodriguez and Goldman
                         simulation
 s3bby                   Responses simulated by Rodriguez and Goldman
-solve-methods           Methods for Function solve
 summary.GLMM-class      Class "summary.GLMM"
 summary.lme-class       Class "summary.lme"

@@ -360,6 +360,11 @@ setMethod("GLMM",
                                                     3,
                                                     function(x) sum(diag(x)))
                                               )))
+
+                  ## the constant terms from the r.e. and the final
+                  ## Laplacian integral cancle out both being:
+                  ## ranef.loglik.constant <- 0.5 * length(ranefs[[i]]) * log(2 * base::pi)
+
                   ans <- ans + ranef.loglik + log.jacobian
               }
               ## ans is (up to some constant) log of the Laplacian
@@ -528,6 +533,8 @@ setMethod("show", signature(object = "summary.GLMM"),
       {
           rdig <- 5
           cat("Generalized Linear Mixed Model\n\n")
+          cat("Family:", object@family$family, "family with",
+              object@family$link, "link\n")
           if (!is.null(object@call$formula)) {
               cat("Fixed:", deparse(object@call$formula),"\n")
           }
@@ -554,11 +561,13 @@ setMethod("show", signature(object = "GLMM"),
           sumry = summary(object)
           rdig <- 5
           cat("Generalized Linear Mixed Model\n\n")
+          cat("Family:", object@family$family, "family with",
+              object@family$link, "link\n")
           if (!is.null(object@call$formula)) {
               cat("Fixed:", deparse(object@call$formula),"\n")
           }
           if (!is.null(object@call$data)) {
-              cat("Data:", deparse( object@call$data ), "\n")
+              cat("Data:", deparse(object@call$data ), "\n")
           }
           if (!is.null(object@call$subset)) {
               cat(" Subset:",
