@@ -314,9 +314,9 @@ setMethod("fixef", signature(object = "lme"),
 
 setMethod("formula", "lme", function(x, ...) x@call$formula)
 
-setMethod("plot", signature(x = "lme"),
-          function(x, y, ...)
-          cat("plot method for lme not yet implemented\n"))
+# setMethod("plot", signature(x = "lme"),
+#           function(x, y, ...)
+#           cat("plot method for lme not yet implemented\n"))
 
 setMethod("ranef", signature(object = "lme"),
           function(object, ...)

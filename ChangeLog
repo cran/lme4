@@ -1,3 +1,18 @@
+2005-02-27  Douglas Bates  <bates@bates1-home>
+
+	* R/lme.R: Removed the stubs of the plot methods.
+
+	* NAMESPACE: Remove imports from the Matrix package as it is a
+	listed in the Depends.
+
+2005-02-24  Douglas Bates  <bates@bates1-home>
+
+	* R/lmer.R (fn): Added an anova method for lmer objects that
+	provides F tests based on the terms object.
+	* data/ and man/: Moved all data sets from "Mixed-Effects Models
+	in S and S-PLUS" to the MEMSS package and all other test data sets
+	to the mlmRev package.
+
 2005-01-24  Douglas Bates  <bates@bates7>
 
 	* man/{guPrenat.Rd,guImmun.Rd,s3bbx.Rd,s3bby.Rd}: Add

@@ -1,34 +1,5 @@
-importFrom("graphics", "plot")
+import("stats", "Matrix")
 
-importFrom("stats",
-           "anova",
-           "coef",
-	   "confint",
-           "deviance",
-           "fitted",
-           "formula",
-           "logLik",
-           "model.matrix",
-           "residuals",
-           "update",
-           "vcov")
-importFrom("Matrix",
-           "coef<-"
-           )
-importClassesFrom("Matrix",
-                  "corrmatrix",
-                  "dsyMatrix",
-                  "dsTMatrix",
-                  "dtTMatrix",
-                  "pdfactor",
-                  "pdmatrix",
-                  "ssclme"
-                  )
-
-importMethodsFrom("Matrix",
-                  "crossprod",
-                  "dim"
-                  )
 export(
        "BIC",
        "GLMM",
@@ -77,7 +48,7 @@ exportMethods(
               "formula",
               "gsummary",
               "logLik",
-              "plot",
+#              "plot",
               "ranef",
               "residuals",
               "show",
