@@ -2,7 +2,7 @@
  * @file   reStruct.c
  * @author Saikat DebRoy <saikat@stat.wisc.edu>
  * @author Douglas Bates <bates@stat.wisc.edu>
- * @date   $Date: 2003/06/30 22:21:30 $
+ * @date   $Date: 2003/07/02 21:03:00 $
  * 
  * @brief  functions for handling reStruct objects.
  * 
@@ -280,23 +280,33 @@ nlme_decomposeChunk(const double* srcmat, int nrowSrc, int ncolSrc,
 SEXP
 nlme_predecompose(SEXP reStruct)
 {
+    int useWeighted = asLogical(GET_SLOT(reStruct,
+                                         install("useWeighted")));
+    const SEXPREC* original = GET_SLOT(reStruct,
+                                       (useWeighted?install("weighted"):
+                                        install("original")));
+    SEXP decomposed = GET_SLOT(reStruct, install("decomposed"));
+    const SEXPREC* random = GET_SLOT(reStruct, install("random"));
+    int nlevel = LENGTH((SEXP)random);
+    int* dim = INTEGER(GET_DIM((SEXP)original));
+    int nrow = dim[0];
+    int ncol = dim[1];
+    if (LENGTH(decomposed) == 0) {
+        int nrowDecomposed =
+            LENGTH(VECTOR_ELT(GET_SLOT(VECTOR_ELT((SEXP)random, nlevel-1),
+                                       install("decomposedRows")), 0));
+        SET_SLOT(reStruct, install("decomposed"),
+                 allocMatrix(REALSXP, nrowDecomposed, ncol));
+        decomposed = GET_SLOT(reStruct, install("decomposed"));
+        memset(REAL(decomposed), 0, ncol*nrowDecomposed*sizeof(double));
+        SET_SLOT(reStruct, install("dirtyDecomposed"), ScalarLogical(1));
+    }
     if (asLogical(GET_SLOT(reStruct, install("dirtyDecomposed")))) {
-        int useWeighted = asLogical(GET_SLOT(reStruct,
-                                             install("useWeighted")));
-        SEXP decomposed = GET_SLOT(reStruct, install("decomposed"));
-        const SEXPREC* random = GET_SLOT(reStruct, install("random"));
-        const SEXPREC* original = GET_SLOT(reStruct,
-                                           (useWeighted?install("weighted"):
-                                            install("original")));
         SEXP originalRows_sym = install("originalRows");
         SEXP storedRows_sym = install("storedRows");
         SEXP columns_sym = install("columns");
-        int nlevel = LENGTH((SEXP)random);
         int ncol_levels = asInteger(GET_SLOT(VECTOR_ELT((SEXP)random, nlevel-1),
                                              columns_sym));
-        int* dim = INTEGER(GET_DIM((SEXP)original));
-        int nrow = dim[0];
-        int ncol = dim[1];
         int startCol = 0;
         nlme_bitfield* validRows = NULL;
         const double* srcmat;
@@ -309,19 +319,10 @@ nlme_predecompose(SEXP reStruct)
          * we are confident enough */
 
         if (ncol_levels > ncol) {
-            error("Incorreect number of columns in original matrix: %d instead of >= %d",
+            error("Incoreect number of columns in original matrix: %d instead of >= %d",
                   ncol, ncol_levels);
         }
 
-        if (LENGTH(decomposed) == 0) {
-            int nrowDecomposed =
-                LENGTH(VECTOR_ELT(GET_SLOT(VECTOR_ELT((SEXP)random, nlevel-1),
-                                           install("decomposedRows")), 0));
-            SET_SLOT(reStruct, install("decomposed"),
-                     allocMatrix(REALSXP, nrowDecomposed, ncol));
-            decomposed = GET_SLOT(reStruct, install("decomposed"));
-            memset(REAL(decomposed), 0, ncol*nrowDecomposed*sizeof(double));
-        }
         if (TYPEOF(decomposed) != REALSXP)
             error("decomposed must be of storage mode double");
         dim = INTEGER(GET_DIM(decomposed));
@@ -529,7 +530,7 @@ nlme_logLikelihood_internal(SEXP reStruct, int store,
     int nprotect = 0;
     
     if (ncol_levels > ncol) {
-        error("Incorreect number of columns in original matrix: %d instead of >= %d",
+        error("Incorreect number of columns in decomposed matrix: %d instead of >= %d",
               ncol, ncol_levels);
     }
 
@@ -890,8 +891,7 @@ nlme_commonDecompose(SEXP reStruct, const SEXPREC* pars)
         reStruct = duplicate(reStruct);
     PROTECT(reStruct);
     logLik = GET_SLOT(reStruct, install("logLik"));
-    if (newPars || ISNA(asReal(GET_SLOT(reStruct, install("logLik")))))
-        REAL(logLik)[0] = nlme_logLikelihood_internal(reStruct, 1, 0);
+    REAL(logLik)[0] = nlme_logLikelihood_internal(reStruct, 1, 0);
 
     {
 
