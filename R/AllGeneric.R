@@ -159,7 +159,7 @@ if (!isGeneric("fixef")) {
 
 if (!isGeneric("fixef<-")) {
     setGeneric("fixef<-",
-               function(x, value) standardGeneric("fixef<-"))
+               function(object, value) standardGeneric("fixef<-"))
 }
 
 ## fixed.effects was an alternative name

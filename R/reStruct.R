@@ -412,11 +412,11 @@ setMethod("fixef", signature(object="reStruct"),
               val
           })
 
-setReplaceMethod("fixef", signature(x="reStruct", value="numeric"),
-          function(x, value) {
-              fixdRows = x@random[['*fixed*']]@storedRows[[1]]
-              x@bbetas[fixdRows] <- value
-              x
+setReplaceMethod("fixef", signature(object="reStruct", value="numeric"),
+          function(object, value) {
+              fixdRows = object@random[['*fixed*']]@storedRows[[1]]
+              object@bbetas[fixdRows] <- value
+              object
           })
 
 setMethod("ranef", signature(object="reStruct"),

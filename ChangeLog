@@ -1,3 +1,20 @@
+2003-07-21  Douglas Bates  <bates@stat.wisc.edu>
+
+	* DESCRIPTION (Version): 0.3-3
+
+	* R/AllGeneric.R, R/glmm.R, R/reStruct.R:
+	consistent name for first argument of fixef and fixef<-
+
+2003-07-20  Douglas Bates  <bates@stat.wisc.edu>
+
+	* man/GLMM.Rd:
+	Simplify example with Laplace.  The ill-conditioned example takes too
+	long.
+
+	* ChangeLog: *** empty log message ***
+
+	* man/fixed.effects.Rd: Added documentation for fixef<-.
+
 2003-07-20  Douglas Bates  <bates@stat.wisc.edu>
 
 	* man/GLMM.Rd:

@@ -375,10 +375,10 @@ setReplaceMethod("LMEoptimize", signature(x="glmm",
                  }
              })
 
-setReplaceMethod("fixef", signature(x="glmm", value="numeric"),
-          function(x, value) {
-              fixef(x@reStruct) <- value
-              x
+setReplaceMethod("fixef", signature(object="glmm", value="numeric"),
+          function(object, value) {
+              fixef(object@reStruct) <- value
+              object
           })
 
 ### Local variables:
