@@ -1,0 +1,97 @@
+
+R : Copyright 2004, The R Foundation for Statistical Computing
+Version 2.0.1  (2004-11-15), ISBN 3-900051-07-0
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for a HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(lme4)
+Loading required package: Matrix 
+Loading required package: latticeExtra 
+> fm <- GLMM(immun ~ kid2p + mom25p + ord + ethn +
++            momEd + husEd + momWork + rural + pcInd81,
++            data = guImmun, family = binomial,
++            random = list(mom = ~ 1,comm = ~1))
+Warning message: 
+IRLS iterations for glmm did not converge in: GLMM(immun ~ kid2p + mom25p + ord + ethn + momEd + husEd + momWork +  
+> summary(fm)
+Generalized Linear Mixed Model
+
+Family: binomial family with logit link
+Fixed: immun ~ kid2p + mom25p + ord + ethn + momEd + husEd + momWork +      rural + pcInd81 
+Data: guImmun 
+      AIC      BIC    logLik
+ 2739.862 2847.733 -1350.931
+
+Random effects:
+ Groups Name        Variance Std.Dev.
+ mom    (Intercept) 11.4292  3.3807  
+ comm   (Intercept)  1.5335  1.2384  
+# of obs: 2159, groups: mom, 1595; comm, 161
+
+Estimated scale (compare to 1)  0.6541871 
+
+Fixed effects:
+             Estimate Std. Error z value  Pr(>|z|)    
+(Intercept) -0.953358   0.576823 -1.6528   0.09838 .  
+kid2pY       1.547865   0.205833  7.5200 5.478e-14 ***
+mom25pY     -0.252634   0.272093 -0.9285   0.35316    
+ord23       -0.405479   0.259720 -1.5612   0.11847    
+ord46       -0.026751   0.344544 -0.0776   0.93811    
+ord7p        0.292315   0.437132  0.6687   0.50368    
+ethnN       -0.141444   0.583390 -0.2425   0.80843    
+ethnS       -0.075808   0.438125 -0.1730   0.86263    
+momEdP       0.353840   0.269972  1.3107   0.18997    
+momEdS       0.317431   0.591848  0.5363   0.59172    
+husEdP       0.428384   0.281743  1.5205   0.12839    
+husEdS       0.376741   0.506927  0.7432   0.45737    
+husEdU      -0.033655   0.438497 -0.0768   0.93882    
+momWorkY     0.324932   0.246012  1.3208   0.18657    
+ruralY      -0.720365   0.364484 -1.9764   0.04811 *  
+pcInd81     -0.905655   0.602031 -1.5043   0.13250    
+---
+Signif. codes:  0 `***' 0.001 `**' 0.01 `*' 0.05 `.' 0.1 ` ' 1 
+
+Correlation of Fixed Effects:
+         (Intr) kid2pY mm25pY ord23  ord46  ord7p  ethnN  ethnS  momEdP momEdS
+kid2pY   -0.332                                                               
+mom25pY  -0.078  0.022                                                        
+ord23    -0.326  0.075 -0.179                                                 
+ord46    -0.296  0.053 -0.527  0.616                                          
+ord7p    -0.272  0.078 -0.535  0.491  0.676                                   
+ethnN    -0.066 -0.007  0.008  0.000  0.014  0.009                            
+ethnS    -0.072 -0.003  0.000  0.004  0.021  0.016  0.635                     
+momEdP   -0.331  0.058  0.026  0.027  0.057  0.090  0.181  0.102              
+momEdS   -0.254  0.056 -0.020  0.075  0.111  0.114  0.124  0.134  0.372       
+husEdP   -0.362  0.020  0.018  0.007  0.037  0.070  0.128  0.058 -0.125 -0.041
+husEdS   -0.300 -0.015 -0.002  0.016  0.079  0.088  0.080  0.060 -0.144 -0.422
+husEdU   -0.179 -0.029 -0.008  0.016  0.033  0.029  0.062  0.018  0.027  0.033
+momWorkY -0.254 -0.026 -0.053 -0.030  0.010  0.024  0.136  0.095  0.018 -0.011
+ruralY   -0.541  0.001  0.040  0.031  0.006 -0.013 -0.054  0.043  0.009  0.121
+pcInd81  -0.281 -0.006 -0.004 -0.005 -0.008  0.011 -0.619 -0.636  0.059 -0.010
+         husEdP husEdS husEdU mmWrkY ruralY
+kid2pY                                     
+mom25pY                                    
+ord23                                      
+ord46                                      
+ord7p                                      
+ethnN                                      
+ethnS                                      
+momEdP                                     
+momEdS                                     
+husEdP                                     
+husEdS    0.440                            
+husEdU    0.359  0.201                     
+momWorkY  0.001 -0.030 -0.024              
+ruralY    0.068  0.205  0.004  0.083       
+pcInd81  -0.027 -0.005 -0.030  0.004  0.023
+> q("no")

@@ -1,6 +1,6 @@
 
 R : Copyright 2004, The R Foundation for Statistical Computing
-Version 2.0.0 beta (2004-10-02), ISBN 3-900051-07-0
+Version 2.0.1  (2004-11-15), ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -16,6 +16,7 @@ Type 'q()' to quit R.
 
 > library(lme4)
 Loading required package: Matrix 
+Loading required package: latticeExtra 
 > pixel <- if (inherits(Pixel, "groupedData")) Pixel@data else Pixel
 > pixel$DS <- pixel$Dog : pixel$Side
 > lme(pixel ~ day + I(day^2), pixel, list(Dog = ~ day, DS = ~ 1))
@@ -25,15 +26,31 @@ Fixed: pixel ~ day + I(day^2)
  log-restricted-likelihood:  -412.6051 
 Random effects:
  Groups   Name        Variance Std.Dev. Corr   
- DS       (Intercept) 283.0550 16.8242         
- Dog      (Intercept) 804.8566 28.3700         
+ DS       (Intercept) 282.9893 16.8223         
+ Dog      (Intercept) 804.8887 28.3706         
           day           3.3994  1.8437  -0.555 
- Residual              80.8131  8.9896         
+ Residual              80.8155  8.9897         
 # of obs: 102, groups: DS, 20; Dog, 10
 
 Fixed effects:
                Estimate  Std. Error DF  t value  Pr(>|t|)
-(Intercept) 1073.339140   10.171705 99 105.5220 < 2.2e-16
-day            6.129596    0.879321 99   6.9708 3.558e-10
-I(day^2)      -0.367350    0.033945 99 -10.8218 < 2.2e-16
+(Intercept) 1073.339130   10.171714 99 105.5220 < 2.2e-16
+day            6.129596    0.879328 99   6.9708 3.559e-10
+I(day^2)      -0.367350    0.033946 99 -10.8216 < 2.2e-16
+> show(lme1(pixel ~ day + I(day^2), pixel, list(Dog = ~ day, DS = ~ 1)))
+Random effects:
+ Groups   Name        Variance Std.Dev. Corr   
+ DS       (Intercept) 127.7127 11.3010         
+ Dog      (Intercept) 877.4706 29.6221         
+          day           3.3679  1.8352  -0.528 
+ Residual              93.5385  9.6715         
+# of obs: 102, groups: DS, 20; Dog, 10
+
+Fixed effects:
+              Estimate Std. Error DF  t value  Pr(>|t|)    
+(Intercept) 1073.28696   10.20889 99 105.1326 < 2.2e-16 ***
+day            6.12594    0.91370 99   6.7046 1.256e-09 ***
+I(day^2)      -0.36612    0.03645 99 -10.0443 < 2.2e-16 ***
+---
+Signif. codes:  0 `***' 0.001 `**' 0.01 `*' 0.05 `.' 0.1 ` ' 1 
 > q("no")

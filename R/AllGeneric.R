@@ -46,6 +46,7 @@ if (!isGeneric("getResponse")) {
                standardGeneric("getResponse"))
 }
 
+## FIXME: Modify the generic to have a call argument
 setGeneric("lme",
           function(formula, data, random,
                    method = c("REML", "ML"),

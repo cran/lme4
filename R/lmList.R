@@ -1,21 +1,4 @@
 
-## The next 2 methods added for groupedData objects, but
-## this may not be the best way to do this
-
-setMethod("lmList", signature(formula = "formula", data = "groupedData"),
-          function(formula, data, level, subset, na.action, pool)
-      {
-          data <- data@data
-          standardGeneric("lmList")
-      })
-
-setMethod("lmList", signature(formula = "missing", data = "groupedData"),
-          function(data, level, subset, na.action, pool)
-      {
-          formula <- data@formula ## formula(data) doesn't work !
-          data <- data@data
-          standardGeneric("lmList")
-      })
 
           
 

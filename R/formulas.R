@@ -63,12 +63,15 @@ setMethod("getGroups", signature(object="data.frame", form="formula"),
           function(object, form, level, data, sep, ...)
               eval(getGroupsFormula(form)[[2]], object))
 
-setMethod("getGroups", signature(object="groupedData", form="missing"),
-          function(object, form, level, data, sep, ...) {
-              nCall <- match.call()
-              nCall$object <- substitute(object@data, list(object = nCall$object))
-              if(is.null(nCall$form)) nCall$form <- formula(object)
-              eval(nCall, parent.frame())
-          })
+
+## some version may be still needed? Hope not.
+
+# setMethod("getGroups", signature(object="groupedData", form="missing"),
+#           function(object, form, level, data, sep, ...) {
+#               nCall <- match.call()
+#               nCall$object <- substitute(object@data, list(object = nCall$object))
+#               if(is.null(nCall$form)) nCall$form <- formula(object)
+#               eval(nCall, parent.frame())
+#           })
 
               

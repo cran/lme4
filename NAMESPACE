@@ -1,4 +1,6 @@
 importFrom("graphics", "plot")
+## importFrom("lattice", "gplot")  ## loading lattice via Depends for now
+
 importFrom("stats",
            "anova",
 	   "confint",
@@ -18,6 +20,8 @@ importFrom("Matrix",
            "pdFactor",
            "pdMatrix"
            )
+
+
 importClassesFrom("Matrix",
                   "corrmatrix",
                   "lmeRep",
@@ -48,13 +52,15 @@ export(
        "lme1",
        "lmeControl",
        "pooledSD",
-       "ranef"
+       "ranef",
+       "groupedData",
+       "convertFromS3groupedData"
        )
 
 exportClasses(
               "GLMM",
               "VarCorr",
-              "groupedData",
+##              "groupedData",
               "lmList",
               "lme",
               "summary.GLMM",
@@ -63,16 +69,16 @@ exportClasses(
               )
 
 exportMethods(
-              "$",
-              "$<-",
+#              "$",
+#              "$<-",
               "BIC",
               "GLMM",
-              "[",
-              "[<-",
-              "[[",
+#              "[",
+#              "[<-",
+#              "[[",
               "anova",
               "coef",
-              "coerce",
+#              "coerce",
               "deviance",
               "fitted",
               "fixef",

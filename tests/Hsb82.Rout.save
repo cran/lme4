@@ -1,6 +1,6 @@
 
 R : Copyright 2004, The R Foundation for Statistical Computing
-Version 2.0.0 beta (2004-10-02), ISBN 3-900051-07-0
+Version 2.0.1  (2004-11-15), ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -16,7 +16,7 @@ Type 'q()' to quit R.
 
 > library(lme4)
 Loading required package: Matrix 
-> #data(Hsb82, package = "lme4")  #Not needed in R-2.0.0 and later
+Loading required package: latticeExtra 
 > lme(mAch ~ meanses*cses + sector*cses,
 +     data = Hsb82, random = ~ cses|school)
 Linear mixed-effects model
@@ -25,17 +25,36 @@ Fixed: mAch ~ meanses * cses + sector * cses
  log-restricted-likelihood:  -23251.83 
 Random effects:
  Groups   Name        Variance Std.Dev. Corr  
- school   (Intercept)  2.37958 1.54259        
-          cses         0.10122 0.31815  0.391 
- Residual             36.72115 6.05980        
+ school   (Intercept)  2.37874 1.54232        
+          cses         0.10235 0.31992  0.389 
+ Residual             36.72091 6.05978        
 # of obs: 7185, groups: school, 160
 
 Fixed effects:
                       Estimate Std. Error   DF t value  Pr(>|t|)
-(Intercept)           12.12793    0.19929 7179 60.8558 < 2.2e-16
-meanses                5.33287    0.36916 7179 14.4458 < 2.2e-16
-cses                   2.94504    0.15560 7179 18.9271 < 2.2e-16
-sectorCatholic         1.22658    0.30627 7179  4.0049 6.267e-05
-meanses:cses           1.03923    0.29889 7179  3.4769 0.0005102
-cses:sectorCatholic   -1.64267    0.23978 7179 -6.8508 7.951e-12
+(Intercept)           12.12793    0.19926 7179 60.8636 < 2.2e-16
+meanses                5.33286    0.36912 7179 14.4477 < 2.2e-16
+cses                   2.94503    0.15565 7179 18.9210 < 2.2e-16
+sectorCatholic         1.22658    0.30623 7179  4.0054 6.253e-05
+meanses:cses           1.03913    0.29898 7179  3.4755 0.0005128
+cses:sectorCatholic   -1.64264    0.23985 7179 -6.8485 8.079e-12
+> show(lme1(mAch ~ meanses*cses + sector*cses,
++           data = Hsb82, random = ~ cses|school))
+Random effects:
+ Groups   Name        Variance Std.Dev. Corr  
+ school   (Intercept)  2.37874 1.54232        
+          cses         0.10235 0.31992  0.389 
+ Residual             36.72091 6.05978        
+# of obs: 7185, groups: school, 160
+
+Fixed effects:
+                      Estimate Std. Error   DF t value  Pr(>|t|)    
+(Intercept)           12.12793    0.19926 7179 60.8636 < 2.2e-16 ***
+meanses                5.33286    0.36912 7179 14.4477 < 2.2e-16 ***
+cses                   2.94503    0.15565 7179 18.9210 < 2.2e-16 ***
+sectorCatholic         1.22658    0.30623 7179  4.0054 6.253e-05 ***
+meanses:cses           1.03913    0.29898 7179  3.4755 0.0005128 ***
+cses:sectorCatholic   -1.64264    0.23985 7179 -6.8485 8.079e-12 ***
+---
+Signif. codes:  0 `***' 0.001 `**' 0.01 `*' 0.05 `.' 0.1 ` ' 1 
 > q("no")

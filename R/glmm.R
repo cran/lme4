@@ -16,24 +16,6 @@ setMethod("GLMM", signature(formula = "missing"),
                 mCall, PACKAGE = "Matrix")
       })
 
-setMethod("GLMM", signature(formula = "formula",
-                            data = "groupedData", random = "missing"),
-          function(formula, family, data, random,
-                   method = c("PQL", "Laplace"),
-                   control = list(),
-                   subset,
-                   weights,
-                   na.action,
-                   offset,
-                   model = TRUE, x = FALSE, y = FALSE, ...)
-      {
-          nCall = mCall = match.call()
-          cov = formula[[3]]
-          grps = getGroupsFormula(data)[[2]]
-          nCall$random = eval(substitute(~ cov | grps))
-          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
-                mCall, PACKAGE = "Matrix")
-      })
 
 setMethod("GLMM", signature(random = "formula"),
           function(formula, family, data, random,
@@ -53,23 +35,6 @@ setMethod("GLMM", signature(random = "formula"),
                 mCall, PACKAGE = "Matrix")
       })
 
-setMethod("GLMM", signature(formula = "formula",
-                            data = "groupedData",
-                            random = "list"),
-          function(formula, family, data, random,
-                   method = c("PQL", "Laplace"),
-                   control = list(),
-                   subset,
-                   weights,
-                   na.action,
-                   offset,
-                   model = TRUE, x = FALSE, y = FALSE, ...)
-      {
-          nCall = mCall = match.call()
-          nCall$data <- data@data
-          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
-                mCall, PACKAGE = "Matrix")
-      })
 
 make.glm.call <- 
     function (mf, frm) 

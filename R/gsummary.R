@@ -9,16 +9,6 @@ setMethod("gsummary", signature(groups = "missing"),
           eval(nCall, parent.frame())
       })
 
-setMethod("gsummary",
-          signature(object = "groupedData", groups = "factor"),
-          function (object, FUN, form, level, groups,
-                    omitGroupingFactor = FALSE, 
-                    invariantsOnly = FALSE, ...)
-      {
-          nCall <- match.call()
-          nCall$object <- substitute(object@data, list(object = nCall$object))
-          eval(nCall, parent.frame())
-      })
           
 setMethod("gsummary", signature(object = "data.frame", groups = "factor"),
           function (object, FUN, form, level, groups,

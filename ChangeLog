@@ -1,3 +1,13 @@
+2004-12-13  Douglas Bates  <bates@bates1-home>
+
+	* R/lme.R (lmeControl): Change msVerbose to an integer value.
+
+	* R/ssclme.R: Change parameterization for optimization to
+	constrained version that approaches the boundary safely.
+
+	* tests/egsingle.R: Added regression test for multiple grouping
+	factors with multivariate random effects.
+
 2004-10-04  Douglas Bates  <bates@bates1-home>
 
 	* R/lme.R: Corrected number of arguments to lmeRep_sigma

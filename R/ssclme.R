@@ -2,70 +2,30 @@ setReplaceMethod("LMEoptimize", signature(x="ssclme", value="list"),
                  function(x, value)
              {
                  if (value$msMaxIter < 1) return(x)
-                 st = coef(x, unconst = TRUE) # starting values
-                 if (value$optimizer == "optim") {
-                     optimRes =
-                         if (value$analyticGradient) {
-                             optim(st,
-                                   fn = function(pars) {
-                                       coef(x, unconst = TRUE) = pars
-                                       deviance(x, REML = value$REML)
-                                   },
-                                   gr = function(pars) {
-                                       coef(x, unconst = TRUE) = pars
-                                       gradient(x, REML = value$REML,
-                                                unconst = TRUE)
-                                   },
-                                   method = "BFGS",
-                                   control = list(trace = value$msVerbose,
-                                                  reltol = value$msTol,
-                                                  maxit = value$msMaxIter))
-                         } else {
-                             optim(st,
-                                   fn = function(pars) {
-                                       coef(x, unconst = TRUE) = pars
-                                       deviance(x, REML = value$REML)
-                                   },
-                                   method = "BFGS",
-                                   control = list(trace = value$msVerbose,
-                                                  reltol = value$msTol,
-                                                  maxit = value$msMaxIter))
-                         }
-                     if (optimRes$convergence != 0) {
-                         warning("optim failed to converge")
-                     }
-                     coef(x, unconst = TRUE) = optimRes$par
-                 } else {
-                     typsize <- rep(1.0, length(st))
-                     if (is.null(value$nlmStepMax))
-                         value$nlmStepMax <-
-                             max(100 * sqrt(sum((st/typsize)^2)), 100)
-                     nlmRes =
-                         nlm(f = if (value$analyticGradient) {
-                             function(pars) {
-                                 coef(x, unconst = TRUE) = pars
-                                 ans = deviance(x, REML = value$REML)
-                                 attr(ans, "gradient") =
-                                     gradient(x, REML = value$REML,
-                                              unconst = TRUE)
-                                 ans
-                             }
-                         } else {
-                             function(pars)
-                             {
-                                 coef(x, unconst = TRUE) = pars
-                                 deviance(x, REML = value$REML)
-                             }
-                         },
-                             p = st,
-                             print.level = if (value$msVerbose) 2 else 0,
-                             steptol = value$msTol,
-                             gradtol = value$msTol,
-                             stepmax = value$nlmStepMax,
-                             typsize=typsize,
-                             iterlim = value$msMaxIter)
-                     coef(x, unconst = TRUE) = nlmRes$estimate
+                 st <- ccoef(x)         # starting values
+                 nc <- x@nc
+                 nc <- nc[1:(length(nc) - 2)]
+                 constr <- unlist(lapply(nc, function(k) 1:((k*(k+1))/2) <= k))
+                 fn <- function(pars) {
+                     ccoef(x) <- pars
+                     deviance(x, REML = value$REML)
                  }
+                 gr <- if (value$analyticGradient)
+                     function(pars) {
+                         ccoef(x) <- pars
+                         grad <- lme4:::gradient(x, REML = value$REML, unconst = TRUE)
+                         grad[constr] <- -grad[constr]/pars[constr]
+                         grad
+                     } else NULL
+                 optimRes <- optim(st, fn, gr,
+                                   method = "L-BFGS-B",
+                                   lower = ifelse(constr, 1e-10, -Inf),
+                                   control = list(maxit = value$msMaxIter,
+                                   trace = as.integer(value$msVerbose)))
+                 if (optimRes$convergence != 0) {
+                     warning(paste("optim returned message",optimRes$message,"\n"))
+                 }
+                 ccoef(x) = optimRes$par
                  return(x)
              })
 

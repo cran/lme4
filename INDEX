@@ -3,12 +3,10 @@ Assay                   Bioassay on Cell Culture Plate
 BIC                     Bayesian Information Criterion
 BodyWeight              Rat weight over time for different diets
 Cefamandole             Pharmacokinetics of Cefamandole
-Chem97                  Scores on A-level Chemistry in 1997
 Contraception           Contraceptive use in Bangladesh
 Dialyzer                High-Flux Hemodialyzer
 Early                   Early childhood intervention study
 Earthquake              Earthquake Intensity
-Exam                    Exam scores from inner London
 Fatigue                 Cracks caused by metal fatigue
 GLMM                    Fit Generalized Linear Mixed Models via PQL
 GLMM-class              Class "GLMM"
