@@ -60,17 +60,19 @@ setMethod("lmer", signature(formula = "formula"),
                      function(x) list(model.matrix(eval(substitute(~term,
                                                                    list(term=x[[2]]))),
                                                    frm),
-                                      eval(substitute(as.factor(fac),
+                                      eval(substitute(as.factor(fac)[,drop = TRUE],
                                                       list(fac = x[[3]])), frm)))
           names(random) <- unlist(lapply(bars, function(x) deparse(x[[3]])))
           
           ## order factor list by decreasing number of levels
           nlev <- sapply(random, function(x) length(levels(x[[2]])))
-          if (any(diff(nlev) < 0)) {
+          if (any(diff(nlev) > 0)) {
               random <- random[rev(order(nlev))]
           }
+          fixed.form <- nobars(formula)
+          if (!inherits(fixed.form, "formula")) fixed.form <- ~ 1 # default formula
           mmats <- c(lapply(random, "[[", 1),
-                     .fixed = list(cbind(model.matrix(nobars(formula), frm),
+                     .fixed = list(cbind(model.matrix(fixed.form, frm),
                      .response = model.response(frm))))
           obj <- .Call("lmer_create", lapply(random, "[[", 2), mmats, PACKAGE = "Matrix")
           obj@call <- match.call()
@@ -103,8 +105,8 @@ setReplaceMethod("LMEoptimize", signature(x="lmer", value="list"),
                  }
                  gr <- if (value$analyticGradient)
                      function(pars) {
-                         ccoef(x) <- pars
-                         grad <- lme4:::gradient(x, REML = value$REML, unconst = TRUE)
+                         if (!is.all.equal(pars, ccoef(x))) ccoef(x) <- pars
+                         grad <- gradient(x, REML = value$REML, unconst = TRUE)
                          grad[constr] <- -grad[constr]/pars[constr]
                          grad
                      } else NULL

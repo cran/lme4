@@ -1,3 +1,15 @@
+2005-01-23  Douglas Bates  <bates@bates7>
+
+	* R/lmer.R (fn): In the gradient function passed to optim, check
+	if the parameters are equal to the current values before
+	installing them.  This could save an unnecessary decomposition.
+
+2005-01-22  Douglas Bates  <bates@bates7>
+
+	* R/lmer.R (lmer): Changes in formulas code to allow explicit
+	interactions in the grouping factors and formula without a fixed
+	term.
+
 2005-01-03  Douglas Bates  <bates@bates1-home>
 
 	* R/lmer.R: Switch from lmeRep to lmer representation
