@@ -2,7 +2,7 @@
  * @file   glmmStruct.c
  * @author Saikat DebRoy <saikat@stat.wisc.edu>
  * @author Douglas Bates <bates@stat.wisc.edu>
- * @date   $Date: 2003/06/24 17:38:32 $
+ * @date   $Date: 2003/07/04 04:25:01 $
  * 
  * @brief  functions for handling glmmStruct objects.
  * 
@@ -359,7 +359,7 @@ nlme_glmm_ranefIRLS(SEXP glmm,
         PROTECT(lcons(install("glmmLa2RespWt"),
                       cons(fam,
                            list4(eta, origy, w,
-                                 GET_SLOT(glmm,
+                                 GET_SLOT(reStruct,
                                           install("offset"))))));
     detaold = Calloc(nrow, double);
 

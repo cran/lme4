@@ -2,7 +2,7 @@
  * @file   reStruct.c
  * @author Saikat DebRoy <saikat@stat.wisc.edu>
  * @author Douglas Bates <bates@stat.wisc.edu>
- * @date   $Date: 2003/07/02 21:03:00 $
+ * @date   $Date: 2003/07/04 04:25:01 $
  * 
  * @brief  functions for handling reStruct objects.
  * 
@@ -1081,6 +1081,7 @@ nlme_reStructDims(SEXP reStruct)
 SEXP
 nlme_reStruct_fitted_internal(const SEXPREC* reStruct, SEXP ans)
 {
+    const SEXPREC* offset = GET_SLOT((SEXP)reStruct, install("offset"));
     const SEXPREC* random = GET_SLOT((SEXP)reStruct, install("random"));
     const SEXPREC* original = GET_SLOT((SEXP)reStruct, install("original"));
     const double* bbetas = REAL(GET_SLOT((SEXP)reStruct, install("bbetas")))-1;
@@ -1102,7 +1103,18 @@ nlme_reStruct_fitted_internal(const SEXPREC* reStruct, SEXP ans)
 /*         nrow = dim[0]; */
 /*     } */
     ans_d = REAL(ans);
-    memset(ans_d--, 0, nrow*sizeof(double));
+    if (LENGTH((SEXP)offset) == 0)
+        memset(ans_d, 0, nrow*sizeof(double));
+    else if (LENGTH((SEXP)offset) == 1) {
+        double off = asReal((SEXP)offset);
+        for (i = 0; i < nrow; i++)
+            ans_d[i] = off;
+    } else {
+        double* off = REAL((SEXP)offset);
+        for (i = 0; i < nrow; i++)
+            ans_d[i] = off[i];
+    }
+    ans_d--;
 
     for (i = 0; i < nlevel; i++) {
         const SEXPREC* lmeLevel = VECTOR_ELT((SEXP)random, i);
@@ -1126,6 +1138,7 @@ nlme_reStruct_fitted_internal(const SEXPREC* reStruct, SEXP ans)
                             &one);
         }
     }
+
     return ans;
 }
 

@@ -59,7 +59,7 @@ setMethod("GLMM", signature(formula = "formula", random = "list"),
           m$method <- method
           fit <- eval(m, parent.frame())
 
-          off <- fit@offset
+          off <- fit@reStruct@offset
           w <-  fit@prior.weights
           origy <- fit@origy
           fam <- fit@family

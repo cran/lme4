@@ -399,7 +399,9 @@ setMethod("LMEgradient", signature(x="reStruct", A="missing", nlev="missing"),
 
 setMethod("fitted", signature(object="reStruct"),
           function(object, ...)
-          .Call("nlme_reStruct_fitted", object, PACKAGE="lme4"))
+      {
+          .Call("nlme_reStruct_fitted", object, PACKAGE="lme4")
+      })
 
 setMethod("fixef", signature(object="reStruct"),
           function(object, ...) {

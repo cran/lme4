@@ -24,7 +24,6 @@ setMethod("glmmStruct", signature(formula = "formula",
           }
 
 
-          origFixed <- formula
           mcall1 <- mcall2 <- match.call()
 
           mcall1$random <- mcall1$nextraCols <- mcall1$method <- NULL
@@ -37,30 +36,18 @@ setMethod("glmmStruct", signature(formula = "formula",
               is.element(nm, c("data", "subset", "na.action",
                                "xlev", "offset", "weights"))
           for(i in nm[!keep]) mcall2[[i]] <- NULL
-          allvars <- c(all.vars(formula), all.vars(random), names(random))
+          allvars <- c(unlist(lapply(random, all.vars)), names(random))
           mcall2$formula <-
-              as.formula(paste(" ~", paste(allvars, collapse="+")))
+              as.formula(paste(paste(deparse(formula), collapse = ''),
+                               paste(allvars, collapse="+"), sep = "+"))
+          environment(mcall2$formula) <- environment(formula)
           mcall2$drop.unused.levels <- TRUE
           mcall2[[1]] <- as.name("model.frame")
           data <-  eval(mcall2, parent.frame())
-          rm(mcall2)
 
-          form <- ~ foo
-          form[[2]] <- formula[[3]]
-          allvars <- c(all.vars(form), all.vars(random),
-                       names(random))
-          responseNames <- c("zz", paste("zz", seq(along=allvars),
-                                         sep=""))
-          responseName <- responseNames[!(responseNames %in% allvars)][1]
-          formula[[2]] <- as.name(responseName)
           if (is.null(glmFit$offset))
               glmFit$offset <- 0.0
-          data[[responseName]] <-
-              glmFit$linear.predictor + glmFit$residuals - glmFit$offset
-          data <- model.frame(as.formula(paste(responseName, "~",
-                                               paste(allvars,
-                                                     collapse="+"))),
-                              data=data, ...)
+
           ans <- new("glmm",
                      reStruct = reStruct(fixed=formula,
                                          random=random,
@@ -75,7 +62,9 @@ setMethod("glmmStruct", signature(formula = "formula",
           rm(data)
           origOrder <- ans@reStruct@origOrder
 
-          ans@reStruct@fixed <- origFixed
+          zz <- (glmFit$linear.predictor + glmFit$residuals -
+                 glmFit$offset) * sqrt(abs(glmFit$weights))
+          response(ans@reStruct) <- zz[origOrder]
           ans@origy <- as.numeric(glmFit$y[origOrder])
           ans@n <- local({
               y <- model.response(glmFit$model, "numeric")
@@ -90,8 +79,8 @@ setMethod("glmmStruct", signature(formula = "formula",
               n
           })[origOrder]
           if (length(glmFit$offset) == 1)
-              ans@offset <- glmFit$offset
-          else ans@offset <- glmFit$offset[origOrder]
+              ans@reStruct@offset <- glmFit$offset
+          else ans@reStruct@offset <- glmFit$offset[origOrder]
           if (length(glmFit$prior.weights) == 1)
               ans@prior.weights <- glmFit$prior.weights
           else ans@prior.weights <- glmFit$prior.weights[origOrder]
