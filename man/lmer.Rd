@@ -1,19 +1,21 @@
 \name{lmer}
 \docType{genericFunction}
 \alias{lmer}
-\alias{lmer,formula-method}
+\alias{lmer,formula,ANY,ANY-method}
+\alias{lmer,formula,ANY,missing-method}
 \title{Fit linear mixed-effects models}
 \description{
   This generic function fits a linear mixed-effects model with nested or
   crossed grouping factors for the random effects.
 }
 \synopsis{
-lmer(formula, data, method = c("REML", "ML"),
+lmer(formula, data, family, method = c("REML", "ML", "PQL", "Laplace", "AGQ"),
     control = list(), subset, weights, na.action, offset,
     model = TRUE, x = FALSE, y = FALSE, \dots)
 }
 \usage{
-lmer(formula, data, \dots)
+lmer(formula, data, family,
+     method = c("REML", "ML", "PQL", "Laplace", "AGQ"),\dots)
 }
 \arguments{
   \item{formula}{a two-sided linear formula object describing the
@@ -24,11 +26,33 @@ lmer(formula, data, \dots)
   \item{data}{an optional data frame containing the variables named in
     \code{formula}.  By default the variables are taken from the
     environment from which \code{lmer} is called.}
- \item{\dots}{Optional arguments for methods.  Currently none are used.}
+  \item{family}{
+    a GLM family, see \code{\link[stats]{glm}}.  If \code{family} is
+    missing then a linear mixed model is fit; otherwise a generalized
+    linear mixed model is fit.}
+  \item{method}{a character string.  For a linear mixed model the
+    default is \code{"REML"} indicating that the model should be fit by
+    maximizing the restricted log-likelihood.  The alternative is
+    \code{"ML"} indicating that the log-likelihood should be
+    maximized.  (This method is sometimes called "full" maximum
+    likelihood.)  For a generalized linear mixed model the criterion
+    is always the log-likelihood but this criterion does not have a
+    closed form expression and must be approximated.  The default approximation is
+    \code{"PQL"} or penalized quasi-likelihood.  Alternatives are
+    \code{"Laplace"} or \code{"AGQ"} indicating the Laplacian and
+    adaptive Gaussian quadrature approximations respectively.  The
+    \code{"PQL"} method is fastest but least accurate.  The
+    \code{"Laplace"} method is intermediate in speed and accuracy.
+    The \code{"AGQ"} method is the most accurate but can be
+    considerably slower than the others.}
+  \item{\dots}{Optional arguments for methods.  Currently none are used.}
+  }
 }
 \details{
   This is a revised version of the \code{lme} function from the
-  \code{nlme} package.
+  \code{nlme} package.  This version uses a different method of
+  specifying random-effects terms and allows for fitting generalized
+  linear mixed models as well as linear mixed models.
   
   Additional standard arguments to model-fitting functions can be passed
   to \code{lmer}.
@@ -38,9 +62,6 @@ lmer(formula, data, \dots)
       vector, or a numeric vector indicating which observation numbers are
       to be included, or a  character  vector of the row names to be
       included.  All observations are included by default.}
-    \item{method}{a character string.  If \code{"REML"} the model is fit by
-      maximizing the restricted log-likelihood.  If \code{"ML"} the
-      log-likelihood is maximized.  Defaults to \code{"REML"}.}
     \item{na.action}{a function that indicates what should happen when the
       data contain \code{NA}s.  The default action (\code{na.fail}) causes
       \code{lme} to print an error message and terminate if there are any

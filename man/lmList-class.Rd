@@ -3,11 +3,12 @@
 \alias{lmList-class}
 \alias{coef,lmList-method}
 \alias{formula,lmList-method}
-\alias{intervals,lmList-method}
+\alias{confint,lmList-method}
 \alias{plot,lmList-method}
 \alias{pooledSD,lmList-method}
 \alias{show,lmList-method}
 \alias{update,lmList-method}
+\alias{plot,lmList.confint-method}
 \title{Class "lmList"}
 \description{A list of objects of class \code{lm} with a common model.}
 \section{Objects from the Class}{
@@ -34,10 +35,8 @@ Class \code{"vector"}, by class "list".
       coefficients for the linear models.}
     \item{formula}{\code{signature(x = "lmList")}: extract the formula
       used when creating the lmList object.}
-    \item{intervals}{\code{signature(object = "lmList")}: confidence
+    \item{confint}{\code{signature(object = "lmList")}: confidence
       intervals for the fitted linear models.}
-    \item{plot}{\code{signature(x = "lmList")}: plot the fitted linear
-      models.}
     \item{pooledSD}{\code{signature(object = "lmList")}: the pooled
       standard deviation estimate from the fitted linear models.}
     \item{\link[methods:show]{show}}{\code{signature(object =

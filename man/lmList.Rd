@@ -56,7 +56,7 @@ lmList(formula, data, level, subset, na.action, pool)
 \code{\link[base:lm]{lm}}
 }
 \examples{
-(fm1 <- lmList(weight ~ Time | Chick, do.call("data.frame", ChickWeight)))
+(fm1 <- lmList(breaks ~ wool | tension, warpbreaks))
 }
 \keyword{models}
 

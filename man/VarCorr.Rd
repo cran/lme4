@@ -23,7 +23,7 @@ VarCorr(x, \dots)
 \value{
   an object of class \code{VarCorr}.
 }
-\seealso{\code{\link{lmer}}, \code{\link{GLMM}}, \code{\link{VarCorr-class}}}
+\seealso{\code{\link{lmer}}, \code{\link{VarCorr-class}}}
 \examples{
 (fm1 <- lmer(decrease ~ treatment + (1|rowpos) + (1|colpos),
              OrchardSprays))

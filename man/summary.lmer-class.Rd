@@ -17,7 +17,7 @@
       display the correlation of the fixed-effects estimates when
       showing the object.}
     All the other slots are inherited from the
-    \code{\link[Matrix]{lmer-class}{lmer}} class which is contained by
+    \code{\link{lmer-class}{lmer}} class which is contained by
     this class.
   }
 }

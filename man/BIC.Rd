@@ -2,6 +2,7 @@
 \docType{genericFunction}
 \alias{BIC}
 \alias{BIC,logLik-method}
+\alias{BIC,ANY-method}
 \title{Bayesian Information Criterion}
 \description{
   This generic function calculates the Bayesian information criterion,
@@ -35,9 +36,6 @@ BIC(object, \dots)
   Schwarz, G. (1978) "Estimating the Dimension of a Model", Annals of
   Statistics, 6, 461-464.
 }
-%\author{}
-%\note{}
-\seealso{\code{\link[base:logLik]{logLik}}, \code{\link{AIC}}}
-%\examples{}
+\seealso{\code{\link[base]{logLik}}, \code{\link[stats]{AIC}}}
 \keyword{models}
 

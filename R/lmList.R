@@ -1,16 +1,14 @@
-
-
-          
+## List of linear models according to a grouping factor
 
 setMethod("lmList", signature(formula = "formula", data = "data.frame"),
           function(formula, data, level, subset, na.action, pool)
       {
-          mCall = frmCall = match.call()
-          resp = getResponseFormula(formula)[[2]]
-          cov = getCovariateFormula(formula)[[2]]
-          lmForm = eval(substitute(resp ~ cov))
-          gfm = getGroupsFormula(formula)
-          if (is.null(gfm)) gfm = getGroupsFormula(data)
+          mCall <- frmCall <- match.call()
+          resp <- getResponseFormula(formula)[[2]]
+          cov <- getCovariateFormula(formula)[[2]]
+          lmForm <- eval(substitute(resp ~ cov))
+          gfm <- getGroupsFormula(formula)
+          if (is.null(gfm)) gfm <- getGroupsFormula(data)
           if (is.null(gfm))
               stop("Unable to determine a grouping formula from either the formula or the data")
           val <- lapply(split(data, eval(gfm[[2]], data)),
@@ -24,7 +22,7 @@ setMethod("lmList", signature(formula = "formula", data = "data.frame"),
                             NULL
                         else ans
                     }, formula = lmForm)
-          if (missing(pool)) pool = TRUE
+          if (missing(pool)) pool <- TRUE
           new("lmList", val, call = mCall, pool = pool)
       })
 
@@ -34,10 +32,10 @@ setMethod("coef", signature(object = "lmList"),
           function(object, augFrame = FALSE, data = NULL,
                    which = NULL, FUN = mean, omitGroupingFactor = TRUE, ...)
       {
-          coefs = lapply(object, coef)
-          non.null = !unlist(lapply(coefs, is.null))
+          coefs <- lapply(object, coef)
+          non.null <- !unlist(lapply(coefs, is.null))
           if (sum(non.null) > 0) {
-              template = coefs[non.null][[1]]
+              template <- coefs[non.null][[1]]
               if (is.numeric(template)) {
                   co <- matrix(template,
                                ncol = length(template),
@@ -45,22 +43,22 @@ setMethod("coef", signature(object = "lmList"),
                                byrow = TRUE,
                                dimnames = list(names(object), names(template)))
                   for (i in names(object)) {
-                      co[i,] = if (is.null(coefs[[i]])) { NA } else coefs[[i]]
+                      co[i,] <- if (is.null(coefs[[i]])) { NA } else coefs[[i]]
                   }
-                  coefs = as.data.frame(co)
-                  effectNames = names(coefs)
+                  coefs <- as.data.frame(co)
+                  effectNames <- names(coefs)
                   if(augFrame) {
                       if (is.null(data)) {
-                          data = getData(object)
+                          data <- getData(object)
                       }
-                      data = as.data.frame(data)
+                      data <- as.data.frame(data)
                       if (is.null(which)) {
-                          which = 1:ncol(data)
+                          which <- 1:ncol(data)
                       }
-                      data = data[, which, drop = FALSE]
+                      data <- data[, which, drop = FALSE]
                       ## eliminating columns with same names as effects
-                      data = data[, is.na(match(names(data), effectNames)), drop = FALSE]
-                      data = gsummary(data, FUN = FUN, groups = getGroups(object))
+                      data <- data[, is.na(match(names(data), effectNames)), drop = FALSE]
+                      data <- gsummary(data, FUN = FUN, groups = getGroups(object))
                       if (omitGroupingFactor) {
                           data <- data[, is.na(match(names(data),
                                                      names(getGroupsFormula(object,
@@ -68,13 +66,13 @@ setMethod("coef", signature(object = "lmList"),
                                        drop = FALSE]
                       }
                       if (length(data) > 0) {
-                          coefs = cbind(coefs, data[row.names(coefs),,drop = FALSE])
+                          coefs <- cbind(coefs, data[row.names(coefs),,drop = FALSE])
                       }
                   }
-                  attr(coefs, "level") = attr(object, "level")
-                  attr(coefs, "label") = "Coefficients"
-                  attr(coefs, "effectNames") = effectNames
-                  attr(coefs, "standardized") = FALSE
+                  attr(coefs, "level") <- attr(object, "level")
+                  attr(coefs, "label") <- "Coefficients"
+                  attr(coefs, "effectNames") <- effectNames
+                  attr(coefs, "standardized") <- FALSE
                   #attr(coefs, "grpNames") <- deparse(getGroupsFormula(object)[[2]])
                   #class(coefs) <- c("coef.lmList", "ranef.lmList", class(coefs))
               }
@@ -85,15 +83,15 @@ setMethod("coef", signature(object = "lmList"),
 setMethod("show", signature(object = "lmList"),
           function(object)
       {
-          mCall = object@call
+          mCall <- object@call
           cat("Call:", deparse(mCall), "\n")
           cat("Coefficients:\n")
           invisible(print(coef(object)))
           if (object@pool) {
               cat("\n")
-              poolSD = pooledSD(object)
-              dfRes = attr(poolSD, "df")
-              RSE = c(poolSD)
+              poolSD <- pooledSD(object)
+              dfRes <- attr(poolSD, "df")
+              RSE <- c(poolSD)
               cat("Degrees of freedom: ", length(unlist(lapply(object, fitted))),
                   " total; ", dfRes, " residual\n", sep = "")
               cat("Residual standard error:", format(RSE))
@@ -109,7 +107,7 @@ setMethod("pooledSD", signature(object = "lmList"),
                                      if (is.null(el)) {
                                          c(0,0)
                                      } else {
-                                         res = resid(el)
+                                         res <- resid(el)
                                          c(sum(res^2), length(res) - length(coef(el)))
                                   }
                               }), 1, sum)
@@ -121,13 +119,74 @@ setMethod("pooledSD", signature(object = "lmList"),
           val
       })
 
-# setMethod("intervals", signature(object = "lmList", level = "ANY"),
-#           function(object, level = 0.95, ...)
-#           cat("intervals method for lmList not yet implemented\n"))
+setMethod("confint", signature(object = "lmList"),
+          function(object, parm, level = 0.95, ...)
+      {
+          mCall <- match.call()
+          if (length(object) < 1)
+              return(new("lmList.confint", array(numeric(0), c(0,0,0))))
+          mCall$object <- object[[1]]
+          template <- eval(mCall)
+          val <- array(template, c(dim(template), length(object)),
+                       c(dimnames(template), list(names(object))))
+          for (i in seq(along = object)) {
+              mCall$object <- object[[i]]
+              val[,,i] <- eval(mCall)
+          }
+          new("lmList.confint", aperm(val, c(3, 2, 1)))
+      }, valueClass = "lmList.confint")
 
-# setMethod("plot", signature(x = "lmList"),
-#           function(x, y, ...)
-#           cat("plot method for lmList not yet implemented\n"))
+setMethod("plot", signature(x = "lmList.confint"),
+          function(x, y, ...)
+      {
+          stopifnot(require("lattice"))
+          arr <- as(x, "array")
+          dd <- dim(arr)
+          dn <- dimnames(arr)
+          ll <- length(arr)
+          df <- data.frame(group = gl(dd[1], dd[2] * dd[3], lab = dn[[1]]),
+                           intervals = as.vector(arr),
+                           what = gl(dd[3], 1, len = ll, lab = dn[[3]]),
+                           end = gl(dd[2], dd[3], len = ll))
+          dots <- list(...)
+          strip <- dots[["strip"]]
+          if (is.null(strip)) {
+              strip <- function(...) strip.default(..., style = 1)
+          }
+          xlab <- dots[["xlab"]]
+          if (is.null(xlab)) xlab <- ""
+          ylab <- dots[["ylab"]]
+          if (is.null(ylab)) ylab <- ""
+          dotplot(group ~ intervals | what,
+                  data = df,
+                  scales = list(x="free"),
+                  strip = strip,
+                  xlab = xlab, ylab = ylab,
+                  panel = function(x, y, pch = dot.symbol$pch,
+                  col = dot.symbol$col, cex = dot.symbol$cex,
+                  font = dot.symbol$font, ...)
+              {
+                  x <- as.numeric(x)
+                  y <- as.numeric(y)
+                  ok <- !is.na(x) & !is.na(y)
+                  yy <- y[ok]
+                  xx <- x[ok]
+                  dot.symbol <- trellis.par.get("dot.symbol")
+                  dot.line <- trellis.par.get("dot.line")
+                  panel.abline(h = yy, lwd = dot.line$lwd, lty = dot.line$lty, col =
+                               dot.line$col)
+                  lpoints(xx, yy, pch = "|", col = col, cex = cex, font = font, ...)
+                  lower <- tapply(xx, yy, min)
+                  upper <- tapply(xx, yy, max)
+                  nams <- as.numeric(names(lower))
+                  lsegments(lower, nams, upper, nams, col = 1, lty = 1, lwd =
+                            if (dot.line$lwd) {
+                                dot.line$lwd
+                            } else {
+                                2
+                            })
+              }, ...)
+      })
 
 setMethod("update", signature(object = "lmList"),
           function(object, formula., ..., evaluate = TRUE)

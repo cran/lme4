@@ -1,11 +1,9 @@
-\name{fixed.effects}
+\name{fixef}
 \docType{genericFunction}
-\alias{fixed.effects}
 \alias{fixef}
+\alias{fixed.effects}
 \alias{fixef,ANY-method}
-\alias{fixef,ssclme-method}
 \alias{fixef,lmer-method}
-\alias{fixef,lme-method}
 \title{Extract Fixed Effects}
 \description{
   Extract the estimates of the fixed effects parameters from a fitted model.
@@ -23,6 +21,8 @@ fixed.effects(object, \dots)  # deprecated
 \value{
   a named numeric vector of fixed effects estimates.
 }
-%\seealso{}
-%\examples{}
+\examples{
+fixef(lmer(decrease ~ treatment + (1|rowpos) + (1|colpos),
+             OrchardSprays))
+}
 \keyword{models}

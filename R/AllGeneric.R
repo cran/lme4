@@ -1,21 +1,3 @@
-## The generics Names, and Names<- will be deprecated in nlme_4.0
-# if (!isGeneric("Names")) {
-#     setGeneric("Names", function(object, ...)
-#            {
-#                .Deprecated("names")
-#                standardGeneric("Names")
-#            })
-# }
-
-# if (!isGeneric("Names<-")) {
-#     setGeneric("Names<-",
-#                function(object, value)
-#            {
-#                .Deprecated("names<-")
-#                standardGeneric("Names<-")
-#            })
-# }
-
 if (!isGeneric("getGroups")) {
     ## Return the groups associated with object according to form.
     setGeneric("getGroups",
@@ -46,21 +28,12 @@ if (!isGeneric("getResponse")) {
                standardGeneric("getResponse"))
 }
 
-## FIXME: Modify the generic to have a call argument
-setGeneric("lme",
-          function(formula, data, random,
-                   method = c("REML", "ML"),
-                   control = list(),
-                   subset, weights, na.action, offset,
-                   model = TRUE, x = FALSE, y = FALSE,...)
-           standardGeneric("lme"))
-
 setGeneric("lmer",
-          function(formula, data,
-                   method = c("REML", "ML"),
-                   control = list(),
-                   subset, weights, na.action, offset,
-                   model = TRUE, x = FALSE, y = FALSE,...)
+           function(formula, data, family,
+                    method = c("REML", "ML", "PQL", "Laplace", "AGQ"),
+                    control = list(),
+                    subset, weights, na.action, offset,
+                    model = TRUE, x = FALSE, y = FALSE,...)
            standardGeneric("lmer"))
 
 if (!isGeneric("LMEoptimize<-")) {
@@ -72,7 +45,7 @@ if (!isGeneric("fixef")) {
     setGeneric("fixef", function(object, ...) standardGeneric("fixef"))
 }
 
-fixed.effects = function(object, ...) {
+fixed.effects <- function(object, ...) {
     ## fixed.effects was an alternative name for fixef
     .Deprecated("fixef")
     mCall = match.call()
@@ -81,11 +54,11 @@ fixed.effects = function(object, ...) {
 }
 
 if (!isGeneric("ranef")) {
-    setGeneric("ranef", function(object, ...)
+    setGeneric("ranef", function(object, accumulate = FALSE, ...)
                standardGeneric("ranef"))
 }
 
-random.effects = function(object, ...) {
+random.effects <- function(object, ...) {
     ## random.effects was an alternative name for ranef
     .Deprecated("ranef")
     mCall = match.call()
@@ -102,30 +75,11 @@ setMethod("BIC", "logLik",
           -2 * (c(object) - attr(object, "df") * log(attr(object, "nobs"))/2)
           )
 
-## FIXME: Can this be replaced by confint?
-# if (!isGeneric("intervals")) {
-#     setGeneric("intervals",
-#                function(object, level = 0.95, ...)
-#                standardGeneric("intervals"))
-# }
 
 if (!isGeneric("lmList")) {
     setGeneric("lmList",
                function(formula, data, level, subset, na.action, pool)
                standardGeneric("lmList"))
-}
-
-if (!isGeneric("GLMM")) {
-    setGeneric("GLMM",
-               function(formula, family, data, random,
-                        method = c("PQL", "Laplace"),
-                        control = list(),
-                        subset,
-                        weights,
-                        na.action,
-                        offset,
-                        model = TRUE, x = FALSE, y = FALSE, ...)
-               standardGeneric("GLMM"))
 }
 
 if (!isGeneric("pooledSD")) {
@@ -151,3 +105,13 @@ if (!isGeneric("gsummary")) {
                     invariantsOnly = FALSE, ...)
                standardGeneric("gsummary"))
 }
+
+if (!isGeneric("param")) {              # not exported
+    setGeneric("param", function(object, ...) standardGeneric("param"))
+}
+
+if (!isGeneric("param<-")) {              # not exported
+    setGeneric("param<-", function(object, ..., value)
+               standardGeneric("param<-"))
+}
+

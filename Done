@@ -1,0 +1,3 @@
+- anova method for lmer objects.  Will entail saving the terms
+  attribute.
+- Move large data sets into a MEMSS or mlmRev package

@@ -6,15 +6,19 @@
 \alias{coerce,lmer,dsTMatrix-method}
 \alias{coerce,lmer,dtTMatrix-method}
 \alias{coef,lmer-method}
+\alias{confint,lmer-method}
 \alias{deviance,lmer-method}
 \alias{formula,lmer-method}
+\alias{fitted,lmer-method}
 \alias{logLik,lmer-method}
 \alias{residuals,lmer-method}
 \alias{show,lmer-method}
 \alias{summary,lmer-method}
 \alias{update,lmer-method}
 \alias{vcov,lmer-method}
-\title{lme models representation}
+\alias{plot,lmer.ranef-method}
+\alias{plot,lmer.coef-method}
+\title{lmer model representation}
 \description{A representation of a linear mixed-effects model using a
   blocked, sparse, symmetric, column-oriented matrix and dense matrices.}
 \section{Objects from the Class}{
