@@ -824,12 +824,14 @@ with the underlying C code) and not 1-based as is common in R.
 > str(m1)
 \end{Sinput}
 \begin{Soutput}
-Formal class 'cscMatrix' [package "Matrix"] with 5 slots
-  ..@ p            : int [1:5] 0 3 5 8 10
-  ..@ i            : int [1:10] 0 2 3 1 2 0 3 4 3 4
-  ..@ x            : num [1:10] 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1
-  ..@ Dim          : int [1:2] 5 4
-  ..@ factorization: list()
+ list()
+ - attr(*, "p")= int [1:5] 0 3 5 8 10
+ - attr(*, "i")= int [1:10] 0 2 3 1 2 0 3 4 3 4
+ - attr(*, "x")= num [1:10] 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1
+ - attr(*, "Dim")= int [1:2] 5 4
+ - attr(*, "factorization")= list()
+ - attr(*, "class")= atomic [1:1] cscMatrix
+  ..- attr(*, "package")= chr "Matrix"
 \end{Soutput}
 \begin{Sinput}
 > as(m1, "matrix")

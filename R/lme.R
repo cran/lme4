@@ -360,7 +360,7 @@ setMethod("ranef", signature(object = "lme"),
           function(object, ...)
       {
           object = object@rep
-          callGeneric()
+          lapply(callGeneric(), as.data.frame)
       })
 
 setMethod("coef", signature(object = "lme"),

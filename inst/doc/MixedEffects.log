@@ -1,8 +1,8 @@
-This is pdfTeXk, Version 3.14159-1.10b (Web2C 7.4.5) (format=pdflatex 2004.5.14)  6 JUL 2004 15:42
+This is pdfTeXk, Version 3.14159-1.10b (Web2C 7.4.5) (format=pdflatex 2004.6.19)  10 JUL 2004 09:30
  file:line:error style messages enabled.
-**\nonstopmode \input /afs/cs.wisc.edu/u/b/a/bates/src/Rlibs/lme4/inst/doc/Mixe
+**\nonstopmode \input /b7/gitika-home/deepayan/svn-src/Rlibs/lme4/inst/doc/Mixe
 dEffects.tex
-(/afs/cs.wisc.edu/u/b/a/bates/src/Rlibs/lme4/inst/doc/MixedEffects.tex
+(/b7/gitika-home/deepayan/svn-src/Rlibs/lme4/inst/doc/MixedEffects.tex
 (/usr/share/texmf/tex/latex/base/article.cls
 Document Class: article 2001/04/21 v1.4e Standard LaTeX document class
 (/usr/share/texmf/tex/latex/base/size12.clo
@@ -20,7 +20,7 @@ File: size12.clo 2001/04/21 v1.4e Standard LaTeX file (size option)
 \belowcaptionskip=\skip42
 \bibindent=\dimen102
 )
-(/usr/local/lib/R/share/texmf/Sweave.sty
+(/b8/r-src/r-patched-build/share/texmf/Sweave.sty
 (/usr/share/texmf/tex/latex/base/fontenc.sty
 Package: fontenc 2001/06/05 v1.94 Standard LaTeX package
 
@@ -79,7 +79,7 @@ Style option: `fancyvrb' v2.7, with DG/SPQR fixes <2000/03/21> (tvz)
 \FV@StepNumber=\count90
 \FV@OutFile=\write3
 )
-(/usr/local/lib/R/share/texmf/upquote.sty
+(/b8/r-src/r-patched-build/share/texmf/upquote.sty
 Package: upquote 2003/08/11 v1.1 Covington's upright-quote modification to verb
 atim and verb
 
@@ -98,31 +98,17 @@ Package: hyperref 2003/01/22 v6.73n Hypertext links for LaTeX
 (/usr/share/texmf/tex/latex/hyperref/pd1enc.def
 File: pd1enc.def 2003/01/22 v6.73n Hyperref: PDFDocEncoding definition (HO)
 )
-(/usr/local/lib/R/share/texmf/hyperref.cfg
-(/usr/share/texmf/tex/latex/graphics/color.sty
-Package: color 1999/02/16 v1.0i Standard LaTeX Color (DPC)
-
-(/usr/share/texmf/tex/latex/config/color.cfg
-File: color.cfg 2001/08/31 v1.1 color configuration of teTeX/TeXLive
-)
-Package color Info: Driver file: pdftex.def on input line 125.
-)
-Package hyperref Info: Option `hyperindex' set `true' on input line 16.
-Package hyperref Info: Option `colorlinks' set `true' on input line 16.
-Package hyperref Info: Option `linktocpage' set `true' on input line 16.
-Package hyperref Info: Option `plainpages' set `false' on input line 16.
+(/usr/share/texmf/tex/latex/config/hyperref.cfg
+File: hyperref.cfg 2002/06/06 v1.2 hyperref configuration of TeXLive and teTeX
 )
 Package hyperref Info: Hyper figures OFF on input line 1792.
 Package hyperref Info: Link nesting OFF on input line 1797.
 Package hyperref Info: Hyper index ON on input line 1800.
-Package hyperref Info: Plain pages OFF on input line 1807.
-Package hyperref Info: Backreferencing ON on input line 1810.
+Package hyperref Info: Plain pages ON on input line 1805.
+Package hyperref Info: Backreferencing OFF on input line 1812.
 
 Implicit mode ON; LaTeX internals redefined
 Package hyperref Info: Bookmarks ON on input line 1916.
-(/usr/share/texmf/tex/latex/hyperref/backref.sty
-Package: backref 2002/06/09 v1.20 Bibliographical back referencing
-)
 (/usr/share/texmf/tex/latex/misc/url.sty
 \Urlmuskip=\muskip10
 Package: url 1999/03/28  ver 1.5x  Verb mode for urls, etc.
@@ -136,12 +122,12 @@ LaTeX Info: Redefining \url on input line 2055.
 Package hyperref Info: Hyper figures OFF on input line 2513.
 Package hyperref Info: Link nesting OFF on input line 2518.
 Package hyperref Info: Hyper index ON on input line 2521.
-Package hyperref Info: backreferencing ON on input line 2526.
-Package hyperref Info: Link coloring ON on input line 2531.
+Package hyperref Info: backreferencing OFF on input line 2528.
+Package hyperref Info: Link coloring OFF on input line 2533.
 \c@Item=\count94
 \c@Hfootnote=\count95
 )
-*hyperref using driver hpdftex*
+*hyperref using default driver hpdftex*
 (/usr/share/texmf/tex/latex/hyperref/hpdftex.def
 File: hpdftex.def 2003/01/22 v6.73n Hyperref driver for pdfTeX
 
@@ -288,7 +274,7 @@ loading : Context Support Macros / PDF
 \nofMParguments=\count117
 \everyMPtoPDFconversion=\toks25
 )
-Package hyperref Info: Link coloring ON on input line 15.
+Package hyperref Info: Link coloring OFF on input line 15.
  (/usr/share/texmf/tex/latex/hyperref/nameref.sty
 Package: nameref 2001/01/27 v2.19 Cross-referencing by name of section
 \c@section@level=\count118
@@ -299,7 +285,6 @@ LaTeX Info: Redefining \pageref on input line 15.
 (./MixedEffects.out)
 \openout4 = `MixedEffects.out'.
 
-Package backref Info: ** backref set up for natbib ** on input line 15.
 LaTeX Font Info:    Try loading font information for T1+aett on input line 23.
  (/usr/share/texmf/tex/latex/ae/t1aett.fd
 File: t1aett.fd 1997/11/16 Font definitions for T1/aett.
@@ -318,31 +303,27 @@ File: MixedEffects-FigZtZ.pdf Graphic file (type pdf)
 File: MixedEffects-FigScotsProj.pdf Graphic file (type pdf)
 
 <use MixedEffects-FigScotsProj.pdf> [11] [12 <./MixedEffects-FigScotsProj.pdf>]
-[13] [14] [15] [16] (./MixedEffects.bbl (./MixedEffects.brf)
-\tf@brf=\write6
-\openout6 = `MixedEffects.brf'.
-
- [17]
-Underfull \hbox (badness 1205) in paragraph at lines 28--28
+[13] [14] [15] [16] (./MixedEffects.bbl [17]
+Underfull \hbox (badness 1205) in paragraph at lines 25--28
 []/aer12/George Kara-pis.  Metis: Fam-ily of mul-ti-level par-tion-ing al-go-ri
 thms.
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 90--90
+Underfull \hbox (badness 10000) in paragraph at lines 87--90
 []/aer12/Sivan Toledo.  Taucs: A li-brary of sparse lin-ear solvers.
  []
 
 ) [18] (./MixedEffects.aux) ) 
 Here is how much of TeX's memory you used:
- 4836 strings out of 95429
- 63337 string characters out of 1190138
- 117956 words of memory out of 1000001
- 7649 multiletter control sequences out of 10000+50000
+ 4745 strings out of 95399
+ 62036 string characters out of 1189708
+ 116756 words of memory out of 1000001
+ 7566 multiletter control sequences out of 10000+50000
  49876 words of font info for 108 fonts, out of 500000 for 1000
- 22 hyphenation exceptions out of 1000
- 35i,11n,36p,880b,378s stack positions out of 1500i,500n,5000p,200000b,5000s
- 378 PDF objects out of 300000
+ 54 hyphenation exceptions out of 1000
+ 35i,11n,36p,880b,365s stack positions out of 1500i,500n,5000p,200000b,5000s
+ 356 PDF objects out of 300000
  74 named destinations out of 131072
  131 words of extra memory for PDF output out of 65536
 </usr/share/texmf/fonts/type1/bluesky/cmextra/cmmi
@@ -362,4 +343,4 @@ pfb></usr/share/texmf/fonts/type1/bluesky/cm/cmbx10.pfb>{/usr/share/texmf/dvips
 /tetex/09fbbfac.enc}</usr/share/texmf/fonts/type1/bluesky/cm/cmtt12.pfb></usr/s
 hare/texmf/fonts/type1/bluesky/cm/cmr12.pfb></usr/share/texmf/fonts/type1/blues
 ky/cm/cmr17.pfb>
-Output written on MixedEffects.pdf (18 pages, 280494 bytes).
+Output written on MixedEffects.pdf (18 pages, 270691 bytes).

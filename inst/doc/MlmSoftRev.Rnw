@@ -72,7 +72,7 @@ sysgc.time(Em2 <- lme(normexam ~ standLRT * sex + schgend,
 summary(Em2)
 sysgc.time(Em3 <- lme(normexam ~ standLRT * sex + schgend, 
                        Exam, ~ standLRT|school), gc = TRUE)
-summary(mE3)
+summary(Em3)
 @ 
 
 There are some interesting aspects of data management that show up in

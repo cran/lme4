@@ -194,6 +194,9 @@ setMethod("show", signature(object="summary.ssclme"),
               REML = length(object@REML) > 0 && object@REML[1]
               cat("Random effects:\n")
               show(object@VarCorr)
+              cat(sprintf("# of obs: %d, groups: ", object@nobs))
+              cat(paste(paste(names(object@ngrps), object@ngrps, sep = ", "), collapse = "; "))
+              cat("\n")
               if (!useScale)
                   cat("\nEstimated scale (compare to 1) ", object@scale, "\n")
               cm = object@coefficients
@@ -232,16 +235,6 @@ setMethod("show", signature(object="summary.ssclme"),
                       }
                   }
               }
-              cat("\nNumber of Observations:", object@nobs)
-              cat("\nNumber of Groups: ")
-              ngrps <- object@ngrps
-              if ((length(ngrps)) == 1) {
-                  cat(ngrps,"\n")
-              } else {				# multiple nesting
-                  cat("\n")
-                  print(ngrps)
-              }
-
           })
 
 
