@@ -33,13 +33,12 @@ convertFromS3groupedData(from)
   ignored.
 }
 \value{
-  An object of formal class \code{groupedData}
+  An object of the same class as \code{data} with additional attributes.
 }
 %\references{ ~put references to the literature/web site here ~ }
 %\author{ ~~who you are~~ }
 %\note{ ~~further notes~~ }
-
-\seealso{\code{\link{groupedData-class}}}
+%\seealso{}
 \examples{}
 \keyword{manip}
 

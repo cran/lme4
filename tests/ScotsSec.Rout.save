@@ -1,6 +1,6 @@
 
-R : Copyright 2004, The R Foundation for Statistical Computing
-Version 2.0.1  (2004-11-15), ISBN 3-900051-07-0
+R : Copyright 2005, The R Foundation for Statistical Computing
+Version 2.1.0 Under development (unstable) (2005-01-20), ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -329,4 +329,51 @@ Correlation of Fixed Effects:
 verbal       0.187              
 sexF        -0.518 -0.178       
 verbal:sexF -0.131 -0.680  0.161
+> lmer(attain ~ verbal * sex + (1|primary) + (1|second), ScotsSec,
++      control = list(EMv = 1, msV = 1))
+  EM iterations
+  0 14876.878 ( 8.70355:   -2.73) ( 67.7961: -0.0467)
+  1 14872.858 ( 10.3663:   -1.57) ( 81.3411: -0.0323)
+  2 14870.897 ( 11.6441:  -0.979) ( 94.3742: -0.0230)
+  3 14869.872 ( 12.6156:  -0.645) ( 106.565: -0.0170)
+  4 14869.309 ( 13.3494:  -0.440) ( 117.823: -0.0130)
+  5 14868.984 ( 13.9012:  -0.307) ( 128.164: -0.0102)
+  6 14868.788 ( 14.3146:  -0.218) ( 137.651:-0.00821)
+  7 14868.665 ( 14.6234:  -0.157) ( 146.360:-0.00674)
+  8 14868.585 ( 14.8535:  -0.113) ( 154.371:-0.00562)
+  9 14868.530 ( 15.0243: -0.0822) ( 161.758:-0.00476)
+ 10 14868.491 ( 15.1508: -0.0598) ( 168.588:-0.00408)
+ 11 14868.462 ( 15.2442: -0.0435) ( 174.920:-0.00354)
+ 12 14868.440 ( 15.3127: -0.0315) ( 180.806:-0.00309)
+ 13 14868.423 ( 15.3629: -0.0228) ( 186.290:-0.00273)
+ 14 14868.409 ( 15.3993: -0.0163) ( 191.412:-0.00243)
+ 15 14868.397 ( 15.4255: -0.0116) ( 196.206:-0.00217)
+ 16 14868.388 ( 15.4442:-0.00814) ( 200.701:-0.00195)
+ 17 14868.380 ( 15.4573:-0.00559) ( 204.924:-0.00176)
+ 18 14868.373 ( 15.4664:-0.00373) ( 208.896:-0.00160)
+ 19 14868.368 ( 15.4724:-0.00237) ( 212.639:-0.00146)
+ 20 14868.363 ( 15.4762:-0.00139) ( 216.171:-0.00134)
+iter    0 value 14868.361530
+final  value 14868.833838 
+converged
+Linear mixed-effects model fit by REML
+Formula: attain ~ verbal * sex + (1 | primary) + (1 | second) 
+   Data: ScotsSec 
+      AIC      BIC    logLik MLdeviance REMLdeviance
+ 14882.83 14925.83 -7434.417   14843.07     14868.83
+Random effects:
+ Groups   Name        Variance   Std.Dev.  
+ primary  (Intercept) 2.8280e-01 5.3179e-01
+ second   (Intercept) 4.2567e-10 2.0632e-05
+ Residual             4.2567e+00 2.0632e+00
+# of obs: 3435, groups: primary, 148; second, 19
+
+Fixed effects:
+              Estimate Std. Error   DF t value Pr(>|t|)    
+(Intercept) 5.9229e+00 7.1417e-02 3431 82.9333  < 2e-16 ***
+verbal      1.5865e-01 3.7845e-03 3431 41.9196  < 2e-16 ***
+sexF        1.2126e-01 7.2433e-02 3431  1.6742  0.09419 .  
+verbal:sexF 2.4881e-03 5.3893e-03 3431  0.4617  0.64435    
+---
+Signif. codes:  0 `***' 0.001 `**' 0.01 `*' 0.05 `.' 0.1 ` ' 1 
 > q("no")

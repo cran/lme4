@@ -7,7 +7,7 @@
 \alias{ranef}
 \alias{ranef-methods}
 \alias{ranef,ANY-method}
-\alias{ranef,reStruct-method}
+\alias{ranef,lmer-method}
 \usage{
 random.effects(object, \dots)
 ranef(object, \dots)

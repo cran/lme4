@@ -1,6 +1,4 @@
 library(lme4)
-pixel <- if (inherits(Pixel, "groupedData")) Pixel@data else Pixel
-pixel$DS <- pixel$Dog : pixel$Side
-lme(pixel ~ day + I(day^2), pixel, list(Dog = ~ day, DS = ~ 1))
-show(lme1(pixel ~ day + I(day^2), pixel, list(Dog = ~ day, DS = ~ 1)))
+lme(pixel ~ day + I(day^2), Pixel, list(Dog = ~ day, DS = ~ 1))
+lmer(pixel ~ day + I(day^2) + (1|DS) + (day|Dog), Pixel)
 q("no")

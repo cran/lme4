@@ -13,7 +13,7 @@ cco2Omega <- function(cco, k) {
 ## extractor
 setGeneric("ccoef", function(object, ...) standardGeneric("ccoef"))
 
-setMethod("ccoef", signature(object = "lmeRep"),
+setMethod("ccoef", signature(object = "lmer"),
           function(object, ...) {
               nc <- object@nc
               if (length(nc) < 3) stop("inconsistent length of nc slot")
@@ -43,7 +43,7 @@ setMethod("ccoef", signature(object = "ssclme"),
 
 setGeneric("ccoef<-", function(object, ..., value) standardGeneric("ccoef<-"))
 
-setReplaceMethod("ccoef", signature(object = "lmeRep", value = "numeric"),
+setReplaceMethod("ccoef", signature(object = "lmer", value = "numeric"),
                  function(object, ..., value) {
                      nc <- object@nc
                      if (length(nc) < 3) stop("inconsistent length of nc slot")

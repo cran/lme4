@@ -25,13 +25,13 @@ facshuffle <- function(sslm, facs)       # unexported utility
     ff
 }
 
-make.mf.call <- function(mf, frm, random) #unexported utility
+make.mf <- function(mf, random, frame) #unexported utility
 {
     m <- match(c("formula", "data", "subset", "weights", "na.action",
                  "offset"), names(mf), 0)
     mf <- mf[c(1, m)]
     mf[[1]] <- as.name("model.frame")
-    form <- frm
+    frm <- form <- mf$formula
     form[[3]] <- (~a+b)[[2]]
     form[[3]][[2]] <- frm[[3]]
     form[[3]][[3]] <-
@@ -48,7 +48,7 @@ make.mf.call <- function(mf, frm, random) #unexported utility
     environment(form) <- environment(formula)
     mf$formula <- form
     mf$drop.unused.levels <- TRUE
-    mf
+    eval(mf, frame)
 }
 
 lmeControl <-                            # Control parameters for lme
@@ -125,8 +125,7 @@ setMethod("lme", signature(formula = "formula",
           random <- lapply(random, formula) # formula function, not argument
           controlvals <- do.call("lmeControl", control)
           controlvals$REML <- method == "REML"
-          datf <- eval(make.mf.call(match.call(expand.dots = FALSE),
-                                    formula, random), parent.frame())
+          datf <- make.mf(match.call(expand.dots = FALSE), random, parent.frame())
           Xmat <- model.matrix(formula, data = datf)
           facs <- lapply(names(random),
                          function(x) as.factor(eval(as.name(x), envir = datf)))
@@ -401,113 +400,5 @@ setMethod("confint", signature(object = "lme"),
       })
 
 
-lme1Control <-                            # Control parameters for lme
-  function(maxIter = 50,
-           msMaxIter = 50,
-           tolerance = sqrt((.Machine$double.eps)),
-           niterEM = 20,
-           msTol = sqrt(.Machine$double.eps),
-           msVerbose = getOption("verbose"),
-           PQLmaxIt = 20,
-           .relStep = (.Machine$double.eps)^(1/3),
-           nlmStepMax = NULL,
-           optimizer="nlm",
-           EMverbose = getOption("verbose"),
-           analyticGradient = TRUE,
-           analyticHessian=FALSE)
-{
-    list(maxIter = maxIter,
-         msMaxIter = msMaxIter,
-         tolerance = tolerance,
-         niterEM = niterEM,
-         msTol = msTol,
-         msVerbose = msVerbose,
-         PQLmaxIt = PQLmaxIt,
-         .relStep = .relStep,
-         nlmStepMax = nlmStepMax,
-         optimizer=optimizer,
-         EMverbose=EMverbose,
-         analyticHessian=analyticHessian,
-         analyticGradient=analyticGradient)
-}
-
-setMethod("lme1", signature(formula = "missing"),
-          function(formula, data, random,
-                   method = c("REML", "ML"),
-                   control = list(),
-                   subset, weights, na.action, offset,
-                   model = TRUE, x = FALSE, y = FALSE,...)
-      {
-          nCall = mCall = match.call()
-          resp = getResponseFormula(data)[[2]]
-          cov = getCovariateFormula(data)[[2]]
-          nCall$formula = eval(substitute(resp ~ cov))
-          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
-                mCall, PACKAGE = "Matrix")
-      })
-
-
-setMethod("lme1", signature(random = "formula"),
-          function(formula, data, random,
-                   method = c("REML", "ML"),
-                   control = list(),
-                   subset, weights, na.action, offset,
-                   model = TRUE, x = FALSE, y = FALSE,...)
-      {
-          nCall = mCall = match.call()
-          cov = getCovariateFormula(random)
-          nms = all.vars(getGroupsFormula(random))
-          lst = lapply(nms, function(f) cov)
-          names(lst) = nms
-          nCall$random = lst
-          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
-                mCall, PACKAGE = "Matrix")
-      })
-
-          
-setMethod("lme1", signature(formula = "formula",
-                           random = "list"),
-          function(formula, data, random,
-                   method = c("REML", "ML"),
-                   control = list(),
-                   subset, weights, na.action, offset,
-                   model = TRUE, x = FALSE, y = FALSE, ...)
-      {
-          method <- match.arg(method)
-          random <- lapply(random, formula) # formula function, not the argument
-          controlvals <- do.call("lme1Control", control)
-          controlvals$REML <- method == "REML"
-          data <- eval(make.mf.call(match.call(expand.dots = FALSE),
-                                           formula, random), parent.frame())
-          facs <- lapply(names(random),
-                         function(x) as.factor(eval(as.name(x), envir = data)))
-          names(facs) <- names(random)
-          ## order factor list by decreasing number of levels
-          ford <- rev(order(sapply(facs, function(fac) length(levels(fac)))))
-          if (any(ford != seq(a = ford))) { # re-order both facs and random
-              facs <- facs[ford]
-              random <- random[ford]
-          }
-          mmats <- c(lapply(random,
-                            function(x) model.matrix(formula(x), data = data)),
-                     list(.Xy = cbind(model.matrix(formula, data = data),
-                          .response = model.response(data))))
-          obj <- .Call("lmeRep_create", facs, sapply(mmats, ncol),
-                       PACKAGE = "Matrix")
-          .Call("lmeRep_update_mm", obj, facs, mmats, PACKAGE="Matrix")
-          .Call("lmeRep_initial", obj, PACKAGE="Matrix")
-          .Call("lmeRep_ECMEsteps", obj, 
-                controlvals$niterEM,
-                controlvals$REML,
-                controlvals$EMverbose,
-                PACKAGE = "Matrix")
-          LMEoptimize(obj) <- controlvals
-          obj@call <- match.call()
-          #fitted = .Call("ssclme_fitted", obj, facs, mmats, TRUE, PACKAGE = "Matrix")
-          #residuals = mmats$.Xy[,".response"] - fitted
-          #if (as.logical(x)[1]) x = mmats else x = list()
-          #rm(mmats)
-          obj
-      })
 
 

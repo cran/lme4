@@ -1,3 +1,7 @@
+2005-01-03  Douglas Bates  <bates@bates1-home>
+
+	* R/lmer.R: Switch from lmeRep to lmer representation
+
 2004-12-16  Douglas Bates  <bates@bates1-home>
 
 	* R/lme.R (make.mf.call): Omit control values that are no longer used.

@@ -10,15 +10,6 @@
 \alias{lme,formula,groupedData,list-method}
 \alias{lme,formula,groupedData,missing-method}
 \alias{lme,missing,groupedData,ANY-method}
-\alias{lme1}
-\alias{lme1,ANY,ANY,formula-method}
-\alias{lme1,missing,ANY,ANY-method}
-\alias{lme1,formula,ANY,formula-method}
-\alias{lme1,formula,ANY,list-method}
-\alias{lme1,formula,data.frame,list-method}
-\alias{lme1,formula,groupedData,list-method}
-\alias{lme1,formula,groupedData,missing-method}
-\alias{lme1,missing,groupedData,ANY-method}
 \title{Fit linear mixed-effects models}
 \description{
   This generic function fits a linear mixed-effects model in the
@@ -55,15 +46,15 @@ lme(formula, data, random, \dots)
  \item{\dots}{Optional arguments for methods.  Currently none are used.}
 }
 \details{
-  A new version of the function called \code{lme1} is in the development
-  versions of this package.  The \code{lme1} function has the same
-  argument sequence as \code{lme} but produces an object with an
-  \code{\link[Matrix]{lmeRep}} representation of the model.  The object
+  A new version of the function called \code{lmer} is in the development
+  versions of this package.  The \code{lmer} function has a slightly
+  modified calling sequence from \code{lme} and produces an object with an
+  \code{\link[Matrix]{lmer}} representation of the model.  The object
   produced by \code{lme} uses the \code{\link[Matrix]{ssclme}}
   representation.
   
   Additional standard arguments to model-fitting functions can be passed
-  to \code{lme} or \code{lme1}.
+  to \code{lme}.
   \describe{
     \item{correlation}{an optional \code{corStruct} object describing
       the within-group correlation structure. See the documentation of

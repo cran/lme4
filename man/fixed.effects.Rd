@@ -4,7 +4,7 @@
 \alias{fixef}
 \alias{fixef,ANY-method}
 \alias{fixef,ssclme-method}
-\alias{fixef,lmeRep-method}
+\alias{fixef,lmer-method}
 \alias{fixef,lme-method}
 \title{Extract Fixed Effects}
 \description{

@@ -1,6 +1,6 @@
 
-R : Copyright 2004, The R Foundation for Statistical Computing
-Version 2.0.1  (2004-11-15), ISBN 3-900051-07-0
+R : Copyright 2005, The R Foundation for Statistical Computing
+Version 2.1.0 Under development (unstable) (2005-01-20), ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -22,40 +22,42 @@ Loading required package: latticeExtra
 Linear mixed-effects model
 Fixed: cog ~ tos * trt 
  Data: Early 
- log-restricted-likelihood:  -1179.371 
+ log-restricted-likelihood:  -1179.372 
 Random effects:
  Groups   Name        Variance Std.Dev. Corr   
- id       (Intercept) 166.562  12.9059         
-          tos          10.572   3.2515  -1.000 
- Residual              75.470   8.6874         
+ id       (Intercept) 166.268  12.8945         
+          tos          10.542   3.2469  -1.000 
+ Residual              75.508   8.6896         
 # of obs: 309, groups: id, 103
 
 Fixed effects:
             Estimate Std. Error  DF  t value Pr(>|t|)
-(Intercept) 118.4074     2.7595 305  42.9095  < 2e-16
-tos         -21.1333     1.8945 305 -11.1550  < 2e-16
-trtY          4.2190     3.6773 305   1.1473  0.25215
-tos:trtY      5.2713     2.5247 305   2.0879  0.03763
-Warning message: 
+(Intercept) 118.4074     2.7586 305  42.9223  < 2e-16
+tos         -21.1333     1.8948 305 -11.1534  < 2e-16
+trtY          4.2190     3.6762 305   1.1477  0.25201
+tos:trtY      5.2713     2.5250 305   2.0876  0.03766
+Warning message:
 optim returned message ERROR: ABNORMAL_TERMINATION_IN_LNSRCH 
  in: "LMEoptimize<-"(`*tmp*`, value = list(maxIter = 50, msMaxIter = 50,  
-> show(lme1(cog ~ tos * trt, Early, ~ tos | id))
+> lmer(cog ~ tos * trt + (tos|id), Early)
+Linear mixed-effects model fit by REML
+Formula: cog ~ tos * trt + (tos | id) 
+   Data: Early 
+      AIC     BIC    logLik MLdeviance REMLdeviance
+ 2374.743 2404.61 -1179.372   2369.945     2358.743
 Random effects:
  Groups   Name        Variance Std.Dev. Corr   
- id       (Intercept) 166.391  12.8993         
-          tos          10.553   3.2485  -1.000 
- Residual              75.491   8.6886         
+ id       (Intercept) 166.406  12.8998         
+          tos          10.551   3.2482  -1.000 
+ Residual              75.486   8.6883         
 # of obs: 309, groups: id, 103
 
 Fixed effects:
             Estimate Std. Error  DF  t value Pr(>|t|)    
-(Intercept) 118.4074     2.7590 305  42.9172  < 2e-16 ***
-tos         -21.1333     1.8946 305 -11.1543  < 2e-16 ***
-trtY          4.2190     3.6766 305   1.1475  0.25207    
-tos:trtY      5.2713     2.5248 305   2.0878  0.03765 *  
+(Intercept) 118.4074     2.7590 305  42.9170  < 2e-16 ***
+tos         -21.1333     1.8946 305 -11.1547  < 2e-16 ***
+trtY          4.2190     3.6767 305   1.1475  0.25207    
+tos:trtY      5.2713     2.5247 305   2.0879  0.03764 *  
 ---
 Signif. codes:  0 `***' 0.001 `**' 0.01 `*' 0.05 `.' 0.1 ` ' 1 
-Warning message: 
-optim returned message ERROR: ABNORMAL_TERMINATION_IN_LNSRCH 
- in: "LMEoptimize<-"(`*tmp*`, value = list(maxIter = 50, msMaxIter = 50,  
 > q("no")

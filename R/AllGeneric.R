@@ -55,13 +55,13 @@ setGeneric("lme",
                    model = TRUE, x = FALSE, y = FALSE,...)
            standardGeneric("lme"))
 
-setGeneric("lme1",
-          function(formula, data, random,
+setGeneric("lmer",
+          function(formula, data,
                    method = c("REML", "ML"),
                    control = list(),
                    subset, weights, na.action, offset,
                    model = TRUE, x = FALSE, y = FALSE,...)
-           standardGeneric("lme1"))
+           standardGeneric("lmer"))
 
 if (!isGeneric("LMEoptimize<-")) {
     setGeneric("LMEoptimize<-", function(x, ..., value)

@@ -56,7 +56,6 @@ ergoStool               Ergometrics experiment with stool types
 fixed.effects           Extract Fixed Effects
 getCovariate            Utilities for formulas
 groupedData             Creation of groupedData objects
-groupedData-class       Class "groupedData"
 gsummary                Summarize a data frame by group
 guImmun                 Immunization in Guatemala
 guPrenat                Prenatal care in Guatemala
@@ -66,6 +65,8 @@ lmList-class            Class "lmList"
 lme                     Fit linear mixed-effects models
 lme-class               Class "lme"
 lmeControl              Control values for lme
+lmer                    Fit linear mixed-effects models
+lmer-class              lme models representation
 pooledSD                Extract pooled standard deviation
 random.effects          Extract Random Effects
 s3bbx                   Covariates in the Rodriguez and Goldman
@@ -73,3 +74,4 @@ s3bbx                   Covariates in the Rodriguez and Goldman
 s3bby                   Responses simulated by Rodriguez and Goldman
 summary.GLMM-class      Class "summary.GLMM"
 summary.lme-class       Class "summary.lme"
+summary.lmer-class      Class "summary.lmer"

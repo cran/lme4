@@ -1,6 +1,6 @@
 
-R : Copyright 2004, The R Foundation for Statistical Computing
-Version 2.0.1  (2004-11-15), ISBN 3-900051-07-0
+R : Copyright 2005, The R Foundation for Statistical Computing
+Version 2.1.0 Under development (unstable) (2005-01-20), ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -38,8 +38,12 @@ cses                   2.94503    0.15565 7179 18.9210 < 2.2e-16
 sectorCatholic         1.22658    0.30623 7179  4.0054 6.253e-05
 meanses:cses           1.03913    0.29898 7179  3.4755 0.0005128
 cses:sectorCatholic   -1.64264    0.23985 7179 -6.8485 8.079e-12
-> show(lme1(mAch ~ meanses*cses + sector*cses,
-+           data = Hsb82, random = ~ cses|school))
+> lmer(mAch ~ meanses*cses + sector*cses + (cses|school), Hsb82)
+Linear mixed-effects model fit by REML
+Formula: mAch ~ meanses * cses + sector * cses + (cses | school) 
+   Data: Hsb82 
+      AIC      BIC    logLik MLdeviance REMLdeviance
+ 46523.66 46592.46 -23251.83   46496.49     46503.66
 Random effects:
  Groups   Name        Variance Std.Dev. Corr  
  school   (Intercept)  2.37874 1.54232        

@@ -24,6 +24,11 @@
 	\item{pixel}{
 	    a numeric vector of pixel intensities
 	}
+	\item{DS}{
+	    the interaction of the \code{Dog} and \code{Side} factors.
+	    This provides a grouping factor with a unique level for each
+	    side within each dog.
+	}
     }
 }
 \source{
@@ -31,13 +36,9 @@
 	S and S-PLUS}, Springer.
 }
 \examples{
-data(Pixel)
-\dontrun{
-Pixel$DS = getGroups(Pixel, ~ 1 | Dog/Side, level = 2)
-fm1 <- lme(pixel ~ day + I(day^2), data = Pixel,
-           random = list(DS = ~ 1, Dog = ~ 1))
-summary(fm1)
-VarCorr(fm1)
-}
+str(Pixel)
+summary(Pixel)
+summary(fm1 <- lme(pixel ~ day + I(day^2), data = Pixel,
+                   random = list(DS = ~ 1, Dog = ~ day)))
 }
 \keyword{datasets}
