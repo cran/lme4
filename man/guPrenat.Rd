@@ -1,4 +1,5 @@
 \name{guPrenat}
+\encoding{latin1}
 \alias{guPrenat}
 \docType{data}
 \title{Prenatal care in Guatemala}

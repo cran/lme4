@@ -1,4 +1,5 @@
 \name{guImmun}
+\encoding{latin1}
 \alias{guImmun}
 \docType{data}
 \title{Immunization in Guatemala}

@@ -1,5 +1,6 @@
 \name{s3bbx}
 \alias{s3bbx}
+\encoding{latin1}
 \non_function{}
 \title{Covariates in the Rodriguez and Goldman simulation}
 \usage{data(s3bbx)}

@@ -1,4 +1,5 @@
 \name{s3bby}
+\encoding{latin1}
 \alias{s3bby}
 \non_function{}
 \title{Responses simulated by Rodriguez and Goldman}

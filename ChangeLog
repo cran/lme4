@@ -1,3 +1,8 @@
+2005-01-24  Douglas Bates  <bates@bates7>
+
+	* man/{guPrenat.Rd,guImmun.Rd,s3bbx.Rd,s3bby.Rd}: Add
+	\encoding{latin1} per Kurt's request. 
+
 2005-01-23  Douglas Bates  <bates@bates7>
 
 	* R/lmer.R (fn): In the gradient function passed to optim, check

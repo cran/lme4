@@ -105,7 +105,7 @@ setReplaceMethod("LMEoptimize", signature(x="lmer", value="list"),
                  }
                  gr <- if (value$analyticGradient)
                      function(pars) {
-                         if (!is.all.equal(pars, ccoef(x))) ccoef(x) <- pars
+                         if (!identical(TRUE,all.equal(pars, ccoef(x)))) ccoef(x) <- pars
                          grad <- gradient(x, REML = value$REML, unconst = TRUE)
                          grad[constr] <- -grad[constr]/pars[constr]
                          grad
