@@ -1,5 +1,6 @@
 setMethod("GLMM", signature(data = "missing"),
-          function(formula, family, data, random, ...)
+          function(formula, family, data, random, control, niter,
+                   method, verbose, ...)
       {
           nCall = mCall = match.call()
           nCall$data = list()
@@ -7,7 +8,8 @@ setMethod("GLMM", signature(data = "missing"),
       })
 
 setMethod("GLMM", signature(formula = "missing", data = "groupedData"),
-          function(formula, family, data, random, ...)
+          function(formula, family, data, random, control, niter,
+                   method, verbose, ...)
       {
           nCall = mCall = match.call()
           resp = getResponseFormula(data)[[2]]
@@ -18,7 +20,8 @@ setMethod("GLMM", signature(formula = "missing", data = "groupedData"),
 
 setMethod("GLMM", signature(formula = "formula", data = "groupedData",
                            random = "missing"),
-          function(formula, family, data, random, ...)
+          function(formula, family, data, random, control, niter,
+                   method, verbose, ...)
       {
           nCall = mCall = match.call()
           cov = formula[[3]]
@@ -29,7 +32,8 @@ setMethod("GLMM", signature(formula = "formula", data = "groupedData",
 
 
 setMethod("GLMM", signature(formula = "formula", random = "formula"),
-          function(formula, family, data, random, ...)
+          function(formula, family, data, random, control, niter,
+                   method, verbose, ...)
       {
           nCall = mCall = match.call()
           nCall$random = lapply(getGroupsFormula(random, asList = TRUE),
@@ -39,9 +43,8 @@ setMethod("GLMM", signature(formula = "formula", random = "formula"),
       })
 
 setMethod("GLMM", signature(formula = "formula", random = "list"),
-          function(formula, family, data, random, correlation, weights,
-                   control, niter, method, verbose, nEM.IRLS,
-                   model, x, ...)
+          function(formula, family, data, random, control, niter,
+                   method, verbose, nEM.IRLS, model, x, ...)
       {
           if (missing(nEM.IRLS))
               nEM.IRLS <- 1
@@ -73,7 +76,7 @@ setMethod("GLMM", signature(formula = "formula", random = "list"),
 
           control$niterEM <- nEM.IRLS
           converged <- FALSE
-          eta <- .Call("nlme_reStruct_fitted", fit, PACKAGE="lme4")
+          eta <- .Call("nlme_reStruct_fitted", fit, NULL, PACKAGE="lme4")
 
           for(i in seq(length=if(missing(niter)) 20 else niter)) {
               ##update zz and wz
@@ -96,10 +99,10 @@ setMethod("GLMM", signature(formula = "formula", random = "list"),
 ###            class(fit) <- "reStruct"
 ###            fit@logLik <- as.numeric(NA)
                   cat("Parameters:", coef(fit), "\n")
-                  cat("Fixed Effectsf:", fixef(fit), "\n")
+                  cat("Fixed Effects:", fixef(fit), "\n")
               }
               etaold <- eta
-              eta <- .Call("nlme_reStruct_fitted", fit, PACKAGE="lme4")
+              eta <- .Call("nlme_reStruct_fitted", fit, NULL, PACKAGE="lme4")
               if(sum((eta-etaold)^2) < 1e-6*sum(eta^2)) {
                   converged <- TRUE
                   break
@@ -122,6 +125,7 @@ setMethod("GLMM", signature(formula = "formula", random = "list"),
 
           if (method != "PQL") {
               ## Do the 2nd order Laplace fit here
+              LMEoptimize(fit) <- control
           }
           ## zero some of the matrix slots
           if (!missing(x) && x == FALSE)
@@ -245,6 +249,137 @@ setMethod("logLik", signature(object="glmm"),
           class(value) = "logLik"
           value
       })
+
+setReplaceMethod("LMEoptimize", signature(x="glmm",
+                                          value="list"),
+                 function(x, value)
+             {
+                 value$analyticGradient <- FALSE
+                 if (value$msMaxIter < 1)
+                     return(x)
+                 xval <- -.Call("nlme_glmmLaplace_logLikelihood", x,
+                                NULL,
+                                50, 1, PACKAGE="lme4")
+                 xval =
+                     if (xval > 0)
+                         xval+1
+                     else abs(min(xval/2, xval+1))
+                 fixlen <- length(fixef(x))
+                 if (value$optimizer == "optim") {
+                     optimRes =
+                         if (value$analyticGradient) {
+                             optim(fn = function(params)
+                               {
+                                   fixef(x) <- params[seq(length=fixlen)]
+                                   .Call("nlme_glmmLaplace_logLikelihood",
+                                         x,
+                                         params[-seq(length=fixlen)],
+                                         50, 1, PACKAGE="lme4")
+                               },
+                                   gr = function(params)
+                                   LMEgradient(.Call("nlme_commonDecompose",
+                                                     x, params,
+                                                     PACKAGE="lme4")),
+                                   par = c(fixef(x), coef(x)),
+                                   ##hessian = TRUE,
+                                   method = "BFGS",
+                                   control = list(trace = value$msVerbose,
+                                   reltol = value$msTol,
+                                   fnscale = -1,
+#                                   fnscale = -xval,
+#                                   parscale = 1/value$msScale(coef(x)),
+                                   maxit = value$msMaxIter))
+                         } else {
+                             optim(fn = function(params)
+                               {
+                                   fixef(x) <- params[seq(length=fixlen)]
+                                   .Call("nlme_glmmLaplace_logLikelihood",
+                                         x,
+                                         params[-seq(length=fixlen)],
+                                         50, 1, PACKAGE="lme4")
+                               },
+                                   par = c(fixef(x), coef(x)),
+                                   #hessian = TRUE,
+                                   method = "BFGS",
+                                   control = list(trace = value$msVerbose,
+                                   reltol = value$msTol,
+                                   fnscale = -1,
+#                                   fnscale = -xval,
+#                                   parscale = 1/value$msScale(coef(x)),
+                                   maxit = value$msMaxIter))
+                         }
+                     if (optimRes$convergence != 0) {
+                         warning("optim failed to converge")
+                     }
+                     fixef(x) <- optimRes$par[seq(length=fixlen)]
+                     coef(x@reStruct) <- optimRes$par[-seq(length=fixlen)]
+                     x@reStruct@logLik <- as.numeric(NA)
+                     .Call("nlme_glmmLaplace_solveOnly", x,
+                           500, 1, PACKAGE="lme4")
+#                  } else if (value$optimizer == "ms") {
+#                      pars <- coef(x)
+#                      .Call("nlme_msOptimize", value$msMaxIter,
+#                            value$msTol, rep(1.0, length(pars)),
+#                            value$msVerbose, x, pars,
+#                            value$analyticGradient,
+#                            PACKAGE = "lme4")
+                 } else {
+#                     typsize <- 1/value$msScale(coef(x))
+                     typsize <- rep(1.0, length(coef(x))+fixlen)
+                     if (is.null(value$nlmStepMax))
+                         value$nlmStepMax <-
+                             max(100 * sqrt(sum((c(fixef(x),
+                                                   coef(x))/typsize)^2)), 100)
+                     nlmRes =
+                         nlm(f = if (value$analyticGradient) {
+                             function(params)
+                             {
+                                 fixef(x) <- params[seq(length=fixlen)]
+                                 -.Call("nlme_glmmLaplace_logLikelihood",
+                                        x,
+                                        params[-seq(length=fixlen)],
+                                        50, 1, PACKAGE="lme4")
+#                                  x = .Call("nlme_commonDecompose",
+#                                             x, params,
+#                                             PACKAGE="lme4")
+#                                  grad = -LMEgradient(x)
+#                                  ans = -x@logLik
+#                                  attr(ans, "gradient") = grad
+#                                  ans
+                             }
+                         } else {
+                             function(params)
+                             {
+                                 fixef(x) <- params[seq(length=fixlen)]
+                                 -.Call("nlme_glmmLaplace_logLikelihood",
+                                        x,
+                                        params[-seq(length=fixlen)],
+                                        50, 1, PACKAGE="lme4")
+                             }
+                         },
+                             p = c(fixef(x), coef(x)),
+                             #hessian = TRUE,
+                             print.level = if (value$msVerbose) 2 else 0,
+                             steptol = value$msTol,
+                             gradtol = value$msTol,
+                             stepmax = value$nlmStepMax,
+                             typsize=typsize,
+#                             fscale=xval,
+                             iterlim = value$msMaxIter)
+                     fixef(x) <- nlmRes$estimate[seq(length=fixlen)]
+                     coef(x@reStruct) <-
+                         nlmRes$estimate[-seq(length=fixlen)]
+                     x@reStruct@logLik <- as.numeric(NA)
+                     .Call("nlme_glmmLaplace_solveOnly", x,
+                           500, 1, PACKAGE="lme4")
+                 }
+             })
+
+setReplaceMethod("fixef", signature(x="glmm", value="numeric"),
+          function(x, value) {
+              fixef(x@reStruct) <- value
+              x
+          })
 
 ### Local variables:
 ### mode: R

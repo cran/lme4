@@ -2,7 +2,7 @@
  * @file   glmmStruct.c
  * @author Saikat DebRoy <saikat@stat.wisc.edu>
  * @author Douglas Bates <bates@stat.wisc.edu>
- * @date   $Date: 2003/07/04 04:25:01 $
+ * @date   $Date: 2003/07/17 17:21:58 $
  * 
  * @brief  functions for handling glmmStruct objects.
  * 
@@ -353,7 +353,7 @@ nlme_glmm_ranefIRLS(SEXP glmm,
     }
     dweighted = REAL(weighted);
 
-    eta = PROTECT(nlme_reStruct_fitted(reStruct));
+    eta = PROTECT(nlme_reStruct_fitted(reStruct, R_NilValue));
     deta = REAL(eta);
     respWtCall =
         PROTECT(lcons(install("glmmLa2RespWt"),
@@ -427,7 +427,7 @@ nlme_glmm_ranefIRLS(SEXP glmm,
             nlme_estimate_level(stored, VECTOR_ELT(random, lev), bbetas);
         }
 
-        nlme_reStruct_fitted_internal(reStruct, eta);
+        nlme_reStruct_fitted_internal(reStruct, eta, R_NilValue);
         for (j = 0; j < nrow; j++) {
             double tmp = deta[j] - detaold[j];
             dist += tmp*tmp;
@@ -501,6 +501,10 @@ nlme_glmmLaplace_solveOnly(SEXP glmm,
     double logLikVal;
     SEXP logLik;
     SEXP reStruct= GET_SLOT(glmm, install("reStruct"));
+    int nFixedLevs = asInteger((SEXP)fixedLevels);
+    SEXP random, stored;
+    int lev, ncol_levels, nlevel;
+
     if (NAMED(glmm) && !asLogical(GET_SLOT(reStruct,
                                            install("dontCopy")))) {
         glmm = duplicate(glmm);
@@ -518,8 +522,19 @@ nlme_glmmLaplace_solveOnly(SEXP glmm,
     logLikVal += nlme_glmmLa2_penalty(reStruct);
     REAL(logLik)[0] = logLikVal;
     SET_SLOT(reStruct, install("logLik"), logLik);
+
+    random = GET_SLOT(reStruct, install("random"));
+    stored = GET_SLOT(reStruct, install("stored"));
+    nlevel = LENGTH(random);
+    ncol_levels = asInteger(GET_SLOT(VECTOR_ELT(random, nlevel-1),
+                                     install("columns")));
+
+    for (lev = nlevel-nFixedLevs-2; lev >= 0; lev--) {
+        nlme_invert_level(stored, VECTOR_ELT(random, lev), ncol_levels);
+    }
+
     LOGICAL(GET_SLOT(reStruct, install("dirtyBbetas")))[0] = 0;
-    LOGICAL(GET_SLOT(reStruct, install("dirtyStored")))[0] = 1;
+    LOGICAL(GET_SLOT(reStruct, install("dirtyStored")))[0] = 0;
     UNPROTECT(1);
     return glmm;
 }

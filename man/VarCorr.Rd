@@ -2,11 +2,11 @@
 \docType{genericFunction}
 \alias{VarCorr}
 \title{Extract variance and correlation components}
-\arguments{
- \item{x}{a fitted model object, usually an object inheriting from
-     class \code{lme}. 
- }
-}
+% \arguments{
+%  \item{x}{a fitted model object, usually an object inheriting from
+%      class \code{lme}. 
+%  }
+% }
 \description{
   This function calculates the estimated variances, standard
   deviations, and correlations between the random-effects terms in a

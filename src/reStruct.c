@@ -2,7 +2,7 @@
  * @file   reStruct.c
  * @author Saikat DebRoy <saikat@stat.wisc.edu>
  * @author Douglas Bates <bates@stat.wisc.edu>
- * @date   $Date: 2003/07/04 04:25:01 $
+ * @date   $Date: 2003/07/17 17:21:09 $
  * 
  * @brief  functions for handling reStruct objects.
  * 
@@ -1079,8 +1079,10 @@ nlme_reStructDims(SEXP reStruct)
  * @return A numeric vector of fitted values
  */
 SEXP
-nlme_reStruct_fitted_internal(const SEXPREC* reStruct, SEXP ans)
+nlme_reStruct_fitted_internal(const SEXPREC* reStruct, SEXP ans,
+                              const SEXPREC* level)
 {
+    int nUsedLevel = asInteger((SEXP)level);
     const SEXPREC* offset = GET_SLOT((SEXP)reStruct, install("offset"));
     const SEXPREC* random = GET_SLOT((SEXP)reStruct, install("random"));
     const SEXPREC* original = GET_SLOT((SEXP)reStruct, install("original"));
@@ -1088,7 +1090,7 @@ nlme_reStruct_fitted_internal(const SEXPREC* reStruct, SEXP ans)
     SEXP originalRows_sym = install("originalRows");
     SEXP storedRows_sym = install("storedRows");
     SEXP columns_sym = install("columns");
-    int nlevel = LENGTH((SEXP)random) - 1;
+    int nlevel = LENGTH((SEXP)random) - 2;
     int* dim = INTEGER(GET_DIM((SEXP)original));
     int nrow = dim[0];
 /*     int ncol = dim[1]; */
@@ -1116,8 +1118,14 @@ nlme_reStruct_fitted_internal(const SEXPREC* reStruct, SEXP ans)
     }
     ans_d--;
 
-    for (i = 0; i < nlevel; i++) {
-        const SEXPREC* lmeLevel = VECTOR_ELT((SEXP)random, i);
+    if (level == R_NilValue) {
+        level = (const SEXPREC*) nlme_seq(0, nlevel);
+    }
+    PROTECT((SEXP)level);
+
+    for (i = LENGTH((SEXP)level)-1; i >= 0; i--) {
+        const SEXPREC* lmeLevel = VECTOR_ELT((SEXP)random,
+                                             nlevel-INTEGER((SEXP)level)[i]);
         const SEXPREC* columns = GET_SLOT((SEXP)lmeLevel, columns_sym);
         const SEXPREC* originalRows = GET_SLOT((SEXP)lmeLevel,
                                                originalRows_sym);
@@ -1139,6 +1147,7 @@ nlme_reStruct_fitted_internal(const SEXPREC* reStruct, SEXP ans)
         }
     }
 
+    UNPROTECT(1);
     return ans;
 }
 
@@ -1150,12 +1159,12 @@ nlme_reStruct_fitted_internal(const SEXPREC* reStruct, SEXP ans)
  * @return A numeric vector of fitted values
  */
 SEXP
-nlme_reStruct_fitted(const SEXPREC* reStruct)
+nlme_reStruct_fitted(const SEXPREC* reStruct, const SEXPREC* level)
 {
     int n = INTEGER(GET_DIM(GET_SLOT((SEXP)reStruct,
                                      install("original"))))[0];
     SEXP ans = PROTECT(allocVector(REALSXP, n));
-    nlme_reStruct_fitted_internal(reStruct, ans);
+    nlme_reStruct_fitted_internal(reStruct, ans, level);
     UNPROTECT(1);
     return ans;
 }
@@ -1363,13 +1372,16 @@ SEXP nlme_getFixDF(const SEXPREC* reStruct)
     int nn = INTEGER(GET_DIM(original))[0];
     double *orig = REAL(original);
     int i, j, nterms = 0,
-	ngrps[Q+1],		/* number of groups at each level */
-	dflev[Q+1],		/* degrees of freedom at each level */
-	level[pp];		/* level assigned to each coefficient */
+	*ngrps,			/* number of groups at each level */
+	*dflev,			/* degrees of freedom at each level */
+	*level;			/* level assigned to each coefficient */
 
 /* We will number the levels as in the multilevel literature, but with
  * 0-based indices, not 1-based.  The observation level is level 0,
  * the level of groups with the smallest groups is level 1,  etc. */
+    ngrps = Calloc(Q+1, int);
+    dflev = Calloc(Q+1, int);
+    level = Calloc(pp, int);
     ngrps[0] = nn;
     for(i = 1; i <= Q; i++) {
 	ngrps[i] = INTEGER(GET_SLOT(VECTOR_ELT(random, i - 1), nlev_sym))[0];
@@ -1417,6 +1429,7 @@ SEXP nlme_getFixDF(const SEXPREC* reStruct)
     SET_STRING_ELT(valnames, 0, mkChar("X"));
     SET_STRING_ELT(valnames, 1, mkChar("terms"));
     UNPROTECT(5);
+    Free(level); Free(dflev); Free(ngrps);
     return namesgets(val, valnames);
 }
 

@@ -1,3 +1,38 @@
+2003-07-17  Douglas Bates  <bates@stat.wisc.edu>
+
+	* man/VarCorr.Rd: Remove argument documentation from generic
+
+2003-07-17  Saikat DebRoy  <saikat@bates4>
+
+	* src/glmmStruct.c:
+	Fix some problems in calculating second order Laplace
+	approximation to the GLMM log-likelihood
+
+	* src/reStruct.c, src/reStruct.h (nlme_reStruct_fitted, nlme_reStruct_fitted_internal):
+	Allow specification of levels for which the fitted value is calculated
+
+	* R/reStruct.R: Add a fixef<- method for reStruct
+
+	* R/glmm.R: Add Laplace optimziation for GLMM
+
+	* R/glmmStruct.R: Handle complicated response correctly
+
+	* R/AllGeneric.R: Add a fixef<- generic
+
+2003-07-15  Douglas Bates  <bates@stat.wisc.edu>
+
+	* ChangeLog, DESCRIPTION, src/reStruct.c:
+	Correct dynamic array allocation in getFixDF; release new version
+
+	* src/reStruct.c (nlme_getFixDF):
+	Allocate dynamic storage using Calloc and Free to
+	conform to C90 specification.
+
+2003-07-15  Douglas Bates  <bates@stat.wisc.edu>
+
+	* src/reStruct.c (nlme_getFixDF): Allocate dynamic storage using
+	Calloc and Free to conform to C90 specification.
+
 2003-06-30  Douglas Bates  <bates@stat.wisc.edu>
 
 	* DESCRIPTION (Version): 0.2-2

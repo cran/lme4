@@ -8,7 +8,7 @@ Fit a GLMM model with multivariate normal random effects, using
 Penalized Quasi-Likelihood.
 }
 \usage{
-GLMM(formula, family, data, random, \dots)
+GLMM(formula, family, data, random, control, niter, method, verbose, \dots)
 }
 \arguments{
   \item{formula}{
@@ -23,12 +23,6 @@ GLMM(formula, family, data, random, \dots)
   \item{data}{
     an optional data frame used as the first place to find
     variables in the formulae.
-  }
-  \item{correlation}{
-    an optional correlation structure.
-  }
-  \item{weights}{
-    optional case weights as in \code{glm}.
   }
   \item{control}{
     an optional argument to be passed to \code{lme}.
@@ -47,8 +41,8 @@ GLMM(formula, family, data, random, \dots)
   \item{verbose}{
     logical: print out record of iterations?  Default is \code{FALSE}.
   }
-  \item{...}{
-    Further arguments for \code{lme}.
+  \item{\dots}{
+    Optional further arguments such as \code{subset} and \code{na.action}.
   }
 }
 \value{
@@ -78,10 +72,15 @@ pseudo-likelihood approach.
 \examples{
 library(lme4)
 data(guImmun)
-fm = GLMM(immun ~ kid2p + mom25p + ord + ethn +
+fm1 = GLMM(immun ~ kid2p + mom25p + ord + ethn +
                   momEd + husEd + momWork + rural + pcInd81,
           data = guImmun, family = binomial,
           random = ~1|comm/mom)
-summary(fm)
+summary(fm1)
+fm2 = GLMM(immun ~ kid2p + mom25p + ord + ethn +
+                  momEd + husEd + momWork + rural + pcInd81,
+          data = guImmun, family = binomial,
+          random = ~1|comm/mom, method = 'Laplace')
+summary(fm2)
 }
 \keyword{models}

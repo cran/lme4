@@ -27,9 +27,10 @@ void nlme_factor_level(SEXP stored, SEXP lmeLevel, SEXP bbetas,
 
 SEXP nlme_solveOnly(SEXP reStruct);
 
-SEXP nlme_reStruct_fitted(const SEXPREC* reStruct);
+SEXP nlme_reStruct_fitted(const SEXPREC* reStruct, const SEXPREC* level);
 
-SEXP nlme_reStruct_fitted_internal(const SEXPREC* reStruct, SEXP ans);
+SEXP nlme_reStruct_fitted_internal(const SEXPREC* reStruct, SEXP ans,
+                                   const SEXPREC* level);
 
 int nlme_scratchRowSize(const SEXPREC* vecList);
 

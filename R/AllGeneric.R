@@ -157,6 +157,11 @@ if (!isGeneric("fixef")) {
                standardGeneric("fixef"))
 }
 
+if (!isGeneric("fixef<-")) {
+    setGeneric("fixef<-",
+               function(x, value) standardGeneric("fixef<-"))
+}
+
 ## fixed.effects was an alternative name
 fixed.effects = function(object, ...) {
     .Deprecated("fixef")
@@ -210,7 +215,8 @@ if (!isGeneric("lmList")) {
 
 if (!isGeneric("GLMM")) {
     setGeneric("GLMM",
-               function(formula, family, data, random, ...)
+               function(formula, family, data, random, control, niter,
+                        method, verbose, ...)
                standardGeneric("GLMM"))
 }
 

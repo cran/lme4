@@ -302,7 +302,7 @@ setReplaceMethod("LMEoptimize", signature(x="reStruct",
                      if (xval > 0)
                          xval+1
                      else abs(min(xval/2, xval+1))
-                 if (value$optimizer == "nlm") {
+                 if (value$optimizer == "optim") {
                      optimRes =
                          if (value$analyticGradient) {
                              optim(fn = function(params)
@@ -400,7 +400,7 @@ setMethod("LMEgradient", signature(x="reStruct", A="missing", nlev="missing"),
 setMethod("fitted", signature(object="reStruct"),
           function(object, ...)
       {
-          .Call("nlme_reStruct_fitted", object, PACKAGE="lme4")
+          .Call("nlme_reStruct_fitted", object, NULL, PACKAGE="lme4")
       })
 
 setMethod("fixef", signature(object="reStruct"),
@@ -410,6 +410,13 @@ setMethod("fixef", signature(object="reStruct"),
               nn = dimnames(object@original)[[2]][fixd@columns]
               if (length(nn) == length(val)) names(val) = nn
               val
+          })
+
+setReplaceMethod("fixef", signature(x="reStruct", value="numeric"),
+          function(x, value) {
+              fixdRows = x@random[['*fixed*']]@storedRows[[1]]
+              x@bbetas[fixdRows] <- value
+              x
           })
 
 setMethod("ranef", signature(object="reStruct"),
