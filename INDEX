@@ -30,7 +30,6 @@ lmeControl              Control values for lme
 lmeLevel-class          Class "lmeLevel"
 lmeLevel                Construct an lmeLevel object
 logDet                  Logarithm of the determinant
-logLik-methods          Methods for Function logLik
 matrixGets              Assign the matrix
 model.matrixGets        Assign the model.matrix
 nfGroupedData-class     Class "nfGroupedData"

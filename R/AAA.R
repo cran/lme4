@@ -1,0 +1,1 @@
+if (!require("methods")) stop("")
