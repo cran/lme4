@@ -1,3 +1,20 @@
+2004-10-04  Douglas Bates  <bates@bates1-home>
+
+	* R/lme.R: Corrected number of arguments to lmeRep_sigma
+
+2004-10-02  Douglas Bates  <bates@bates1-home>
+
+	* R/lme.R Re-order random when facs is reordered (Closes #10)
+	Also add as.factor in creation of facs.  Previously using a
+	grouping factor that was not a factor produced an obscure error
+	message.
+
+2004-09-27  Douglas Bates  <bates@bates1-home>
+
+	* man/lme-class.Rd: Added documentation for methods with lmeRep in
+	the signature.  Will need to remove all methods for ssclme objects
+	when lmeRep can be used for general models.
+
 2004-06-11  Douglas Bates  <bates@bates2_home>
 
 	* inst/doc/MlmSoftRev.Rnw: Add new vignette

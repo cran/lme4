@@ -1,6 +1,6 @@
 
 R : Copyright 2004, The R Foundation for Statistical Computing
-Version 1.9.0  (2004-04-12), ISBN 3-900051-00-3
+Version 2.0.0 beta (2004-10-02), ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -8,23 +8,21 @@ Type 'license()' or 'licence()' for distribution details.
 
 R is a collaborative project with many contributors.
 Type 'contributors()' for more information and
-'citation()' on how to cite R in publications.
+'citation()' on how to cite R or R packages in publications.
 
 Type 'demo()' for some demos, 'help()' for on-line help, or
 'help.start()' for a HTML browser interface to help.
 Type 'q()' to quit R.
 
 > library(lme4)
-> data(Hsb82, package = "lme4")
-> fm1 = lme(mAch ~ meanses*cses + sector*cses,
-+           data = Hsb82, random = ~ cses|school)
-> summary(fm1)
-Linear mixed-effects model fit by REML
+Loading required package: Matrix 
+> #data(Hsb82, package = "lme4")  #Not needed in R-2.0.0 and later
+> lme(mAch ~ meanses*cses + sector*cses,
++     data = Hsb82, random = ~ cses|school)
+Linear mixed-effects model
 Fixed: mAch ~ meanses * cses + sector * cses 
  Data: Hsb82 
-      AIC      BIC    logLik
- 46523.66 46592.46 -23251.83
-
+ log-restricted-likelihood:  -23251.83 
 Random effects:
  Groups   Name        Variance Std.Dev. Corr  
  school   (Intercept)  2.37958 1.54259        
@@ -33,21 +31,11 @@ Random effects:
 # of obs: 7185, groups: school, 160
 
 Fixed effects:
-                      Estimate Std. Error   DF t value  Pr(>|t|)    
-(Intercept)           12.12793    0.19929 7179 60.8558 < 2.2e-16 ***
-meanses                5.33287    0.36916 7179 14.4458 < 2.2e-16 ***
-cses                   2.94504    0.15560 7179 18.9271 < 2.2e-16 ***
-sectorCatholic         1.22658    0.30627 7179  4.0049 6.267e-05 ***
-meanses:cses           1.03923    0.29889 7179  3.4769 0.0005102 ***
-cses:sectorCatholic   -1.64267    0.23978 7179 -6.8508 7.951e-12 ***
----
-Signif. codes:  0 `***' 0.001 `**' 0.01 `*' 0.05 `.' 0.1 ` ' 1 
-
-Correlation of Fixed Effects:
-            (Intr) meanss cses   sctrCt mnss:c
-meanses      0.256                            
-cses         0.075  0.019                     
-sectorCthlc -0.699 -0.356 -0.053              
-meanses:css  0.019  0.074  0.293 -0.026       
-css:sctrCth -0.052 -0.027 -0.696  0.077 -0.351
+                      Estimate Std. Error   DF t value  Pr(>|t|)
+(Intercept)           12.12793    0.19929 7179 60.8558 < 2.2e-16
+meanses                5.33287    0.36916 7179 14.4458 < 2.2e-16
+cses                   2.94504    0.15560 7179 18.9271 < 2.2e-16
+sectorCatholic         1.22658    0.30627 7179  4.0049 6.267e-05
+meanses:cses           1.03923    0.29889 7179  3.4769 0.0005102
+cses:sectorCatholic   -1.64267    0.23978 7179 -6.8508 7.951e-12
 > q("no")

@@ -1,6 +1,6 @@
 
 R : Copyright 2004, The R Foundation for Statistical Computing
-Version 1.9.0  (2004-04-12), ISBN 3-900051-00-3
+Version 2.0.0 beta (2004-09-27), ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
@@ -8,16 +8,17 @@ Type 'license()' or 'licence()' for distribution details.
 
 R is a collaborative project with many contributors.
 Type 'contributors()' for more information and
-'citation()' on how to cite R in publications.
+'citation()' on how to cite R or R packages in publications.
 
 Type 'demo()' for some demos, 'help()' for on-line help, or
 'help.start()' for a HTML browser interface to help.
 Type 'q()' to quit R.
 
 > library(lme4)
+Loading required package: Matrix 
 > data(bdf, package = "lme4")
 > fm5 <- lme(langPOST ~ IQ.ver.cen + avg.IQ.ver.cen,
-+            data = bdf, random = ~ IQ.ver.cen | schoolNR)
++                        data = bdf, random = ~ IQ.ver.cen | schoolNR)
 > summary(fm5)
 Linear mixed-effects model fit by REML
 Fixed: langPOST ~ IQ.ver.cen + avg.IQ.ver.cen 
@@ -187,4 +188,21 @@ $schoolNR
 136  2.1230308514 -0.1920041182
 161  3.3832769912 -0.4528558550
 
+> fm1 <- lme1(langPOST ~ IQ.ver.cen + avg.IQ.ver.cen,
++                         data = bdf, random = ~ IQ.ver.cen | schoolNR)
+> summary(fm1)
+Random effects:
+ Groups   Name        Variance Std.Dev. Corr   
+ schoolNR (Intercept)  8.07563 2.84177         
+          IQ.ver.cen   0.20801 0.45608  -0.642 
+ Residual             41.34968 6.43037         
+# of obs: 2287, groups: schoolNR, 131
+
+Fixed effects:
+                 Estimate Std. Error   DF t value  Pr(>|t|)    
+(Intercept)    4.0750e+01 2.8808e-01 2284 141.452 < 2.2e-16 ***
+IQ.ver.cen     2.4598e+00 8.3638e-02 2284  29.410 < 2.2e-16 ***
+avg.IQ.ver.cen 1.4089e+00 3.2374e-01 2284   4.352 1.409e-05 ***
+---
+Signif. codes:  0 `***' 0.001 `**' 0.01 `*' 0.05 `.' 0.1 ` ' 1 
 > q("no")

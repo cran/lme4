@@ -602,12 +602,17 @@ group but that dichotomy would be modeled with fixed effects, not
 random effects.)  As an initial model an analyst may fit an
 \emph{unconditional growth} model~\cite[ch.~4]{Sing:Will:2003}
 <<EarlyUncGrowth>>=
-fm1 <- lme(cog ~ tos, data = Early, random = ~ tos | id)
+fm1 <- lme1(cog ~ tos, data = Early, random = ~ tos | id)
 @ 
 or proceed immediately to a model that allows for the effects of the
 treatment 
 <<EarlyTrt>>=
-fm2 <- lme(cog ~ tos * trt, data = Early, random = ~ tos | id)
+fm2 <- lme1(cog ~ tos * trt, data = Early, random = ~ tos | id)
+@ 
+
+The structure of the resulting object is
+<<EarlyTrtStr>>=
+str(fm2)
 @ 
 
 \section{Frechet derivatives}

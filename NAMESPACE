@@ -20,6 +20,7 @@ importFrom("Matrix",
            )
 importClassesFrom("Matrix",
                   "corrmatrix",
+                  "lmeRep",
                   "pdfactor",
                   "pdmatrix",
                   "ssclme"
@@ -44,7 +45,7 @@ export(
        "gsummary",
        "lmList",
        "lme",
-       #"lme1",
+       "lme1",
        "lmeControl",
        "pooledSD",
        "ranef"

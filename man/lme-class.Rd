@@ -3,25 +3,32 @@
 \alias{lme-class}
 \alias{VarCorr,lme-method}
 \alias{VarCorr,ssclme-method}
+\alias{VarCorr,lmeRep-method}
 \alias{anova,lme-method}
 \alias{anova,ssclme-method}
+\alias{anova,lmeRep-method}
 \alias{coef,lme-method}
 \alias{deviance,lme-method}
 \alias{deviance,ssclme-method}
+\alias{deviance,lmeRep-method}
 \alias{fitted,lme-method}
 \alias{formula,lme-method}
 \alias{logLik,lme-method}
 \alias{plot,lme-method}
 \alias{ranef,lme-method}
 \alias{ranef,ssclme-method}
+\alias{ranef,lmeRep-method}
 \alias{residuals,lme-method}
 \alias{show,lme-method}
 \alias{show,ssclme-method}
+\alias{show,lmeRep-method}
 \alias{summary,lme-method}
 \alias{summary,ssclme-method}
+\alias{summary,lmeRep-method}
 \alias{update,lme-method}
 \alias{vcov,lme-method}
 \alias{vcov,ssclme-method}
+\alias{vcov,lmeRep-method}
 \title{Class "lme"}
 \description{A fitted linear mixed-effects model.}
 \section{Objects from the Class}{

@@ -1,0 +1,39 @@
+
+R : Copyright 2004, The R Foundation for Statistical Computing
+Version 2.0.0 beta (2004-10-02), ISBN 3-900051-07-0
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for a HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(lme4)
+Loading required package: Matrix 
+> pixel <- if (inherits(Pixel, "groupedData")) Pixel@data else Pixel
+> pixel$DS <- pixel$Dog : pixel$Side
+> lme(pixel ~ day + I(day^2), pixel, list(Dog = ~ day, DS = ~ 1))
+Linear mixed-effects model
+Fixed: pixel ~ day + I(day^2) 
+ Data: pixel 
+ log-restricted-likelihood:  -412.6051 
+Random effects:
+ Groups   Name        Variance Std.Dev. Corr   
+ DS       (Intercept) 283.0550 16.8242         
+ Dog      (Intercept) 804.8566 28.3700         
+          day           3.3994  1.8437  -0.555 
+ Residual              80.8131  8.9896         
+# of obs: 102, groups: DS, 20; Dog, 10
+
+Fixed effects:
+               Estimate  Std. Error DF  t value  Pr(>|t|)
+(Intercept) 1073.339140   10.171705 99 105.5220 < 2.2e-16
+day            6.129596    0.879321 99   6.9708 3.558e-10
+I(day^2)      -0.367350    0.033945 99 -10.8218 < 2.2e-16
+> q("no")

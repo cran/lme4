@@ -139,12 +139,14 @@ setMethod("GLMM",
           data <- eval(make.mf.call(match.call(expand.dots = FALSE),
                                     formula, random), parent.frame())
           facs <- lapply(names(random),
-                         function(x) eval(as.name(x), envir = data))
+                         function(x) as.factor(eval(as.name(x), envir = data)))
           names(facs) <- names(random)
-          facs <-              # order in decreasing number of levels
-              facs[rev(order(unlist(lapply(facs,
-                                           function(fac)
-                                           length(levels(fac))))))]
+          ## order factor list by decreasing number of levels
+          ford <- rev(order(sapply(facs, function(fac) length(levels(fac)))))
+          if (any(ford != seq(a = ford))) { # re-order both facs and random
+              facs <- facs[ford]
+              random <- random[ford]
+          }
           ## creates model matrices
           mmats.unadjusted <-
               c(lapply(random,
