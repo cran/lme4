@@ -459,91 +459,95 @@ setMethod("getFixDF", signature(object="reStruct"),
           function(object)
       {
           ## calculates degrees of freedom for fixed effects Wald tests
-          Q <- length(object@random)-2
-          columns = object@random[["*fixed*"]]@columns
-          X = object@original[, columns, drop = FALSE]
-          ngrps = unlist(lapply(object@random, function(lmeLevel)
-                                 lmeLevel@nlev))
-          names(ngrps) = names(object@random)
+#          Q <- length(object@random)-2
+#          columns = object@random[["*fixed*"]]@columns
+#          X = object@original[, columns, drop = FALSE]
+#          ngrps = unlist(lapply(object@random, function(lmeLevel)
+#                                 lmeLevel@nlev))
+#          names(ngrps) = names(object@random)
+          val = .Call("nlme_getFixDF", object)
+          names(val$X) =
+              colnames(object@original)[object@random[["*fixed*"]]@columns]
+                                        # Convert R's assign to S-PLUS style
           assign = object@assign.X
           terms = terms(object@fixed)
-
-          if (!is.list(assign)) {               # in R
-              namTerms <- attr(terms, "term.labels")
-              if (attr(terms, "intercept") > 0) {
-                  namTerms <- c("(Intercept)", namTerms)
-              }
-              namTerms <- factor(assign, labels = namTerms)
-              assign <- split(order(assign), namTerms)
+          namTerms = attr(terms, "term.labels")
+          if (attr(terms, "intercept") > 0) {
+              namTerms = c("(Intercept)", namTerms)
           }
-          N <- nrow(X)
-          p <- ncol(X)
-          Qp1 <- Q + 1
-          namX <- colnames(X)
-          ngrps <- rev(ngrps)[-(1:2)]
-          stratNam <- c(names(ngrps), "Residual")
-          dfX <- dfTerms <- c(ngrps, N) - c(0, ngrps)
-          names(dfX) <- names(dfTerms) <- stratNam
-          valX <- double(p)
-          names(valX) <- namX
-          namTerms <- names(assign)
-          valTerms <- double(length(assign))
-          names(valTerms) <- namTerms
-          if (any(notIntX <- apply(X, 2, function(el) any(el != el[1])))) {
-              ## percentage of groups for which columns of X are inner
-              innP <- .Call("nlme_inner_perc_table",
-                            object,
-                            PACKAGE = "lme4")
-              dimnames(innP) <- list(namX, stratNam)
-              ## strata in which columns of X are estimated
-              ## ignoring fractional inner percentages for now
-              stratX <- stratNam[apply(innP, 1, function(el, index) max(index[el > 0]),
-                                       index = 1:Qp1)]
-              ## strata in which terms are estimated
-              notIntTerms <- unlist(lapply(assign,
-                                           function(el, notIntX) {
-                                               any(notIntX[el])
-                                           }, notIntX = notIntX))
-              stratTerms <- stratNam[unlist(lapply(assign,
-                                                   function(el, stratX, stratNam) {
-                                                       max(match(stratX[el], stratNam))
-                                                   },
-                                                   stratX = stratX, stratNam = stratNam))][notIntTerms]
-              stratX <- stratX[notIntX]
-              xDF <- table(stratX)
-              dfX[names(xDF)] <- dfX[names(xDF)] - xDF
-              if (!all(notIntX)) {                # correcting df for intercept
-                  dfX[1] <- dfX[1] - 1
-              } else {
-                  dfX[-1] <- dfX[-1] + 1
-              }
-              valX[notIntX] <- dfX[stratX]
-              ## number of parameters in each term
-              pTerms <- unlist(lapply(assign, length))[notIntTerms]
-              tDF <- tapply(pTerms, stratTerms, sum)
-              dfTerms[names(tDF)] <- dfTerms[names(tDF)] - tDF
-              if (!all(notIntTerms)) {
-                  dfTerms[1] <- dfTerms[1] - 1
-              } else {
-                  dfTerms[-1] <- dfTerms[-1] + 1
-              }
-              valTerms[notIntTerms] <- dfTerms[stratTerms]
-          } else {
-              notIntTerms <- unlist(lapply(assign,
-                                           function(el, notIntX) {
-                                               any(notIntX[el])
-                                           }, notIntX = notIntX))
-          }
-          if (!all(notIntX)) {  #intercept included
-              valX[!notIntX] <- max(dfX)
-              if (!all(notIntTerms)) {
-                  valTerms[!notIntTerms] <- max(dfTerms)
-              }
-          }
-          val <- list(X = valX, terms = valTerms)
-          attr(val, "assign") <- assign
+          names(val$terms) = namTerms
+          namTerms = factor(assign, labels = namTerms)
+          attr(val, "assign") = split(order(assign), namTerms)
           val
       })
+#          N <- nrow(X)
+#          p <- ncol(X)
+#          Qp1 <- Q + 1
+#          namX <- colnames(X)
+#          ngrps <- rev(ngrps)[-(1:2)]
+#          stratNam <- c(names(ngrps), "Residual")
+#          dfX <- dfTerms <- c(ngrps, N) - c(0, ngrps)
+#          names(dfX) <- names(dfTerms) <- stratNam
+#          valX <- double(p)
+#          names(valX) <- namX
+#          namTerms <- names(assign)
+#          valTerms <- double(length(assign))
+#          names(valTerms) <- namTerms
+#          if (any(notIntX <- apply(X, 2, function(el) any(el != el[1])))) {
+#              ## percentage of groups for which columns of X are inner
+#              innP <- .Call("nlme_inner_perc_table",
+#                            object,
+#                            PACKAGE = "lme4")
+#              dimnames(innP) <- list(namX, stratNam)
+#              ## strata in which columns of X are estimated
+#              ## ignoring fractional inner percentages for now
+#              stratX <- stratNam[apply(innP, 1, function(el, index) max(index[el > 0]),
+#                                       index = 1:Qp1)]
+#              ## strata in which terms are estimated
+#              notIntTerms <- unlist(lapply(assign,
+#                                           function(el, notIntX) {
+#                                               any(notIntX[el])
+#                                           }, notIntX = notIntX))
+#              stratTerms <- stratNam[unlist(lapply(assign,
+#                                                   function(el, stratX, stratNam) {
+#                                                       max(match(stratX[el], stratNam))
+#                                                   },
+#                                                   stratX = stratX, stratNam = stratNam))][notIntTerms]
+#              stratX <- stratX[notIntX]
+#              xDF <- table(stratX)
+#              dfX[names(xDF)] <- dfX[names(xDF)] - xDF
+#              if (!all(notIntX)) {                # correcting df for intercept
+#                  dfX[1] <- dfX[1] - 1
+#              } else {
+#                  dfX[-1] <- dfX[-1] + 1
+#              }
+#              valX[notIntX] <- dfX[stratX]
+#              ## number of parameters in each term
+#              pTerms <- unlist(lapply(assign, length))[notIntTerms]
+#              tDF <- tapply(pTerms, stratTerms, sum)
+#              dfTerms[names(tDF)] <- dfTerms[names(tDF)] - tDF
+#              if (!all(notIntTerms)) {
+#                  dfTerms[1] <- dfTerms[1] - 1
+#              } else {
+#                  dfTerms[-1] <- dfTerms[-1] + 1
+#              }
+#              valTerms[notIntTerms] <- dfTerms[stratTerms]
+#          } else {
+#              notIntTerms <- unlist(lapply(assign,
+#                                           function(el, notIntX) {
+#                                               any(notIntX[el])
+#                                           }, notIntX = notIntX))
+#          }
+#          if (!all(notIntX)) {  #intercept included
+#              valX[!notIntX] <- max(dfX)
+#              if (!all(notIntTerms)) {
+#                  valTerms[!notIntTerms] <- max(dfTerms)
+#              }
+#          }
+#          val <- list(X = valX, terms = valTerms)
+#          attr(val, "assign") <- assign
+#          val
+#      })
 
 setMethod("show", signature(object="summary.reStruct"),
           function(object) {

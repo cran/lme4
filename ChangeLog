@@ -1,3 +1,10 @@
+2003-06-30  Douglas Bates  <bates@stat.wisc.edu>
+
+	* DESCRIPTION (Version): 0.2-2
+	
+	* R/reStruct.R, src/reStruct.c: Move most of getFixDF method for
+	reStruct to C code.
+
 2003-06-24  Saikat DebRoy  <saikat@stat.wisc.edu>
 
 	* man/nlme-internal.Rd: *** empty log message ***

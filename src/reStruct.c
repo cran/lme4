@@ -2,7 +2,7 @@
  * @file   reStruct.c
  * @author Saikat DebRoy <saikat@stat.wisc.edu>
  * @author Douglas Bates <bates@stat.wisc.edu>
- * @date   $Date: 2003/06/24 20:11:41 $
+ * @date   $Date: 2003/06/30 22:21:30 $
  * 
  * @brief  functions for handling reStruct objects.
  * 
@@ -1198,65 +1198,65 @@ nlme_solveOnly(SEXP reStruct)
 /* This function are directly from nlme 3.1 */
 /* functions for calculating df's for fixed effects tests */
 
-static double
-nlme_inner_perc(const double* x, const int* grp, int n)
-    /* percentage of groups for which x is inner */
-{
-    /* x - column of X matrix to be assessed
-       grp - integer vector with groups
-       n - length of x and grp
-       data are assumed to be ordered by grp */
+/* static double */
+/* nlme_inner_perc(const double* x, const int* grp, int n) */
+       /* percentage of groups for which x is inner */
+/* { */
+     /* x - column of X matrix to be assessed
+        grp - integer vector with groups
+        n - length of x and grp
+        data are assumed to be ordered by grp */
 
-    int currGrp, nn = 0, isInner;
-    double nInner = 0., nGrp = 0., currVal;
+/*     int currGrp, nn = 0, isInner; */
+/*     double nInner = 0., nGrp = 0., currVal; */
 
-    while (nn < n) {
-        currGrp = grp[nn];
-        currVal = x[nn];
-        nGrp++;
-        isInner = 0;
-        do {
-            if (isInner == 0 && x[nn] != currVal) {
-                nInner++;
-                isInner = 1;
-            }
-            nn++;
-        } while (nn < n && currGrp == grp[nn]);
-    }
-    return(nInner/nGrp);
-}
+/*     while (nn < n) { */
+/*         currGrp = grp[nn]; */
+/*         currVal = x[nn]; */
+/*         nGrp++; */
+/*         isInner = 0; */
+/*         do { */
+/*             if (isInner == 0 && x[nn] != currVal) { */
+/*                 nInner++; */
+/*                 isInner = 1; */
+/*             } */
+/*             nn++; */
+/*         } while (nn < n && currGrp == grp[nn]); */
+/*     } */
+/*     return(nInner/nGrp); */
+/* } */
 
 /* This is from nlme-3.1, changed to .Call interface */
-SEXP
-nlme_inner_perc_table(SEXP reStruct)
-     /* constructs an p x Q "inner-percentage" table for a fixed effects
-	matrix X and a set of grouping vectors grps */
-{
-    SEXP rpTable;
-    SEXP groups_sym = install("groups");
-    SEXP original = GET_SLOT(reStruct, install("original"));
-    SEXP random = GET_SLOT(reStruct, install("random"));
-    int Q = LENGTH(random)-2;
-    SEXP columns = GET_SLOT(VECTOR_ELT(random, Q), install("columns"));
-    int pp = LENGTH(columns);
-    int nn = INTEGER(GET_DIM(original))[0];
-    double* X = REAL(original) + nn*(INTEGER(columns)[0]-1);
-    int i, j, ipp = 0;
-    double* pTable;
+/* SEXP */
+/* nlme_inner_perc_table(SEXP reStruct) */
+      /* constructs an p x Q "inner-percentage" table for a fixed effects
+ 	matrix X and a set of grouping vectors grps */
+/* { */
+/*     SEXP rpTable; */
+/*     SEXP groups_sym = install("groups"); */
+/*     SEXP original = GET_SLOT(reStruct, install("original")); */
+/*     SEXP random = GET_SLOT(reStruct, install("random")); */
+/*     int Q = LENGTH(random)-2; */
+/*     SEXP columns = GET_SLOT(VECTOR_ELT(random, Q), install("columns")); */
+/*     int pp = LENGTH(columns); */
+/*     int nn = INTEGER(GET_DIM(original))[0]; */
+/*     double* X = REAL(original) + nn*(INTEGER(columns)[0]-1); */
+/*     int i, j, ipp = 0; */
+/*     double* pTable; */
 
-    rpTable = allocMatrix(REALSXP, pp, Q+1);
-    pTable = REAL(rpTable);
-    for (i = 0; i < pp; i++)
-        *pTable++ = 1.0;
-    for(i = Q-1; i >= 0; i--) {
-        int* grps = INTEGER(GET_SLOT(VECTOR_ELT(random, i), groups_sym));
-        for(j = 0; j < pp; j++) {
-            pTable[j + ipp] = nlme_inner_perc(X + j * nn, grps, nn);
-        }
-        ipp += pp;
-    }
-    return(rpTable);
-}
+/*     rpTable = allocMatrix(REALSXP, pp, Q+1); */
+/*     pTable = REAL(rpTable); */
+/*     for (i = 0; i < pp; i++) */
+/*         *pTable++ = 1.0; */
+/*     for(i = Q-1; i >= 0; i--) { */
+/*         int* grps = INTEGER(GET_SLOT(VECTOR_ELT(random, i), groups_sym)); */
+/*         for(j = 0; j < pp; j++) { */
+/*             pTable[j + ipp] = nlme_inner_perc(X + j * nn, grps, nn); */
+/*         } */
+/*         ipp += pp; */
+/*     } */
+/*     return(rpTable); */
+/* } */
 
 SEXP
 nlme_reStructEMsteps(SEXP reStruct, SEXP niter, SEXP isVerbose)
@@ -1297,9 +1297,15 @@ nlme_reStructEMsteps(SEXP reStruct, SEXP niter, SEXP isVerbose)
     return reStruct;
 }
 
-
-/* Check if the vector x is invariant in each of the sets of rows in
-   the list origRows.  The rows use 1-based indexing. */
+/** 
+ * Check the invariance of a column of the fixed-effects design matrix
+ * within the groups defined by the origRows list.
+ * 
+ * @param x pointer to a column of the fixed-effects design matrix
+ * @param origRows a list of (1-based) row numbers that constitute groups
+ * 
+ * @return 0 if x varies within the groups, otherwise 1
+ */
 
 static int
 nlme_check_invariance(double *x, SEXP origRows)
@@ -1317,7 +1323,14 @@ nlme_check_invariance(double *x, SEXP origRows)
     return 1;
 }
     
-/* Calculate degrees of freedom for coefficients in the fixed-effects */
+/** 
+ * Calculate the denominator degrees of freedom for individual columns
+ * of the X matrix and for each term in the fixed-effects specification.
+ * 
+ * @param reStruct Pointer to an reStruct object
+ * 
+ * @return A list with two components called X and terms.
+ */
 
 SEXP nlme_getFixDF(const SEXPREC* reStruct)
 {
@@ -1329,30 +1342,36 @@ SEXP nlme_getFixDF(const SEXPREC* reStruct)
     int Q = LENGTH(random)-2;
     SEXP columns = GET_SLOT(VECTOR_ELT(random, Q), install("columns"));
     int pp = LENGTH(columns);
-    SEXP val = PROTECT(allocVector(INTSXP, pp));
+    SEXP valX = PROTECT(allocVector(INTSXP, pp));
+    SEXP valXnames = PROTECT(allocVector(STRSXP, pp));
+    SEXP valTerms;
+    SEXP val = PROTECT(allocVector(VECSXP, 2));
+    SEXP valnames = PROTECT(allocVector(STRSXP, 2));
     int nn = INTEGER(GET_DIM(original))[0];
     double *orig = REAL(original);
-    int i, j,
+    int i, j, nterms = 0,
 	ngrps[Q+1],		/* number of groups at each level */
 	dflev[Q+1],		/* degrees of freedom at each level */
-	level[pp],		/* level assigned to each coefficient */
-	ncoef[Q+1];		/* number of coefficients estimated at each level */
+	level[pp];		/* level assigned to each coefficient */
 
-				/* Here we count levels as in the multilevel literature */
+/* We will number the levels as in the multilevel literature, but with
+ * 0-based indices, not 1-based.  The observation level is level 0,
+ * the level of groups with the smallest groups is level 1,  etc. */
     ngrps[0] = nn;
     for(i = 1; i <= Q; i++) {
 	ngrps[i] = INTEGER(GET_SLOT(VECTOR_ELT(random, i - 1), nlev_sym))[0];
+	dflev[i - 1] = ngrps[i - 1] - ngrps[i];
     }
-    for(i = 0; i <= Q; i++) {
-	ncoef[i] = 0;
-	dflev[i] = ngrps[i];
-    }
+    dflev[Q] = ngrps[Q];
 				/* Assign a level to each column of X */
     for(j = 0; j < pp; j++) {
 	double *col = orig + (INTEGER(columns)[j] - 1) * nn;
+	int asgn = INTEGER(assign)[j];
 
+	if (nterms < asgn) nterms = asgn; /* keep track of max(asgn) */
 	level[j] = 0;
-	if (INTEGER(assign)[j] == 0) { /* intercept is special case */
+	if (asgn == 0) {	/* intercept is special case */
+	    dflev[0]--;
 	    continue;
 	}
 	for (i = 0; i < Q; i++) {
@@ -1360,14 +1379,31 @@ SEXP nlme_getFixDF(const SEXPREC* reStruct)
 				      GET_SLOT(VECTOR_ELT(random, i),
 					       origRows_sym))) {
 		level[j] = i + 1;
+	    } else {
+		continue;
 	    }
 	}
+	dflev[level[j]]--;
     }	
+    valTerms = PROTECT(allocVector(INTSXP, nterms + 1));
+    for(j = 0; j <= nterms; j++) INTEGER(valTerms)[j] = 0;
 
     for(j = 0; j < pp; j++) {
- 	INTEGER(val)[j] = level[j];
+	int asgn = INTEGER(assign)[j];
+	int thisCoefDF = dflev[level[j]];
+	int thisTermDF = INTEGER(valTerms)[asgn];
+
+ 	INTEGER(valX)[j] = thisCoefDF;
+	if (thisTermDF && thisTermDF != thisCoefDF) {
+	    error("Inconsistent calculation of DF within terms");
+	}
+	INTEGER(valTerms)[asgn] = thisCoefDF;
     }
-    UNPROTECT(1);
-    return val;
+    SET_VECTOR_ELT(val, 0, valX);
+    SET_VECTOR_ELT(val, 1, valTerms);
+    SET_STRING_ELT(valnames, 0, mkChar("X"));
+    SET_STRING_ELT(valnames, 1, mkChar("terms"));
+    UNPROTECT(5);
+    return namesgets(val, valnames);
 }
 
