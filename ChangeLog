@@ -1,3 +1,7 @@
+2004-03-11  Douglas Bates  <bates@stat.wisc.edu>
+
+	* NAMESPACE: export fixef and ranef (Erik Jørgensen)
+
 2004-01-26  Douglas Bates  <bates@stat.wisc.edu>
 
 	* DESCRIPTION (Depends): Required that version 0.4-7 be used with

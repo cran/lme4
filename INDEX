@@ -4,8 +4,8 @@ BIC                     Bayesian Information Criterion
 BodyWeight              Rat weight over time for different diets
 Cefamandole             Pharmacokinetics of Cefamandole
 Dialyzer                High-Flux Hemodialyzer
-EMstepsGets             Perform EM iterations
-EMupdateGets            Update an object in the EM algorithm
+EMsteps<-               Perform EM iterations
+EMupdate<-              Update an object in the EM algorithm
 Earthquake              Earthquake Intensity
 Fatigue                 Cracks caused by metal fatigue
 GLMM                    Fit Generalized Linear Mixed Models via PQL
@@ -17,7 +17,7 @@ Hsb82                   High School and Beyond - 1982
 IGF                     Radioimmunoassay of IGF-I Protein
 LMEgradient             The gradient and Hessian in lme
                         optimization-method
-LMEoptimizeGets         Optimize linear mixed-effects
+LMEoptimize<-           Optimize linear mixed-effects
 Machines                Productivity Scores for Machines and Workers
 MathAchSchool           School demographic data for MathAchieve
 MathAchieve             Mathematics achievement scores
@@ -43,13 +43,13 @@ Soybean                 Growth of soybean plants
 Spruce                  Growth of Spruce Trees
 Tetracycline1           Pharmacokinetics of tetracycline
 Tetracycline2           Pharmacokinetics of tetracycline
-VarCorr-class           Class "VarCorr"
 VarCorr                 Extract variance and correlation components
+VarCorr-class           Class "VarCorr"
 Wafer                   Modeling of Analog MOS Circuits
 Wheat                   Yields by growing conditions
 Wheat2                  Wheat Yield Trials
 bdf                     Language scores
-coefGets                Assign parameters
+coef<-                  Assign parameters
 coerce-methods          Coercion methods and assignments
 corFactor               Extract the correlation factor
 corMatrix               Generate the correlation matrix
@@ -57,30 +57,30 @@ corrmatrix-class        Class "corrmatrix"
 ergoStool               Ergometrics experiment with stool types
 family-class            Class "family"
 fixed.effects           Extract Fixed Effects
-formulas                Utilities for formulas
+getCovariate            Utilities for formulas
+getFixDF                Internal nlme functions
 glmm-class              Class "glmm"
 glmmStruct              Create a glmm object
-groupedData-class       Class "groupedData"
 groupedData             Creation of groupedData objects
+groupedData-class       Class "groupedData"
 guImmun                 Immunization in Guatemala
 guPrenat                Prenatal care in Guatemala
 intervals               Confidence Intervals on Coefficients
 isInitialized           Check for initialization
-lmList-class            Class "lmList"
 lmList                  List of lm Objects with a Common Model
-lme-class               Class "lme"
+lmList-class            Class "lmList"
 lme                     Fit linear mixed-effects models
+lme-class               Class "lme"
 lmeControl              Control values for lme
-lmeLevel-class          Class "lmeLevel"
 lmeLevel                Construct an lmeLevel object
+lmeLevel-class          Class "lmeLevel"
+lmeLevelList-class      Some internal classes
 logDet                  Logarithm of the determinant
-matrixGets              Assign the matrix
-model.matrixGets        Assign the model.matrix
+matrix<-                Assign the matrix
+model.matrix<-          Assign the model.matrix
 nfGroupedData-class     Class "nfGroupedData"
 nffGroupedData-class    Class "nffGroupedData"
 nfnGroupedData-class    Class "nfnGroupedData"
-nlme-internal           Internal nlme functions
-nlmeInternal-class      Some internal classes
 nmGroupedData-class     Class "nmGroupedData"
 pdBlocked-class         Class "pdBlocked", blocked pd matrices
 pdCompSymm-class        Class "pdCompSymm"
@@ -97,13 +97,13 @@ pdgradient              Evaluated the pdmatrix gradient
 pdmatrix-class          Positive-definite matrices
 pooledSD                Extract pooled standard deviation
 random.effects          Extract Random Effects
-reStruct-class          Class "reStruct"
 reStruct                Create an reStruct object
-responseGets            Modify the response
+reStruct-class          Class "reStruct"
+response<-              Modify the response
 s3bbx                   Covariates in the Rodriguez and Goldman
                         simulation
 s3bby                   Responses simulated by Rodriguez and Goldman
 solve-methods           Methods for Function solve
 summary.reStruct-class
                         Class "summary.reStruct"
-weightedGets            Modify the weights
+weighted<-              Modify the weights

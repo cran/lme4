@@ -1,6 +1,6 @@
 useDynLib("lme4")
-#importFrom("stats4", "coef", "logLik", "plot", "summary", "update")
-#importFrom("stats", "anova", "fitted", "formula", "model.matrix", "residuals")
+importFrom("stats4", "coef", "logLik", "plot", "summary", "update")
+importFrom("stats", "anova", "fitted", "formula", "model.matrix", "residuals")
 
 export(
        "EMupdate<-",
@@ -11,6 +11,7 @@ export(
        "VarCorr",
        "coef<-",
        "corMatrix",
+       "fixef",
        "getCovariateFormula",
        "getGroups",
        "getGroupsFormula",
@@ -29,7 +30,8 @@ export(
        "pdMatrix",
        "pdNatural",
        "pdgradient",
-       "pooledSD"
+       "pooledSD",
+       "ranef"
        )
 
 exportClasses(
@@ -73,6 +75,7 @@ exportMethods(
               "coerce<-",
               "dim",
               "fitted",
+              "fixef",
               "formula",
               "isInitialized",
               "logLik",
@@ -81,6 +84,7 @@ exportMethods(
               "names<-",
               "pdgradient",
               "plot",
+              "ranef",
               "residuals",
               "show",
               "solve",

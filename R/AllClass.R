@@ -2,7 +2,7 @@
 .onLoad <- function(lib, pkg)
 {
     require("methods")
-#    require("stats4")
+    require("stats4")
     require("lattice")
 }
 
