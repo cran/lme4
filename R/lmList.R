@@ -144,10 +144,10 @@ setMethod("plot", signature(x = "lmList.confint"),
           dd <- dim(arr)
           dn <- dimnames(arr)
           ll <- length(arr)
-          df <- data.frame(group = gl(dd[1], dd[2] * dd[3], lab = dn[[1]]),
+          df <- data.frame(group = gl(dd[1], 1, len = ll, lab = dn[[1]]),
                            intervals = as.vector(arr),
-                           what = gl(dd[3], 1, len = ll, lab = dn[[3]]),
-                           end = gl(dd[2], dd[3], len = ll))
+                           what = gl(dd[3], dd[1] * dd[2], len = ll, lab = dn[[3]]),
+                           end = gl(dd[2], dd[1], len = ll))
           dots <- list(...)
           strip <- dots[["strip"]]
           if (is.null(strip)) {

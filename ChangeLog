@@ -1,3 +1,7 @@
+2005-04-06  Douglas Bates  <bates@bates1-home>
+
+	* R/lmList.R: Repair the plot method for the lmList.confint class
+
 2005-04-05  Douglas Bates  <bates@bates1-home>
 
 	* R/lmer.R: Update of the "with" method.

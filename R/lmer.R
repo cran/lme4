@@ -99,10 +99,9 @@ setMethod("lmer", signature(formula = "formula", family = "missing"),
           Xmat <- model.matrix(fixed.form, frm)
           mmats <- c(lapply(random, "[[", 1),
                      .fixed = list(cbind(Xmat, .response = model.response(frm))))
-          ## FIXME: Use Xfrm and Xmat to get the terms and assign
-          ## slots, pass them to lmer_create, then destroy them
           obj <- .Call("lmer_create", lapply(random, "[[", 2),
                        mmats, PACKAGE = "Matrix")
+          slot(obj, "frame") <- frm
           slot(obj, "terms") <- attr(model.frame(fixed.form, data), "terms")
           slot(obj, "assign") <- attr(Xmat, "assign")
           slot(obj, "call") <- match.call()
@@ -646,10 +645,12 @@ setAs("lmer", "dsTMatrix",
   })
 
 setMethod("fitted", signature(object = "lmer"),
-          function(object, ...) object@fitted)
+          function(object, ...)
+          napredict(attr(object@frame, "na.action"), object@fitted))
 
 setMethod("residuals", signature(object = "lmer"),
-          function(object, ...) object@residuals)
+          function(object, ...)
+          naresid(attr(object@frame, "na.action"), object@residuals))
 
 setMethod("resid", signature(object = "lmer"),
           function(object, ...) do.call("residuals", c(list(object), list(...))))
@@ -705,6 +706,12 @@ setMethod("plot", signature(x = "lmer.ranef"),
 
 setMethod("with", signature(data = "lmer"),
           function(data, expr, ...) {
-          lst <- c(list(. = data), data@flist, eval(data@call$data))
-          eval(substitute(expr), lst[unique(names(lst))])})
+              dat <- eval(data@call$data)
+              if (!is.null(na.act <- attr(data@frame, "na.action")))
+                  dat <- dat[-na.act, ]
+              lst <- c(list(. = data), data@flist, data@frame, dat)
+              eval(substitute(expr), lst[unique(names(lst))])
+          })
 
+setMethod("terms", signature(x = "lmer"),
+          function(x, ...) x@terms)

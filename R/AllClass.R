@@ -44,7 +44,8 @@ setClass("lmer",
                         terms = "terms",
                         assign = "integer",
                         fitted = "numeric",
-                        residuals = "numeric"
+                        residuals = "numeric",
+                        frame = "data.frame"
                         ),
          validity = function(object) {
              .Call("lmer_validate", object, PACKAGE = "Matrix")

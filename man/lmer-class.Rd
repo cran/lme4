@@ -19,6 +19,7 @@
 \alias{vcov,lmer-method}
 \alias{plot,lmer.ranef-method}
 \alias{plot,lmer.coef-method}
+\alias{terms,lmer-method}
 \alias{with,lmer-method}
 \title{lmer model representation}
 \description{A representation of a linear mixed-effects model using a
