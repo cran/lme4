@@ -12,7 +12,7 @@
 LMEoptimize(x) <- value
 }
 \arguments{
-  \item{x}{An object of a suitable class, such as \code{reStruct} to be
+  \item{x}{An object of a suitable class, such as \code{ssclme} to be
     optimized}
   \item{value}{A list that contains components \code{msMaxIter}, a
     non-negative integer specifying the maximum number of iterations, 
@@ -28,6 +28,6 @@ LMEoptimize(x) <- value
 %\references{}
 %\author{}
 %\note{}
-\seealso{\code{\link{reStruct-class}}, \code{\link{lmeControl}}}
+\seealso{\code{\link[Matrix]{ssclme-class}}, \code{\link{lmeControl}}}
 %\examples{}
 \keyword{models}

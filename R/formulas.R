@@ -62,3 +62,10 @@ setMethod("getGroupsFormula", signature(object = "ANY"),
 setMethod("getGroups", signature(object="data.frame", form="formula"),
           function(object, form, level, data, sep)
               eval(getGroupsFormula(form)[[2]], object))
+
+setMethod("getGroups", signature(object="groupedData"),
+          function(object, form, level, data, sep) {
+              object = object@data
+              callGeneric()
+          })
+

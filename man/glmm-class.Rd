@@ -1,45 +1,45 @@
-\name{glmm-class}
+\name{GLMM-class}
 \docType{class}
-\alias{glmm-class}
-\alias{VarCorr,glmm-method}
-\alias{fixef<-,glmm,numeric-method}
-\alias{getResponse,glmm-method}
-\alias{logLik,glmm-method}
-\alias{show,glmm-method}
-\alias{summary,glmm-method}
-\title{Class "glmm"}
-\description{A generalized linear mixed-effects model.}
+\alias{GLMM-class}
+\alias{coef,GLMM-method}
+\alias{deviance,GLMM-method}
+\alias{fixef,GLMM-method}
+\alias{logLik,GLMM-method}
+\alias{ranef,GLMM-method}
+\alias{show,GLMM-method}
+\alias{summary,GLMM-method}
+
+\title{Class "GLMM"}
+\description{A fitted generalized linear mixed model.}
 \section{Objects from the Class}{
-  Objects can be created by calls of the form \code{new("glmm", ...)}
-  but more commonly they are created by calls to \code{\link{GLMM}}.
+    Objects are usually created by calls to the constructor function
+  \code{GLMM}.  They also can be created by calls of the form
+  \code{new("GLMM", ...)}.
 }
 \section{Slots}{
   \describe{
-    \item{\code{family}:}{Object of class \code{"family"}, specifying
-      the error distribution and the link function used in the model.}
-    \item{\code{origy}:}{Object of class \code{"numeric"}, the original
-      response.}
-    \item{\code{n}:}{Object of class \code{"numeric"}, if the family is
-      \code{binomial}, the number of observations for each data point.}
-    \item{\code{prior.weights}:}{Object of class \code{"numeric"},
-      weights used when creating the model.frame.}
-    \item{\code{init.weights}:}{Object of class \code{"numeric"},
-      weights from a fixed effects generalized linear model for the data.}
-    \item{\code{init.y}:}{Object of class \code{"numeric"}, the linear
-      predictor from a fixed effects generalized linear model for the data.}
-    \item{\code{method}:}{Object of class \code{"character"}, the method
-      used to fit the generalized linear mixed model.}
-    \item{\code{reStruct}:}{Object of class \code{"reStruct"}, from class
-	\code{"lme"}, the random-effects structure for the model.}
-    \item{\code{frame}:}{Object of class \code{"data.frame"}, from class
-	\code{"lme"}, the model.frame used to fit the model.}
-    \item{\code{na.action}:}{Object of class \code{"ANY"}, from class
-	\code{"lme"}, the \code{na.action} argument used when creating the
-      \code{model.frame}.}
-    \item{\code{fitted}:}{Object of class \code{"numeric"}, from class
-      \code{"lme"}, the fitted values in the linear predictor scale.}
-    \item{\code{call}:}{Object of class \code{"call"}, from class
-      \code{"lme"}, the function call used to create the object.}
+    \item{\code{family}:}{The family of functions
+      defining the generalized linear model.  See
+      \code{\link[stats]{family}} for details.}
+    \item{\code{logLik}:}{the \code{"numeric"} value of the log-likelihood.}
+    \item{\code{fixef}:}{A \code{"numeric"} vector of fixed-effects
+      parameters.}
+    \item{\code{call}:}{A copy of the function call that created the object.}
+    \item{\code{facs}:}{A \code{list} of (possibly reordered) grouping
+      factors associated with the random effects.}
+    \item{\code{x}:}{If the optional argument \code{x} to
+      \code{lme} is \code{TRUE}, a \code{list} of model matrices
+      associated with the random effects, and the fixed effects with the
+      response appended. Otherwise, an empty list.}
+    \item{\code{model}:}{The model frame (of class \code{"data.frame"})
+      for the model or, if the optional argument
+      \code{model} to \code{lme} is \code{FALSE}, an empty frame.}
+    \item{\code{REML}:}{A \code{"logical"} indicator of the model having
+      been fit according to the REML criterion.}
+    \item{\code{rep}:}{An \code{"ssclme"} object representing the fitted
+      model.}
+    \item{\code{fitted}:}{A \code{"numeric"} vector of fitted values.}
+    \item{\code{residuals}:}{A \code{"numeric"} vector of raw residuals.}
   }
 }
 \section{Extends}{
@@ -47,28 +47,47 @@ Class \code{"lme"}, directly.
 }
 \section{Methods}{
   \describe{
-    \item{LMEoptimize<-}{\code{signature(x = "glmm", value = "list")}:
-      optimize the PQL approximation to the log-likelihood.}
-    \item{VarCorr}{\code{signature(x = "glmm")}: Extract variance and correlation components.}
-    \item{fixef<-}{\code{signature(object = "glmm", value = "numeric")}:
-      assign the fixed effects (used for \code{method = "Laplace"}).}
-    \item{getResponse}{\code{signature(object = "glmm")}: extract the response.}
-    \item{logLik}{\code{signature(object = "glmm")}: extract the
-      (approximate) log-likelihood.}
-    \item{show}{\code{signature(object = "glmm")}: show the object.}
-    \item{summary}{\code{signature(object = "glmm")}: summarize the object.}
+    \item{VarCorr}{\code{signature(x = "GLMM")}: Extract the variances,
+      standard deviations, and correlations of the random effects.}
+    \item{anova}{\code{signature(object = "GLMM")}: Perform an analysis
+      of variance.}
+    \item{coef}{\code{signature(object = "GLMM")}: Extract the parameters
+      that determine the relative precision matrices. The optional
+      argument \code{unconst} determines if the constrained or
+      unconstrained parameterization is used.}
+    \item{deviance}{\code{signature(object = "GLMM")}: Extract the
+      deviance as a numeric scalar.  The optional argument \code{REML}
+      determines if the REML or ML criterion is used.}
+    \item{fitted}{\code{signature(object = "GLMM")}: Extract the fitted
+      values as a numeric vector.}
+    \item{fixef}{\code{signature(object = "GLMM")}: Extract the fixed
+      effects coefficients as a named numeric vector }
+    \item{formula}{\code{signature(x = "GLMM")}: Extract the formula of
+      the response and the fixed effects.}
+    \item{logLik}{\code{signature(object = "GLMM")}: Extract the
+      log-likelihood.}
+    \item{plot}{\code{signature(x = "GLMM")}:}
+    \item{ranef}{\code{signature(object = "GLMM")}: Extact the random
+      effects as a named list of numeric matrices.}
+    \item{residuals}{\code{signature(object = "GLMM")}: Extract the
+      residuals as a numeric vector.}
+    \item{show}{\code{signature(object = "GLMM")}: Print a concise
+      description of the object.}
+    \item{summary}{\code{signature(object = "GLMM")}: Create a summary
+      object of class \code{"summary.lme"}.}
+    \item{update}{\code{signature(object = "GLMM")}: Create an updated
+      fitted model.}
+    \item{vcov}{\code{signature(object = "GLMM")}: Extract the variances
+      and covariances of the fixed-effects parameter estimates.}
   }
 }
-\author{Saikat DebRoy \email{saikat@stat.wisc.edu}
-  and Douglas Bates \email{bates@stat.wisc.edu}}
-\examples{
-library(lme4)
-data(guImmun)
-# This returns an object of class glmm
-fm = GLMM(immun ~ kid2p + mom25p + ord + ethn +
-                  momEd + husEd + momWork + rural + pcInd81,
-          data = guImmun, family = binomial,
-          random = ~1|comm/mom)
-fm
+\details{Many methods for the \code{"GLMM"} class simply recall the
+  generic on \code{as(object, "lme")} which, in turn, often calls the
+    generic on the \code{"rep"} component of the first argument.  Thus the
+    methods actually are applied to an object of the \code{"lme"} or
+    \code{"ssclme"} class.}
+\seealso{
+  \code{\link{GLMM}}, \code{\link{lme-class}},
+  \code{\link[Matrix]{ssclme-class}}
 }
 \keyword{classes}

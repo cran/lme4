@@ -11,12 +11,13 @@ for (i in 1:nres) {
     try({
         thisdat <- cbind(s3bbx, modern = s3bby[,i])
         results[i, 9:11] <-
-            system.time(fm <- GLMM(modern ~ chldcov + famcov + commcov,
+            system.time(fm <-
+                        GLMM(modern ~ chldcov + famcov + commcov,
                                    data = thisdat,
                                    random = ~1|community/family,
-                                   family = binomial))[1:3]
+                                   family = binomial()))[1:3]
         results[i, 1:4] <- fixef(fm)
-        results[i, 5:6] <- -coef(as(fm, "reStruct"))
+        results[i, 5:6] <- coef(fm)
         results[i, 7:8] <- exp(results[i, 5:6])
     })
 }

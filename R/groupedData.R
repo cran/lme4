@@ -217,17 +217,8 @@ setMethod("formula",
           "groupedData",
           function(x, ...) x@formula)
 
-
-#setMethod("getData",
-#          "groupedData",
-#          function(x, ...) x@data)
-
-
 setAs("groupedData", "data.frame",
       function(from) from@data)
-
-
-
 
 collectorPlot <-
     function(formula, data, displayfunction,
@@ -236,7 +227,7 @@ collectorPlot <-
 {
     ## It's probably sufficient to have displayfunction a quoted fn name (like "xyplot")
     ## Think about it
-
+    require("lattice", quietly = TRUE)
     dotargs <- list(...)
 
 
@@ -266,129 +257,102 @@ setMethod("plot",
           function(x,
                    formula,
                    inner = NULL, outer = NULL,
-                   ...) {
+                   ...)
+      {
+          respVar <- getResponseFormula(x)[[2]]
+          isNumericResponse <- is.numeric(eval(respVar, x@data))
+          
+          covVar <- getCovariateFormula(x)[[2]]
+          if (!(isTrivialCovariate <- covVar == 1))
+              isNumericCovariate <- is.numeric(eval(covVar, x@data))
+          
+          groupVar <- getGroupsFormula(x)[[2]]
+          isMultipleGroups <- length(groupVar) > 2
+          if (isMultipleGroups)
+              return("multiple groups not implemented yet")
+          if (!isNumericResponse)
+              return("non-numeric response plots not implemented yet")
 
+          if (isTrivialCovariate || !isNumericCovariate) {
+              xargs <- list()
+              displayfunction = "dotplot"
+              form = as.formula(paste(groupVar, respVar, sep = "~"))
+              groups = if (isTrivialCovariate) NULL else covVar
+              
+              xlab <-
+                  if ("y" %in% names(x@labels)) x@labels$y
+                  else as.character(respVar)
+              if ("y" %in% names(x@units)) xlab <- paste(xlab, x@units$y)
+              ylab <- as.character(groupVar)
+              labels <- list(x = xlab, y = ylab)
 
-              respVar <- getResponseFormula(x)[[2]]
-              isNumericResponse <- is.numeric(eval(respVar, x@data))
+              if (!is.null(groups))
+                  xargs$groups <- groups
 
-              covVar <- getCovariateFormula(x)[[2]]
-              if (!(isTrivialCovariate <- covVar == 1))
-                  isNumericCovariate <- is.numeric(eval(covVar, x@data))
-
-              groupVar <- getGroupsFormula(x)[[2]]
-              isMultipleGroups <- length(groupVar) > 2
-
-
-
-
-              if (isMultipleGroups) return("multiple groups not implemented yet")
-
-
-              if (!isNumericResponse) return("non-numeric response plots not implemented yet")
-
-
-              if (isTrivialCovariate || !isNumericCovariate)
-              {
-                  xargs <- list()
-                  displayfunction = "dotplot"
-                  form = as.formula(paste(groupVar, respVar, sep = "~"))
-                  groups = if (isTrivialCovariate) NULL else covVar
-
-                 xlab <-
-                      if ("y" %in% names(x@labels)) x@labels$y
-                      else as.character(respVar)
-                  if ("y" %in% names(x@units)) xlab <- paste(xlab, x@units$y)
-                  ylab <- as.character(groupVar)
-                  labels <- list(x = xlab, y = ylab)
-
-
-
-                  if (!is.null(groups))
-                      xargs$groups <- groups
-
-
-
-                  ## groups needs to be combined with inner, perhaps
-                  ##if (!isTrivialCovariate && is.null(inner)) inner = covVar
+              ## groups needs to be combined with inner, perhaps
+              ##if (!isTrivialCovariate && is.null(inner)) inner = covVar
+          } else if (isNumericCovariate) {
+              ## Custom panel function
+              panel.nfn = function(x, y, ...) {
+                  panel.xyplot(x, y, ...)
+                  y.avg <- tapply(y, x, mean) # lines through average y
+                  y.avg <- y.avg[!is.na(y.avg)]
+                  if (length(y.avg) > 0) {
+                      xvals <- as.numeric(names(y.avg))
+                      ord <- order(xvals)
+                      panel.xyplot(xvals[ord], y.avg[ord], type = "l", ...)
+                  }
               }
 
-              else if (isNumericCovariate)
-              {
-                  ## Custom panel function
-                  panel.nfn = function(x, y, ...) {
-                      panel.xyplot(x, y, ...)
-                      y.avg <- tapply(y, x, mean) # lines through average y
-                      y.avg <- y.avg[!is.na(y.avg)]
-                      if (length(y.avg) > 0) {
-                          xvals <- as.numeric(names(y.avg))
-                          ord <- order(xvals)
-                          panel.xyplot(xvals[ord], y.avg[ord], type = "l", ...)
-                      }
-                  }
+              xlab <-
+                  if ("x" %in% names(x@labels)) x@labels$x
+                  else as.character(covVar)
+              if ("x" %in% names(x@units)) xlab <- paste(xlab, x@units$x)
+              ylab <-
+                  if ("y" %in% names(x@labels)) x@labels$y
+                  else as.character(respVar)
+              if ("y" %in% names(x@units)) ylab <- paste(ylab, x@units$y)
+              labels <- list(x = xlab, y = ylab)
 
-                  xlab <-
-                      if ("x" %in% names(x@labels)) x@labels$x
-                      else as.character(covVar)
-                  if ("x" %in% names(x@units)) xlab <- paste(xlab, x@units$x)
-                  ylab <-
-                      if ("y" %in% names(x@labels)) x@labels$y
-                      else as.character(respVar)
-                  if ("y" %in% names(x@units)) ylab <- paste(ylab, x@units$y)
-                  labels <- list(x = xlab, y = ylab)
+              xargs <- list(aspect = "xy", grid = TRUE)
 
+              displayfunction = "xyplot"
+              form = as.formula( paste(   paste(respVar, covVar, sep = "~"), groupVar, sep = "|") )
+              
+              groups = NULL
+              if (is.null(inner)) inner <- x@inner
+              if (inherits(inner, "formula") && !inner[[2]]==0) groups <- inner[[2]]
+              ## what's innerGroups ?
 
-                  xargs <- list(aspect = "xy", grid = TRUE)
-
-                  displayfunction = "xyplot"
-                  form = as.formula( paste(   paste(respVar, covVar, sep = "~"), groupVar, sep = "|") )
-
-                  groups = NULL
-                  if (is.null(inner)) inner <- x@inner
-                  if (inherits(inner, "formula") && !inner[[2]]==0) groups <- inner[[2]]
-                  ## what's innerGroups ?
-
-                  if (!is.null(groups))
+              if (!is.null(groups)) {
+                  xargs$groups <- groups
+                  xargs$panel <- function(x, y, grid = TRUE, ...)
                   {
-                      xargs$groups <- groups
-                      xargs$panel <- function(x, y, grid = TRUE, ...)
-                      {
-                          if (grid) panel.grid()
-                          panel.superpose(x, y, ...)
-                      }
-                      xargs$panel.groups <- panel.nfn
+                      if (grid) panel.grid()
+                      panel.superpose(x, y, ...)
                   }
-                  else
+                  xargs$panel.groups <- panel.nfn
+              } else {
+                  xargs$panel <- function(x, y, grid = TRUE, ...)
                   {
-                      xargs$panel <- function(x, y, grid = TRUE, ...)
-                      {
-                          if (grid) panel.grid()
-                          panel.nfn(x, y, ...)
-                      }
+                      if (grid) panel.grid()
+                      panel.nfn(x, y, ...)
                   }
-
-
               }
+              
+              
+          }
+          else return("didn't expect this to happen!")
 
-              else return("didn't expect this to happen!")
-
-
-              collectorPlot(formula = if (missing(formula)) form else formula,
-                            data = x@data,
-                            displayfunction = displayfunction,
-                            labels = labels,
-                            xargs = xargs,
-                            ...)
-
-          })
-
-
-
-
+          collectorPlot(formula = if (missing(formula)) form else formula,
+                        data = x@data,
+                        displayfunction = displayfunction,
+                        labels = labels,
+                        xargs = xargs,
+                        ...)
+      })
 
 ## Tools for plot methods
-
-
 
 ## was old nlme plot method (???)
 plot.nmGroupedData <-

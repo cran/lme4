@@ -3,26 +3,28 @@ Assay                   Bioassay on Cell Culture Plate
 BIC                     Bayesian Information Criterion
 BodyWeight              Rat weight over time for different diets
 Cefamandole             Pharmacokinetics of Cefamandole
+Chem97                  Scores on A-level Chemistry in 1997
+Contraception           Contraceptive use in Bangladesh
 Dialyzer                High-Flux Hemodialyzer
-EMsteps<-               Perform EM iterations
-EMupdate<-              Update an object in the EM algorithm
 Earthquake              Earthquake Intensity
+Exam                    Exam scores from inner London
 Fatigue                 Cracks caused by metal fatigue
 GLMM                    Fit Generalized Linear Mixed Models via PQL
+GLMM-class              Class "GLMM"
 Gasoline                Refinery yield of gasoline
+Gcsemv                  GCSE exam score
 Glucose                 Glucose levels over time
 Glucose2                Glucose Levels Following Alcohol Ingestion
 Gun                     Methods for firing naval guns
 Hsb82                   High School and Beyond - 1982
 IGF                     Radioimmunoassay of IGF-I Protein
-LMEgradient             The gradient and Hessian in lme
-                        optimization-method
 LMEoptimize<-           Optimize linear mixed-effects
 Machines                Productivity Scores for Machines and Workers
 MathAchSchool           School demographic data for MathAchieve
 MathAchieve             Mathematics achievement scores
 Meat                    Tenderness of meat
 Milk                    Protein content of cows' milk
+Mmmec                   Malignant melanoma deaths in Europe
 Muscle                  Contraction of heart muscle sections
 Names                   Extract or assign Names
 Nitrendipene            Assay of nitrendipene
@@ -39,6 +41,7 @@ Rail                    Evaluation of Stress in Railway Rails
 RatPupWeight            The weight of rat pups
 Relaxin                 Assay for Relaxin
 Remifentanil            Pharmacokinetics of remifentanil
+Socatt                  Social Attitudes Survey
 Soybean                 Growth of soybean plants
 Spruce                  Growth of Spruce Trees
 Tetracycline1           Pharmacokinetics of tetracycline
@@ -49,61 +52,26 @@ Wafer                   Modeling of Analog MOS Circuits
 Wheat                   Yields by growing conditions
 Wheat2                  Wheat Yield Trials
 bdf                     Language scores
-coef<-                  Assign parameters
 coerce-methods          Coercion methods and assignments
-corFactor               Extract the correlation factor
-corMatrix               Generate the correlation matrix
-corrmatrix-class        Class "corrmatrix"
+egsingle                US Sustaining Effects study
 ergoStool               Ergometrics experiment with stool types
-family-class            Class "family"
 fixed.effects           Extract Fixed Effects
 getCovariate            Utilities for formulas
-getFixDF                Internal nlme functions
-glmm-class              Class "glmm"
-glmmStruct              Create a glmm object
 groupedData             Creation of groupedData objects
 groupedData-class       Class "groupedData"
 guImmun                 Immunization in Guatemala
 guPrenat                Prenatal care in Guatemala
 intervals               Confidence Intervals on Coefficients
-isInitialized           Check for initialization
 lmList                  List of lm Objects with a Common Model
 lmList-class            Class "lmList"
 lme                     Fit linear mixed-effects models
 lme-class               Class "lme"
 lmeControl              Control values for lme
-lmeLevel                Construct an lmeLevel object
-lmeLevel-class          Class "lmeLevel"
-lmeLevelList-class      Some internal classes
-logDet                  Logarithm of the determinant
-matrix<-                Assign the matrix
-model.matrix<-          Assign the model.matrix
-nfGroupedData-class     Class "nfGroupedData"
-nffGroupedData-class    Class "nffGroupedData"
-nfnGroupedData-class    Class "nfnGroupedData"
-nmGroupedData-class     Class "nmGroupedData"
-pdBlocked-class         Class "pdBlocked", blocked pd matrices
-pdCompSymm-class        Class "pdCompSymm"
-pdDiag-class            Class "pdDiag"
-pdFactor                Square-root factor
-pdIdent-class           Class "pdIdent"
-pdLogChol-class         Class "pdLogChol", positive-definite matrices
-pdMat-class             Class pdMat, positive-definite matrices
-pdMatrix                Return the positive-definite matrix
-pdNatural-class         Class "pdNatural", positive-definite matrices
-pdfactor-class          Factors of positive-definite matrices
-pdgradNumeric           Evaluate the pdmatrix gradient numerically
-pdgradient              Evaluated the pdmatrix gradient
-pdmatrix-class          Positive-definite matrices
 pooledSD                Extract pooled standard deviation
 random.effects          Extract Random Effects
-reStruct                Create an reStruct object
-reStruct-class          Class "reStruct"
-response<-              Modify the response
 s3bbx                   Covariates in the Rodriguez and Goldman
                         simulation
 s3bby                   Responses simulated by Rodriguez and Goldman
 solve-methods           Methods for Function solve
-summary.reStruct-class
-                        Class "summary.reStruct"
-weighted<-              Modify the weights
+summary.GLMM-class      Class "summary.GLMM"
+summary.lme-class       Class "summary.lme"

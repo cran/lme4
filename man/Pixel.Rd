@@ -32,10 +32,12 @@
 }
 \examples{
 data(Pixel)
-fm1 <- lme(pixel ~ day + I(day^2), data = Pixel, random = ~1 | Dog/Side)
-#fm1 <- lme(pixel ~ day + I(day^2), data = Pixel,
-#           random = list(Dog = ~ day, Side = ~ 1))
+\dontrun{
+Pixel$DS = getGroups(Pixel, ~ 1 | Dog/Side, level = 2)
+fm1 <- lme(pixel ~ day + I(day^2), data = Pixel,
+           random = list(DS = ~ 1, Dog = ~ 1))
 summary(fm1)
 VarCorr(fm1)
+}
 }
 \keyword{datasets}

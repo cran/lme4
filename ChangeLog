@@ -1,3 +1,35 @@
+2004-04-18  Douglas Bates  <bates@stat.wisc.edu>
+
+	* R/ssclme.R: Fix coef<- so it really does use the unconstrained
+	parameters.
+
+2004-04-05  Douglas Bates  <bates@stat.wisc.edu>
+
+	* NAMESPACE: Export the vcov methods.
+
+2004-03-28  Douglas Bates  <bates@bates2_home>
+
+	* R/lme.R: added a fitted method for lme.  Added dimnames and
+	names to the value of the fixef and ranef methods for ssclme.
+
+	* R/AllClass.R (lme): Added a fitted slot.
+
+	* R/{lme.R,sparseGLMM.R}: Remove redundant call to ssclme_factor
+	before ssclme_EMsteps
+
+2004-03-18  Douglas Bates  <bates@stat.wisc.edu>
+
+	* R/{pdMat.R,pdIdent.R,pdLogChol.R,pdMatrixLog.R,pdNatural.R},
+	  src/{pdMat.c,pdIdent.c,pdLogChol.c,pdNatural.c},
+	  tests/{pdCompSymm.R,pdDiag.R,pdIdent.R,pdLogChol.R,pdNatural.R},
+	  man/{pdMat-class.Rd,pdmatrix-class.Rd,corrmatrix-class.Rd,
+	  pdDiag-class.Rd,pdIdent-class.Rd,pdNatural-class.Rd,
+	  pdLogChol-class.Rd,coefGets.Rd,pdCompSymm-class.Rd,
+	  pdfactor-class.Rd,pdFactor.Rd,pdMatrix.Rd,
+	  pdBlocked-class.Rd},AllClass.R,AllGeneric.R:
+	Moved the pdMat classes to the Matrix package.  Added a dependency
+	on Matrix(>= 0.8-1)
+
 2004-03-11  Douglas Bates  <bates@stat.wisc.edu>
 
 	* NAMESPACE: export fixef and ranef (Erik Jørgensen)

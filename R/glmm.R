@@ -1,404 +1,608 @@
-setMethod("GLMM", signature(data = "missing"),
-          function(formula, family, data, random, control, niter,
-                   method, verbose, ...)
-      {
-          nCall = mCall = match.call()
-          nCall$data = list()
-          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
-                mCall, PACKAGE = "lme4")
-      })
-
-setMethod("GLMM", signature(formula = "missing", data = "groupedData"),
-          function(formula, family, data, random, control, niter,
-                   method, verbose, ...)
+setMethod("GLMM", signature(formula = "missing"),
+          function(formula, family, data, random,
+                   method = c("PQL", "Laplace"),
+                   control = list(),
+                   subset,
+                   weights,
+                   na.action,
+                   offset,
+                   model = TRUE, x = FALSE, y = FALSE, ...)
       {
           nCall = mCall = match.call()
           resp = getResponseFormula(data)[[2]]
           cov = getCovariateFormula(data)[[2]]
           nCall$formula = eval(substitute(resp ~ cov))
           .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
-                mCall, PACKAGE = "lme4")
+                mCall, PACKAGE = "Matrix")
       })
 
-setMethod("GLMM", signature(formula = "formula", data = "groupedData",
-                           random = "missing"),
-          function(formula, family, data, random, control, niter,
-                   method, verbose, ...)
+setMethod("GLMM", signature(formula = "formula",
+                            data = "groupedData", random = "missing"),
+          function(formula, family, data, random,
+                   method = c("PQL", "Laplace"),
+                   control = list(),
+                   subset,
+                   weights,
+                   na.action,
+                   offset,
+                   model = TRUE, x = FALSE, y = FALSE, ...)
       {
           nCall = mCall = match.call()
           cov = formula[[3]]
           grps = getGroupsFormula(data)[[2]]
           nCall$random = eval(substitute(~ cov | grps))
           .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
-                mCall, PACKAGE = "lme4")
+                mCall, PACKAGE = "Matrix")
       })
 
-
-setMethod("GLMM", signature(formula = "formula", random = "formula"),
-          function(formula, family, data, random, control, niter,
-                   method, verbose, ...)
+setMethod("GLMM", signature(random = "formula"),
+          function(formula, family, data, random,
+                   method = c("PQL", "Laplace"),
+                   control = list(),
+                   subset,
+                   weights,
+                   na.action,
+                   offset,
+                   model = TRUE, x = FALSE, y = FALSE, ...)
       {
           nCall = mCall = match.call()
-          nCall$random = lapply(getGroupsFormula(random, asList = TRUE),
-                                function(x, form) form,
-                                form = pdLogChol(getCovariateFormula(random)))
+          cov = getCovariateFormula(random)
+          nCall$random <- lapply(getGroupsFormula(random, asList = TRUE),
+                                 function(f) cov)
           .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
-                mCall, PACKAGE = "lme4")
+                mCall, PACKAGE = "Matrix")
       })
 
-setMethod("GLMM", signature(formula = "formula", random = "list"),
-          function(formula, family, data, random, control, niter,
-                   method, verbose, nEM.IRLS, model, x, ...)
+setMethod("GLMM", signature(formula = "formula",
+                            data = "groupedData",
+                            random = "list"),
+          function(formula, family, data, random,
+                   method = c("PQL", "Laplace"),
+                   control = list(),
+                   subset,
+                   weights,
+                   na.action,
+                   offset,
+                   model = TRUE, x = FALSE, y = FALSE, ...)
       {
-          if (missing(nEM.IRLS))
-              nEM.IRLS <- 1
-          if (missing(verbose)) verbose = FALSE
-          m <- Call <- match.call()
-          method <- if(missing(method)) "PQL" else
-                    match.arg(method, c("PQL", "Laplace"))
-          nm <- names(m)[-1]
-          dontkeep <-
-              is.element(nm, c("correlation", "control", "niter",
-                               "verbose", "nEM.IRLS", "method"))
-          for(i in nm[dontkeep]) m[[i]] <- NULL
-          m[[1]] <- as.name("glmmStruct")
-          m$nextraCols <- 1
-          m$method <- method
-          fit <- eval(m, parent.frame())
+          nCall = mCall = match.call()
+          nCall$data <- data@data
+          .Call("nlme_replaceSlot", eval(nCall, parent.frame()), "call",
+                mCall, PACKAGE = "Matrix")
+      })
 
-          off <- fit@reStruct@offset
-          w <-  fit@prior.weights
-          origy <- fit@origy
-          fam <- fit@family
+make.glm.call <- 
+    function (mf, frm) 
+{
+    m <- match(c("formula", "family", "data", "weights",
+                 "subset", "na.action", "offset"), names(mf), 0)
+    mf <- mf[c(1, m)]
+    mf[[1]] <- as.name("glm")
+    ## environment(frm) = environment(formula) ???
+    mf$formula = frm
+    mf$model = FALSE
+    mf$x = FALSE
+    mf$y = TRUE
+    mf
+}
 
-          ## We always do the PQL steps. For that, we extract the reStruct
-          ## slot from fit
-          fit <- as(fit, "reStruct")
-          control = if (missing(control)) lmeControl() else
-                    do.call("lmeControl", control)
-          EMsteps(fit) <- control
+setMethod("GLMM",
+          signature(formula = "formula",
+                    random = "list"),
+          function(formula, family, data, random,
+                   method = c("PQL", "Laplace"),
+                   control = list(),
+                   subset,
+                   weights,
+                   na.action,
+                   offset,
+                   model = TRUE, x = FALSE, y = FALSE, ...)
+      {
+          random <-
+              lapply(random,
+                     get("formula", pos = parent.frame(), mode = "function"))
+          controlvals <- do.call("lmeControl", control)
+          controlvals$REML <- FALSE
+          method <- match.arg(method)
 
-          control$niterEM <- nEM.IRLS
-          converged <- FALSE
-          eta <- .Call("nlme_reStruct_fitted", fit, NULL, PACKAGE="lme4")
+          ## BEGIN glm fit without random effects
 
-          for(i in seq(length=if(missing(niter)) 20 else niter)) {
-              ##update zz and wz
-              mu <- fam$linkinv(eta)
-              mu.eta.val <- fam$mu.eta(eta)
-              zz <- eta + (origy - mu)/mu.eta.val  - off
-              wz <- w * mu.eta.val^2 / fam$variance(mu)
+          ## several arguments are handled at this point.
+          ## what about
 
-              response(fit) <- zz
-              weighted(fit) <- sqrt(abs(wz))
-              EMsteps(fit) <- control
-              LMEoptimize(fit) <- control
-              if(verbose) {
-                  cat("iteration", i, "\n")
-###             class(fit) <- "glmmStruct"
-###             fit@logLik <- as.numeric(NA)
-###             cat("Approximate logLik:",
-###                 .Call("nlme_glmmLa2_logLikelihood",
-###                     fit, NULL, PACKAGE="lme4"), "\n")
-###            class(fit) <- "reStruct"
-###            fit@logLik <- as.numeric(NA)
-                  cat("Parameters:", coef(fit), "\n")
-                  cat("Fixed Effects:", fixef(fit), "\n")
-              }
-              etaold <- eta
-              eta <- .Call("nlme_reStruct_fitted", fit, NULL, PACKAGE="lme4")
-              if(sum((eta-etaold)^2) < 1e-6*sum(eta^2)) {
-                  converged <- TRUE
+          ##   subset, na.action (arguments to model.frame) 
+
+          ## Are these  already handled ?
+          ## The rest could be part of ..., why have them explicitly ?
+          ## Do we want possibility of supplying control in glm() ?
+
+          glm.fit <- eval(make.glm.call(match.call(expand.dots = TRUE),
+                                        formula), parent.frame())
+          family <- glm.fit$family
+          offset <- if (is.null(glm.fit$offset)) 0 else glm.fit$offset
+          weights <- sqrt(abs(glm.fit$prior.weights))
+          ## initial 'fitted' values on linear scale
+          eta <- glm.fit$linear.predictors
+          ## FIXME: does this include offsets (make sure it does)
+          etaold <- eta
+
+          ## END using glm fit results
+          ## Note: offset is on the linear scale
+
+          ## FIXME: Not clear how (user specified) offset works. It
+          ## doesn't make sense for it to be an offset for the
+          ## response on the mu scale, so I'm assuming it's on the
+          ## linear predictor scale
+
+
+          data <- eval(make.mf.call(match.call(expand.dots = FALSE),
+                                    formula, random), parent.frame())
+          facs <- lapply(names(random),
+                         function(x) eval(as.name(x), envir = data))
+          names(facs) <- names(random)
+          facs <-              # order in decreasing number of levels
+              facs[rev(order(unlist(lapply(facs,
+                                           function(fac)
+                                           length(levels(fac))))))]
+          ## creates model matrices
+          mmats.unadjusted <-
+              c(lapply(random,
+                       function(x) model.matrix(formula(x), data = data)),
+                list(.Xy =
+                     cbind(model.matrix(formula, data = data),
+                           .response = glm.fit$y))) #  WAS: model.response(data)
+          responseIndex <- ncol(mmats.unadjusted$.Xy)
+          obj <-  ## creates ssclme structure
+              .Call("ssclme_create", facs,
+                    unlist(lapply(mmats.unadjusted, ncol)),
+                    PACKAGE = "Matrix")
+          facs = facshuffle(obj, facs)
+          obj = obj[[1]]
+          mmats <- mmats.unadjusted
+          ## the next line is to force a copy of mmats, because we are
+          ## going to use both mmats and mmats.unadjusted as arguments
+          ## in a .Call where one of them will be modified (don't want
+          ## the other to be modified as well)
+          mmats[[1]][1,1] <- mmats[[1]][1,1]
+          conv <- FALSE
+          firstIter <- TRUE
+          msMaxIter.orig <- controlvals$msMaxIter
+
+          for (iter in seq(length = controlvals$glmmMaxIter)) ## FIXME: rename to pqlMaxIter ?
+          {
+              mu <- family$linkinv(eta)
+              dmu.deta <- family$mu.eta(eta)
+              ## weights (note: weights is already square-rooted)
+              w <- weights * dmu.deta / sqrt(family$variance(mu))
+              ## adjusted response (should be comparable to X \beta, not including offset
+              z <- eta - offset + (mmats.unadjusted$.Xy[, responseIndex] - mu) / dmu.deta
+              .Call("nlme_weight_matrix_list",
+                    mmats.unadjusted, w, z, mmats, PACKAGE="Matrix")
+              .Call("ssclme_update_mm", obj, facs, mmats, PACKAGE="Matrix")
+              if (firstIter) .Call("ssclme_initial", obj, PACKAGE="Matrix")
+              .Call("ssclme_EMsteps", obj,
+                    controlvals$niterEM,
+                    FALSE, #controlvals$REML,
+                    controlvals$EMverbose,
+                    PACKAGE = "Matrix")
+              LMEoptimize(obj) = controlvals
+              eta[] <- offset + ## FIXME: should the offset be here ?
+                  .Call("ssclme_fitted", obj, facs,
+                        mmats.unadjusted, TRUE, PACKAGE = "Matrix")
+              crit <- max(abs(eta - etaold)) / (0.1 + max(abs(eta)))
+              cat(paste("Iteration", iter,"Termination Criterion:",
+                        format(crit), "\n"))
+              ## use this to determine convergence
+              if (crit < controlvals$tolerance) {
+                  conv <- TRUE
                   break
               }
-          }
-          if (control$msMaxIter > 0 && !converged)
-              stop("IRLS iterations in GLMM failed to converge")
-          ## We recreate the glmm object and set the reStruct slot
-          .Call("nlme_replaceSlot", fit, "logLik",
-                as.numeric(NA), PACKAGE = "lme4")
-          .Call("nlme_replaceSlot", fit, "dontCopy", TRUE, PACKAGE = "lme4")
-          fit <- .Call("nlme_replaceSlot", eval(m, parent.frame()),
-                       "reStruct", fit, PACKAGE = "lme4")
-          .Call("nlme_replaceSlot", fit, c("reStruct", "dontCopy"),
-                TRUE, PACKAGE = "lme4")
-          fit <- .Call("nlme_glmmLaplace_solveOnly", fit,
-                       500, 1, PACKAGE="lme4")
-          ## dirtyStored is FALSE but should be TRUE
-#          .Call("nlme_replaceSlot", fit, c("reStruct", "dirtyStored"),
-#                TRUE, PACKAGE = "lme4")
-#          .Call("nlme_replaceSlot", fit, "reStruct",
-#                .Call("nlme_commonDecompose", fit@reStruct,
-#                      NULL, PACKAGE="lme4"), PACKAGE = "lme4")
-#          .Call("nlme_replaceSlot", fit, c("reStruct", "dontCopy"),
-#                FALSE, PACKAGE = "lme4")
+              etaold[] <- eta
 
-          if (method != "PQL") {
-              ## Do the 2nd order Laplace fit here
-              LMEoptimize(fit) <- control
+              ## Changing number of iterations on second and
+              ## subsequent iterations.
+              if (firstIter)
+              {
+                  controlvals$niterEM <- 2
+                  controlvals$msMaxIter <- 10
+                  firstIter <- FALSE
+              }
           }
-          ## dirtyStored is FALSE but should be TRUE
-          .Call("nlme_replaceSlot", fit, c("reStruct", "dirtyStored"),
-                TRUE, PACKAGE = "lme4")
-          .Call("nlme_replaceSlot", fit, "reStruct",
-                .Call("nlme_commonDecompose", fit@reStruct,
-                      NULL, PACKAGE="lme4"), PACKAGE = "lme4")
-          .Call("nlme_replaceSlot", fit, c("reStruct", "dontCopy"),
-                FALSE, PACKAGE = "lme4")
-          ## zero some of the matrix slots
-          if (!missing(x) && x == FALSE)
-              .Call("nlme_replaceSlot", fit, c("reStruct", "original"),
-                    matrix(0.0, nrow = 0, ncol = 0), PACKAGE = "lme4")
-          .Call("nlme_replaceSlot", fit, c("reStruct", "decomposed"),
-                matrix(0.0, nrow = 0, ncol = 0), PACKAGE = "lme4")
-          .Call("nlme_replaceSlot", fit, c("reStruct", "weighted"),
-                matrix(0.0, nrow = 0, ncol = 0), PACKAGE = "lme4")
+          if (!conv) warning("IRLS iterations for glmm did not converge")
+          controlvals$msMaxIter <- msMaxIter.orig
 
-          if (!missing(model) && model == FALSE)
-              .Call("nlme_replaceSlot", fit, "frame",
-                    data.frame(), PACKAGE = "lme4")
-          .Call("nlme_replaceSlot", fit, "fitted",
-                fam$linkinv(if (is.null(fit@na.action)) {
-                    fitted(fit@reStruct)[fit@reStruct@reverseOrder]
-                } else {
-                    napredict(attr(data, "na.action"),
-                              fitted(fit@reStruct)[fit@reStruct@reverseOrder])
-                }), PACKAGE = "lme4")
-          fit
+          ## Need to optimize L(theta, beta) using Laplace approximation
+
+          ## Things needed for that:
+          ##
+          ## 1. reduced ssclme object, offset, weighted model matrices
+          ## 2. facs, reduced model matrices
+
+          ## Of these, those in 2 will be fixed given theta and beta,
+          ## and can be thought of arguments to the L(theta, beta)
+          ## function. However, the ones in 1 will have the same
+          ## structure. So the plan is to pre-allocate them and pass
+          ## them in too so they can be used without creating/copying
+          ## them more than once
+
+
+          ## reduced ssclme
+
+          reducedObj <- .Call("ssclme_collapse", obj, PACKAGE = "Matrix")
+          reducedMmats.unadjusted <- mmats.unadjusted
+          reducedMmats.unadjusted$.Xy <-
+              reducedMmats.unadjusted$.Xy[, responseIndex, drop = FALSE]
+          reducedMmats <- mmats
+          reducedMmats$.Xy <-
+              reducedMmats$.Xy[, responseIndex, drop = FALSE]
+
+          ## define function that calculates bhats given theta and beta 
+
+          bhat <- 
+              function(pars = NULL) # 1:(responseIndex-1) - beta, rest - theta
+              {
+                  if (is.null(pars))
+                  {
+                      off <- drop(mmats.unadjusted$.Xy %*%
+                                  c(fixef(obj), 0)) + offset
+                  }
+                  else
+                  {
+                      .Call("ssclme_coefGetsUnc",
+                            reducedObj,
+                            as.double(pars[responseIndex:length(pars)]),
+                            PACKAGE = "Matrix")
+                      off <- drop(mmats.unadjusted$.Xy %*%
+                                  c(pars[1:(responseIndex-1)], 0)) + offset
+                  }
+
+                  niter <- 20
+                  conv <- FALSE
+
+                  eta <- offset + 
+                      .Call("ssclme_fitted", obj, facs,
+                            mmats.unadjusted, TRUE, PACKAGE = "Matrix")
+                  etaold <- eta
+                  
+                  for (iter in seq(length = niter))
+                  {
+                      mu <- family$linkinv(eta)
+                      dmu.deta <- family$mu.eta(eta)
+                      w <- weights * dmu.deta / sqrt(family$variance(mu))
+                      z <- eta - off + (reducedMmats.unadjusted$.Xy[, 1]
+                                        - mu) / dmu.deta 
+                      .Call("nlme_weight_matrix_list",
+                            reducedMmats.unadjusted, w, z, reducedMmats,
+                            PACKAGE="Matrix")
+                      .Call("ssclme_update_mm", reducedObj, facs, reducedMmats,
+                            PACKAGE="Matrix")
+                      eta[] <- off + 
+                          .Call("ssclme_fitted", reducedObj, facs,
+                                reducedMmats.unadjusted, TRUE,
+                                PACKAGE = "Matrix")
+                      ##cat(paste("bhat Criterion:", max(abs(eta - etaold)) /
+                      ##          (0.1 + max(abs(eta))), "\n"))
+                      ## use this to determine convergence
+                      if (max(abs(eta - etaold)) <
+                          (0.1 + max(abs(eta))) * controlvals$tolerance)
+                      {
+                          conv <- TRUE
+                          break
+                      }
+                      etaold[] <- eta
+                      
+                  }
+                  if (!conv) warning("iterations for bhat did not converge")
+
+                  ## bhat doesn't really need to return anything, we
+                  ## just want the side-effect of modifying reducedObj
+                  ## In particular, we are interested in
+                  ## ranef(reducedObj) and reducedObj@bVar (?). But
+                  ## the mu-scale response will be useful for log-lik
+                  ## calculations later, so return them anyway
+
+                  invisible(family$linkinv(eta)) 
+              }
+
+          ## function that calculates log likelihood (the thing that
+          ## needs to get evaluated at each Gauss-Hermite location)
+          
+          ## log scale ? worry about details later, get the pieces in place
+          
+          ## this is for the Laplace approximation only. GH is more
+          ## complicated 
+
+          devLaplace <- function(pars = NULL)
+          {
+              ## FIXME: This actually returns half the deviance.
+              
+              ## gets correct values of bhat and bvars. As a side
+              ## effect, mu now has fitted values
+              mu <- bhat(pars = pars)
+
+              ## GLM family log likelihood (upto constant ?)(log scale)
+              ## FIXME: need to adjust for sigma^2 for appropriate models (not trivial!)
+
+              ## Keep everything on (log) likelihood scale
+              
+              ## log lik from observations given fixed and random effects
+              ## get deviance, then multiply by -1/2 (since deviance = -2 log lik)
+              ans <- -sum(family$dev.resids(y = mmats.unadjusted$.Xy[,
+                                            responseIndex],
+                                            mu = mu,
+                                            wt = weights^2))/2
+                                                
+              ranefs <- ranef(reducedObj)
+              # ans <- ans + reducedObj@devComp[2]/2 # log-determinant of Omega
+              Omega <- reducedObj@Omega
+              for (i in seq(along = ranefs))
+              {
+                  ## contribution for random effects (get it working,
+                  ## optimize later) 
+                  ## symmetrize RE variance
+                  Omega[[i]] <- Omega[[i]] + t(Omega[[i]])
+                  diag(Omega[[i]]) <- diag(Omega[[i]]) / 2
+
+                  ## want log of `const det(Omega) exp(-1/2 b' Omega b )`
+                  ## i.e., const + log det(Omega) - .5 * (b' Omega b)
+                  ## FIXME: need to adjust for sigma^2 for appropriate models (easy)
+                  ## these are all the b'Omega b, summed as they eventually need to be
+                  ## think of this as sum(rowSums((ranefs[[i]] %*% Omega[[i]]) * ranefs[[i]]))
+                  
+                  ranef.loglik.det <- nrow(ranefs[[i]]) *
+                      determinant(Omega[[i]], logarithm = TRUE)$modulus/2
+                  ranef.loglik.re <- -sum((ranefs[[i]] %*% Omega[[i]]) *
+                                          ranefs[[i]])/2
+                  ranef.loglik <- ranef.loglik.det + ranef.loglik.re
+
+                  ## Jacobian adjustment
+                  log.jacobian <- sum(log(abs(apply(reducedObj@bVar[[i]],
+                                                    3,
+                                                    function(x) sum(diag(x)))
+                                              )))
+                  ans <- ans + ranef.loglik + log.jacobian
+              }
+              ## ans is (up to some constant) log of the Laplacian
+              ## approximation of the likelihood. Return it's negative
+              ## to be minimized
+
+#              cat("Parameters: ")
+#              print(pars)
+
+#              cat("Value: ")
+#              print(as.double(-ans))
+
+              -ans 
+          }
+
+          if (method == "Laplace")
+          {
+              cat(paste("Using optimizer", controlvals$optim), "\n")
+
+              ## no analytic gradients or hessians
+              if (controlvals$optimizer == "optim")
+              {
+                  optimRes =
+                      optim(fn = devLaplace,
+                            par = c(fixef(obj), coef(obj, unconst = TRUE)),
+                            method = "BFGS", hessian = TRUE,
+                            control = list(trace = getOption("verbose")),
+                            reltol = controlvals$msTol,
+                            ##fnscale = -xval,
+                            ##parscale = 1/controlvals$msScale(coef(obj)),
+                            maxit = controlvals$msMaxIter)
+                  if (optimRes$convergence != 0)
+                      warning("optim failed to converge")
+                  optpars <- optimRes$par
+                  Hessian <- optimRes$hessian
+                  
+                  ##fixef(obj) <- optimRes$par[seq(length = responseIndex - 1)]
+                  if (getOption("verbose")) {
+                      cat(paste("optim convergence code",
+                                optimRes$convergence, "\n"))
+                      cat("Fixed effects:\n")
+                      print(fixef(obj))
+                      print(optimRes$par[seq(length = responseIndex - 1)])
+                      cat("(Unconstrained) variance coefficients:\n")
+                      print(coef(obj, unconst = TRUE))
+                      coef(obj, unconst = TRUE) <-
+                          optimRes$par[responseIndex:length(optimRes$par)]
+                      print(coef(obj, unconst = TRUE))
+                  }
+              }
+              else if (controlvals$optimizer == "nlm")
+              {
+                  ## not sure what the next few lines are for. Copied from Saikat's code
+                  ## typsize <- 1/controlvals$msScale(coef(obj))
+                  typsize <- rep(1.0, length(coef(obj, unconst = TRUE)) +
+                                 responseIndex - 1)
+                  if (is.null(controlvals$nlmStepMax))
+                      controlvals$nlmStepMax <-
+                          max(100 * sqrt(sum((c(fixef(obj),
+                                                coef(obj, unconst = TRUE))/
+                                              typsize)^2)), 100)
+                  nlmRes =
+                      nlm(f = devLaplace, 
+                          p = c(fixef(obj), coef(obj, unconst = TRUE)),
+                          hessian = TRUE,
+                          print.level = if (getOption("verbose")) 2 else 0,
+                          steptol = controlvals$msTol,
+                          gradtol = controlvals$msTol,
+                          stepmax = controlvals$nlmStepMax,
+                          typsize=typsize,
+                          ## fscale=xval,
+                          iterlim = controlvals$msMaxIter)
+                  if (nlmRes$code > 3)
+                      warning("nlm probably failed to converge")
+                  optpars <- nlmRes$estimate
+                  Hessian <- nlmRes$hessian
+                  
+                  if (getOption("verbose")) {
+                      cat(paste("nlm convergence code", nlmRes$code, "\n"))
+                      cat("Fixed effects:\n")
+                      print(fixef(obj))
+                      print(nlmRes$estimate[seq(length = responseIndex - 1)])
+                      cat("(Unconstrained) variance coefficients:\n")
+                      print(coef(obj, unconst = TRUE))
+                      coef(obj, unconst = TRUE) <-
+                          nlmRes$estimate[responseIndex:
+                                          length(nlmRes$estimate)]
+                      print(coef(obj, unconst = TRUE))
+                  }
+              }
+              
+              ## need to calculate likelihood also need to store new
+              ## estimates of fixed effects somewhere (probably cannot
+              ## update standard errors)
+          } else {
+              optpars <- c(fixef(obj), coef(obj, unconst = TRUE))
+              Hessian <- new("matrix")
+          }
+
+
+          ## Before finishing, we need to call devLaplace with the
+          ## optimum pars to get the final log likelihood (still need
+          ## to make sure it's the actual likelihood and not a
+          ## multiple). This would automatically call bhat() and hence
+          ## have the 'correct' random effects in reducedObj.
+
+          loglik <- devLaplace(optpars)
+          ff <- optpars[1:(responseIndex-1)]
+          names(ff) <- names(fixef(obj))
+
+          if (!x) mmats <- list()
+          ## Things to include in returned object: new ranef
+          ## estimates, new parameter estimates (fixed effects and
+          ## coefs) (with standard errors from hessian ?) and
+          ## (Laplace) approximate log likelihood.
+
+          new("GLMM",
+              family = family,
+              logLik = -loglik,
+              fixef = ff,
+              Hessian = Hessian,
+              method = method,
+              call = match.call(),
+              facs = facs,
+              x = mmats,
+              model = if(model) data else data.frame(list()),
+              REML = FALSE,
+              rep = if(method == 'Laplace') reducedObj else obj,
+              fitted = eta)
       })
 
-setMethod("summary", signature(object="glmm"),
+setMethod("logLik", signature(object = "GLMM"),
           function(object, ...) {
-              llik <- logLik(object)    # has an oldClass
+              val = object@logLik
+              rr = object@rep
+              nc = rr@nc[-seq(a = rr@Omega)]
+              attr(val, "nall") = attr(val, "nobs") = nc[2]
+              attr(val, "df") = nc[1] + length(coef(rr))
+              attr(val, "REML") = FALSE
+              class(val) <- "logLik"
+              val
+          })
+
+setMethod("deviance", signature(object = "GLMM"),
+          function(object, ...) -2 * object@logLik)
+
+setMethod("fixef", signature(object = "GLMM"),
+          function(object) object@fixef)
+
+setMethod("ranef", signature(object = "GLMM"),
+          function(object, ...)
+      {
+          object = object@rep
+          callGeneric()
+      })
+
+setMethod("coef", signature(object = "GLMM"),
+          function(object, ...)
+      {
+          object = object@rep
+          callGeneric()
+      })
+
+setMethod("show", signature(object = "summary.GLMM"),
+          function(object)
+      {
+          rdig <- 5
+          cat("Generalized Linear Mixed Model\n\n")
+          if (!is.null(object@call$formula)) {
+              cat("Fixed:", deparse(object@call$formula),"\n")
+          }
+          if (!is.null(object@call$data)) {
+              cat("Data:", deparse(object@call$data), "\n")
+          }
+          if (!is.null(object@call$subset)) {
+              cat(" Subset:",
+                  deparse(asOneSidedFormula(object@call$subset)[[2]]),"\n")
+          }
+          llik = object@logLik
+          print(data.frame(AIC = AIC(llik), BIC = BIC(llik),
+                           logLik = c(object@logLik), row.names = ""))
+          cat("\n")
+          object@re@useScale = FALSE
+          object@re@showCorrelation = TRUE
+          show(object@re)
+          invisible(object)
+      })
+
+setMethod("show", signature(object = "GLMM"),
+          function(object)
+      {
+          sumry = summary(object)
+          rdig <- 5
+          cat("Generalized Linear Mixed Model\n\n")
+          if (!is.null(object@call$formula)) {
+              cat("Fixed:", deparse(object@call$formula),"\n")
+          }
+          if (!is.null(object@call$data)) {
+              cat("Data:", deparse( object@call$data ), "\n")
+          }
+          if (!is.null(object@call$subset)) {
+              cat(" Subset:",
+                  deparse(asOneSidedFormula(object@call$subset)[[2]]),"\n")
+          }
+          cat(paste(" log-likelihood: ", sep = ''), logLik(object), "\n")
+          sumry@re@useScale = FALSE
+          sumry@re@showCorrelation = FALSE
+          saveopt = options(show.signif.stars=FALSE)
+          on.exit(options(saveopt))
+          show(sumry@re)
+          if (object@method != "PQL") { # fix up the fixed effects
+              print(t(object@fixef))
+          }
+          invisible(object)
+      })
+
+setMethod("summary", signature(object="GLMM"),
+          function(object, ...) {
+              llik <- logLik(object)
               resd <- residuals(object, type="pearson")
               if (length(resd) > 5) {
                   resd <- quantile(resd)
                   names(resd) <- c("Min","Q1","Med","Q3","Max")
               }
-              ans <- new("summary.glmm",
-                         call = object@call,
-                         logLik = llik,
-                         AIC = AIC(llik),
-                         BIC = BIC(llik),
-                         re = summary(as(object, "reStruct")),
-                         residuals = resd,
-                         method = object@method,
-                         family = object@family$family,
-                         link = object@family$link)
-              ans@re@useScale = !(ans@family %in% c("binomial", "poisson"))
-              ans
-          })
-
-setMethod("show", "summary.glmm",
-          function(object) {
-              rdig <- 5
-              cat("Generalized linear mixed-effects model fit by ")
-              cat(switch(object@method, PQL="PQL\n",
-                         Laplace="2nd order Laplace\n"))
-              cat(" Family:", object@family, "with",
-                  object@link, "link\n")
-              cat(" Data:", deparse( object@call$data ), "\n")
-              if (!is.null(object@call$subset)) {
-                  cat("  Subset:",
-                      deparse(asOneSidedFormula(object@call$subset)[[2]]),"\n")
+              re = summary(object@rep, REML = FALSE, useScale = FALSE)
+              if (object@method != 'PQL') {
+                  hess <- object@Hessian
+                  corFixed <- as(as(solve(hess[-nrow(hess),-ncol(hess)]),
+                                  "pdmatrix"), "corrmatrix")
+                  ## FIXME: change the name of Hessian to info, to make it
+                  ## explicit that this is the information matrix
+                  fcoef <- object@fixef
+                  re@coefficients <- array(c(fcoef, corFixed@stdDev),
+                                           c(length(fcoef), 2),
+                                           list(names(fcoef),
+                                                c("Estimate", "Std. Error")))
+                  dimnames(corFixed) <- list(names(fcoef), names(fcoef))
+                  re@corFixed <- corFixed
               }
-              print(data.frame(AIC = object@AIC, BIC = object@BIC,
-                               logLik = c(object@logLik), row.names = ""))
-              cat("\n")
-              object@re@showCorrelation = TRUE
-              show(object@re)
-              ## Should this be part of the show method for summary.reStruct?
-              cat("\nNumber of Observations:", object@re@nobs)
-              cat("\nNumber of Groups: ")
-              ngrps <- object@re@ngrps
-              if ((length(ngrps)) == 1) {
-                  cat(ngrps,"\n")
-              } else {				# multiple nesting
-                  cat("\n")
-                  print(ngrps)
-              }
-              invisible(object)
+              new("summary.GLMM",
+                  family = object@family,
+                  call = object@call,
+                  logLik = llik,
+                  re = re,
+                  residuals = resd)
           })
-
-setMethod("show", "glmm",
-          function(object)
-      {
-          sumry = summary(object)
-          rdig <- 5
-          cat("Generalized linear mixed-effects model\n")
-          cat(" Family:", sumry@family, "with",
-              sumry@link, "link\n")
-          cat(" Data:", deparse( sumry@call$data ), "\n")
-          if (!is.null(sumry@call$subset)) {
-              cat("  Subset:",
-                  deparse(asOneSidedFormula(sumry@call$subset)[[2]]),"\n")
-          }
-          cat(paste(" log-", ifelse(sumry@re@REML, "restricted-", ""),
-                    "likelihood: ", sep = ''), sumry@logLik, "\n")
-          sumry@re@showCorrelation = FALSE
-          saveopt = options(show.signif.stars=FALSE)
-          on.exit(saveopt)
-          show(sumry@re)
-          options(saveopt)
-          on.exit()
-          cat("\nNumber of Observations:", sumry@re@nobs, "\n")
-          invisible(object)
-      })
-
-setMethod("getResponse", signature(object="glmm"),
-          function(object, form)
-      {
-          object@origy
-      })
-
-setMethod("logLik", signature(object="glmm"),
-          function(object)
-      {
-          value = .Call("nlme_glmmLaplace_logLikelihood", object,
-                         NULL,          # do not pass new parameter value
-                         50, 1, PACKAGE="lme4")
-          p = length(object@reStruct@random[["*fixed*"]]@columns)
-          # df calculated from sigma + fixed effects + random effects pars
-          attr(value, "df") = 1 + p +
-              sum(unlist(lapply(object@reStruct@random,
-                                function(x)length(coef(x)))))
-          attr(value, "nall") = length(object@fitted)
-          attr(value, "nobs") = length(object@fitted) - p
-          class(value) = "logLik"
-          value
-      })
-
-setReplaceMethod("LMEoptimize", signature(x="glmm",
-                                          value="list"),
-                 function(x, value)
-             {
-                 value$analyticGradient <- FALSE
-                 if (value$msMaxIter < 1)
-                     return(x)
-                 xval <- -.Call("nlme_glmmLaplace_logLikelihood", x,
-                                NULL,
-                                50, 1, PACKAGE="lme4")
-                 xval =
-                     if (xval > 0)
-                         xval+1
-                     else abs(min(xval/2, xval+1))
-                 fixlen <- length(fixef(x))
-                 if (value$optimizer == "optim") {
-                     optimRes =
-                         if (value$analyticGradient) {
-                             optim(fn = function(params)
-                               {
-                                   fixef(x) <- params[seq(length=fixlen)]
-                                   .Call("nlme_glmmLaplace_logLikelihood",
-                                         x,
-                                         params[-seq(length=fixlen)],
-                                         50, 1, PACKAGE="lme4")
-                               },
-                                   gr = function(params)
-                                   LMEgradient(.Call("nlme_commonDecompose",
-                                                     x, params,
-                                                     PACKAGE="lme4")),
-                                   par = c(fixef(x), coef(x)),
-                                   ##hessian = TRUE,
-                                   method = "BFGS",
-                                   control = list(trace = value$msVerbose,
-                                   reltol = value$msTol,
-                                   fnscale = -1,
-#                                   fnscale = -xval,
-#                                   parscale = 1/value$msScale(coef(x)),
-                                   maxit = value$msMaxIter))
-                         } else {
-                             optim(fn = function(params)
-                               {
-                                   fixef(x) <- params[seq(length=fixlen)]
-                                   .Call("nlme_glmmLaplace_logLikelihood",
-                                         x,
-                                         params[-seq(length=fixlen)],
-                                         50, 1, PACKAGE="lme4")
-                               },
-                                   par = c(fixef(x), coef(x)),
-                                   #hessian = TRUE,
-                                   method = "BFGS",
-                                   control = list(trace = value$msVerbose,
-                                   reltol = value$msTol,
-                                   fnscale = -1,
-#                                   fnscale = -xval,
-#                                   parscale = 1/value$msScale(coef(x)),
-                                   maxit = value$msMaxIter))
-                         }
-                     if (optimRes$convergence != 0) {
-                         warning("optim failed to converge")
-                     }
-                     fixef(x) <- optimRes$par[seq(length=fixlen)]
-                     coef(x@reStruct) <- optimRes$par[-seq(length=fixlen)]
-                     x@reStruct@logLik <- as.numeric(NA)
-                     .Call("nlme_glmmLaplace_solveOnly", x,
-                           500, 1, PACKAGE="lme4")
-#                  } else if (value$optimizer == "ms") {
-#                      pars <- coef(x)
-#                      .Call("nlme_msOptimize", value$msMaxIter,
-#                            value$msTol, rep(1.0, length(pars)),
-#                            value$msVerbose, x, pars,
-#                            value$analyticGradient,
-#                            PACKAGE = "lme4")
-                 } else {
-#                     typsize <- 1/value$msScale(coef(x))
-                     typsize <- rep(1.0, length(coef(x))+fixlen)
-                     if (is.null(value$nlmStepMax))
-                         value$nlmStepMax <-
-                             max(100 * sqrt(sum((c(fixef(x),
-                                                   coef(x))/typsize)^2)), 100)
-                     nlmRes =
-                         nlm(f = if (value$analyticGradient) {
-                             function(params)
-                             {
-                                 fixef(x) <- params[seq(length=fixlen)]
-                                 -.Call("nlme_glmmLaplace_logLikelihood",
-                                        x,
-                                        params[-seq(length=fixlen)],
-                                        50, 1, PACKAGE="lme4")
-#                                  x = .Call("nlme_commonDecompose",
-#                                             x, params,
-#                                             PACKAGE="lme4")
-#                                  grad = -LMEgradient(x)
-#                                  ans = -x@logLik
-#                                  attr(ans, "gradient") = grad
-#                                  ans
-                             }
-                         } else {
-                             function(params)
-                             {
-                                 fixef(x) <- params[seq(length=fixlen)]
-                                 -.Call("nlme_glmmLaplace_logLikelihood",
-                                        x,
-                                        params[-seq(length=fixlen)],
-                                        50, 1, PACKAGE="lme4")
-                             }
-                         },
-                             p = c(fixef(x), coef(x)),
-                             #hessian = TRUE,
-                             print.level = if (value$msVerbose) 2 else 0,
-                             steptol = value$msTol,
-                             gradtol = value$msTol,
-                             stepmax = value$nlmStepMax,
-                             typsize=typsize,
-#                             fscale=xval,
-                             iterlim = value$msMaxIter)
-                     fixef(x) <- nlmRes$estimate[seq(length=fixlen)]
-                     coef(x@reStruct) <-
-                         nlmRes$estimate[-seq(length=fixlen)]
-                     x@reStruct@logLik <- as.numeric(NA)
-                     .Call("nlme_glmmLaplace_solveOnly", x,
-                           500, 1, PACKAGE="lme4")
-                 }
-             })
-
-setReplaceMethod("fixef", signature(object="glmm", value="numeric"),
-          function(object, value) {
-              fixef(object@reStruct) <- value
-              object
-          })
-
-### Local variables:
-### mode: R
-### End:
