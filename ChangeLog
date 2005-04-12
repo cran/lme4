@@ -1,4 +1,11 @@
+2005-04-12  Douglas Bates  <bates@bates1-home>
+
+	* R/lmer.R: Fixed problem with assignment of frame in lmer method
+	with nonmissing family argument.
+
 2005-04-06  Douglas Bates  <bates@bates1-home>
+
+	* R/lmer.R: Fix with method to accomodate for nontrivial na.action
 
 	* R/lmList.R: Repair the plot method for the lmList.confint class
 

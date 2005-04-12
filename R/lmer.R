@@ -344,11 +344,13 @@ setMethod("lmer", signature(formula = "formula"),
                      .fixed = list(cbind(glm.fit$x, .response = glm.fit$y)))
           ## FIXME: Use Xfrm and Xmat to get the terms and assign
           ## slots, pass these to lmer_create, then destroy Xfrm, Xmat, etc.
-          obj <- .Call("lmer_create", lapply(random, "[[", 2), mmats, PACKAGE = "Matrix")
-          obj@terms <- attr(glm.fit$model, "terms")
-          obj@assign <- attr(glm.fit$x, "assign")
-          obj@call <- match.call()
-          obj@REML <- FALSE
+          obj <- .Call("lmer_create", lapply(random, "[[", 2),
+                       mmats, PACKAGE = "Matrix")
+          slot(obj, "frame") <- frm
+          slot(obj, "terms") <- attr(glm.fit$model, "terms")
+          slot(obj, "assign") <- attr(glm.fit$x, "assign")
+          slot(obj, "call") <- match.call()
+          slot(obj, "REML") <- FALSE
           rm(glm.fit)
           .Call("lmer_initial", obj, PACKAGE="Matrix")
           mmats.unadjusted <- mmats
