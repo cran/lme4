@@ -1,5 +1,4 @@
 BIC                     Bayesian Information Criterion
-contr.SAS               Contrast Matrices for SAS-like Results
 fixef                   Extract Fixed Effects
 getCovariate            Utilities for formulas
 groupedData             Creation of groupedData objects

@@ -4,7 +4,6 @@ importFrom("graphics", "plot")
 export(
        "BIC",
        "VarCorr",
-       "contr.SAS",
        "convertFromS3groupedData",
        "fixef",
        "getCovariateFormula",

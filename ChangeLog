@@ -1,3 +1,18 @@
+2005-04-18  Douglas Bates  <bates@bates1-home>
+
+	* R/lmer.R: Choose method values appropriately for lmer with or
+	without a family argument.
+
+	* DESCRIPTION: change dependence to Matrix(>= 0.95-6)
+
+	* R/lmList.R: Added argument pool to confint method for lmList and
+	order to plot method for confint.lmList
+
+2005-04-15  Douglas Bates  <bates@bates1-home>
+
+	* DESCRIPTION: Change dependence to R (>= 2.1.0) and remove the
+	contr.SAS definition and documentation.
+
 2005-04-12  Douglas Bates  <bates@bates1-home>
 
 	* R/lmer.R: Fixed problem with assignment of frame in lmer method
@@ -20,7 +35,7 @@
 
 	* R/lme.R: Removed the stubs of the plot methods.
 
-	* NAMESPACE: Remove imports from the Matrix package as it is a
+	* NAMESPACE: Remove imports from the Matrix package as it is
 	listed in the Depends.
 
 2005-02-24  Douglas Bates  <bates@bates1-home>

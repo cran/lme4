@@ -2,12 +2,6 @@
 
 ## Some utilities
 
-contr.SAS <- function(n, contrasts = TRUE)
-## Eliminate this function after R-2.1.0 is released
-    contr.treatment(n,
-                    if (is.numeric(n) && length(n) == 1) n else length(n),
-                    contrasts)
-
 Lind <- function(i,j) {
     if (i < j) stop(paste("Index i=", i,"must be >= index j=", j))
     ((i - 1) * i)/2 + j
@@ -62,9 +56,16 @@ setMethod("lmer", signature(formula = "formula", family = "missing"),
                    model = TRUE, x = FALSE, y = FALSE, ...)
       {
                                         # match and check parameters
-          REML <- match.arg(method) == "REML"
+          method <- match.arg(method)
+          if (method %in% c("PQL", "Laplace", "AGQ")) {
+              warning(paste('Argument method = "', method,
+                            '" is not meaningful for a linear mixed model.\n',
+                            'Using method = "REML".\n', sep = ''))
+              method <- "REML"
+          }
           controlvals <- do.call("lmerControl", control)
-          controlvals$REML <- REML
+          controlvals$REML <- REML <- method == "REML"
+
           if (length(formula) < 3) stop("formula must be a two-sided formula")
 
           mf <- match.call()           # create the model frame as frm
@@ -288,12 +289,23 @@ setMethod("lmer", signature(formula = "formula"),
                    subset, weights, na.action, offset,
                    model = TRUE, x = FALSE, y = FALSE, ...)
       {
+          if (missing(method)) {
+              method <- "PQL"
+          } else {
+              method <- match.arg(method)
+              if (method == "ML") method <- "PQL"
+              if (method == "REML") 
+                  warning(paste('Argument method = "REML" is not meaningful',
+                                'for a generalized linear mixed model.',
+                                '\nUsing method = "PQL".\n'))
+          }
+          if (method %in% c("Laplace", "AGQ"))
+              stop("Laplace and AGQ methods not yet implemented")
           gVerb <- getOption("verbose")
                                         # match and check parameters
           controlvals <- do.call("lmerControl", control)
           controlvals$REML <- FALSE
           if (length(formula) < 3) stop("formula must be a two-sided formula")
-
           ## initial glm fit
           mf <- match.call()            
           m <- match(c("family", "data", "subset", "weights",

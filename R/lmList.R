@@ -129,9 +129,23 @@ setMethod("confint", signature(object = "lmList"),
           template <- eval(mCall)
           val <- array(template, c(dim(template), length(object)),
                        c(dimnames(template), list(names(object))))
-          for (i in seq(along = object)) {
-              mCall$object <- object[[i]]
-              val[,,i] <- eval(mCall)
+          pool <- list(...)$pool
+          if (length(pool) > 0 && pool[1]) {
+              sd <- pooledSD(object)
+              a <- (1 - level)/2
+              fac <- sd * qt(c(a, 1 - a)/2, attr(sd, "df"))
+              parm <- dimnames(template)[[1]]
+              for (i in seq(along = object))
+                  val[ , , i] <-
+                      coef(object[[i]])[parm] +
+                          sqrt(diag(summary(object[[i]],
+                                            corr = FALSE)$cov.unscaled
+                                    )[parm]) %o% fac
+          } else {
+              for (i in seq(along = object)) {
+                  mCall$object <- object[[i]]
+                  val[ , , i] <- eval(mCall)
+              }
           }
           new("lmList.confint", aperm(val, c(3, 2, 1)))
       }, valueClass = "lmList.confint")
@@ -143,12 +157,18 @@ setMethod("plot", signature(x = "lmList.confint"),
           arr <- as(x, "array")
           dd <- dim(arr)
           dn <- dimnames(arr)
+          levs <- dn[[1]]
+          dots <- list(...)
+          if (length(dots$order) > 0 &&
+                     (ord <- round(dots$order[1])) %in% seq(dd[3]))
+              levs <- levs[order(rowSums(arr[ , , ord]))]
           ll <- length(arr)
-          df <- data.frame(group = gl(dd[1], 1, len = ll, lab = dn[[1]]),
+          df <- data.frame(group =
+                           ordered(rep(dn[[1]], dd[2] * dd[3]),
+                                   levels = levs),
                            intervals = as.vector(arr),
                            what = gl(dd[3], dd[1] * dd[2], len = ll, lab = dn[[3]]),
                            end = gl(dd[2], dd[1], len = ll))
-          dots <- list(...)
           strip <- dots[["strip"]]
           if (is.null(strip)) {
               strip <- function(...) strip.default(..., style = 1)
