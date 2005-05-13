@@ -4,12 +4,11 @@ getCovariate            Utilities for formulas
 groupedData             Creation of groupedData objects
 gsummary                Summarize a data frame by group
 lmer                    Fit linear mixed-effects models
-lmer-class              lmer model representation
+lmer-class              Mixed model representations
 lmerControl             Control values for lme
 lmList                  List of lm Objects with a Common Model
 lmList-class            Class "lmList"
 pooledSD                Extract pooled standard deviation
 ranef                   Extract Random Effects
-summary.lmer-class      Class "summary.lmer"
 VarCorr                 Extract variance and correlation components
 VarCorr-class           Class "VarCorr"

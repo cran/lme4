@@ -39,6 +39,7 @@ groupedData <-
 
 convertFromS3groupedData <- function(from)
 {
+    stopifnot(require("latticeExtra"))
     if (!inherits(from, "groupedData")) return(from)
 
     data <- from

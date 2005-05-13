@@ -4,6 +4,7 @@
 \alias{fixed.effects}
 \alias{fixef,ANY-method}
 \alias{fixef,lmer-method}
+\alias{fixef,glmer-method}
 \title{Extract Fixed Effects}
 \description{
   Extract the estimates of the fixed effects parameters from a fitted model.

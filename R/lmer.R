@@ -175,6 +175,11 @@ setMethod("fixef", signature(object = "lmer"),
               val[-length(val)]
           })
 
+setMethod("fixef", signature(object = "glmer"),
+          function(object, ...) {
+              object@fixed
+          })
+
 setMethod("VarCorr", signature(x = "lmer"),
           function(x, REML = TRUE, useScale = TRUE, ...) {
               val <- .Call("lmer_variances", x, PACKAGE = "Matrix")
@@ -194,17 +199,46 @@ setMethod("gradient", signature(x = "lmer"),
 
 setMethod("summary", signature(object = "lmer"),
           function(object, ...)
-          new("summary.lmer", object, useScale = TRUE, showCorrelation = TRUE))
+          new("summary.lmer", object, useScale = TRUE,
+              showCorrelation = TRUE,
+              method = if (object@REML) "REML" else "ML",
+              family = gaussian(),
+              logLik = logLik(object),
+              fixed = fixef(object)))
+
+## FIXME: glmm-s with scale not handled 
+setMethod("summary", signature(object = "glmer"),
+          function(object, ...)
+          new("summary.lmer", object, useScale = FALSE,
+              showCorrelation = TRUE,
+              method = object@method,
+              family = object@family,
+              logLik = logLik(object),
+              fixed = fixef(object)))
 
 setMethod("show", signature(object = "lmer"),
           function(object)
           show(new("summary.lmer", object, useScale = TRUE,
-                   showCorrelation = FALSE))
+                   showCorrelation = FALSE,
+                   method = if (object@REML) "REML" else "ML",
+                   family = gaussian(),
+                   logLik = logLik(object),
+                   fixed = fixef(object)))
+          )
+
+setMethod("show", signature(object = "glmer"),
+          function(object)
+          show(new("summary.lmer", object, useScale = FALSE,
+                   showCorrelation = FALSE,
+                   method = object@method,
+                   family = object@family,
+                   logLik = logLik(object),
+                   fixed = fixef(object)))
           )
 
 setMethod("show", "summary.lmer",
           function(object) {
-              fcoef <- fixef(object)
+              fcoef <- object@fixed
               useScale <- object@useScale
               corF <- as(as(vcov(object, useScale = useScale), "pdmatrix"),
                          "corrmatrix")
@@ -215,12 +249,17 @@ setMethod("show", "summary.lmer",
                   list(names(fcoef), c("Estimate", "Std. Error", "DF"))
                             digits <- max(3, getOption("digits") - 2)
               REML <- length(object@REML) > 0 && object@REML[1]
-              llik <- logLik(object)
+              llik <- object@logLik
               dev <- object@deviance
               
               rdig <- 5
-              cat("Linear mixed-effects model fit by ")
-              cat(ifelse(object@REML, "REML\n", "maximum likelihood\n") )
+              if (glz <- !(object@method %in% c("REML", "ML"))) {
+                  cat(paste("Generalized linear mixed model fit using",
+                            object@method, "\n"))
+              } else {
+                  cat("Linear mixed-effects model fit by ")
+                  cat(if(object@REML) "REML\n" else "maximum likelihood\n")
+              }
               if (!is.null(object@call$formula)) {
                   cat("Formula:", deparse(object@call$formula),"\n")
               }
@@ -231,11 +270,20 @@ setMethod("show", "summary.lmer",
                   cat(" Subset:",
                       deparse(asOneSidedFormula(object@call$subset)[[2]]),"\n")
               }
-              print(data.frame(AIC = AIC(llik), BIC = BIC(llik),
+              if (glz) {
+                  cat(" Family:", object@family$family, "(",
+                      object@family$link, "link)\n")
+                  print(data.frame(AIC = AIC(llik), BIC = BIC(llik),
                                logLik = c(llik),
-                               MLdeviance = dev["ML"],
+                               deviance = -2*llik,
+                               row.names = ""))
+              } else {
+                  print(data.frame(AIC = AIC(llik), BIC = BIC(llik),
+                               logLik = c(llik),
+                               deviance = dev["ML"],
                                REMLdeviance = dev["REML"],
                                row.names = ""))
+              }
               cat("Random effects:\n")
               show(VarCorr(object))
               ngrps <- lapply(object@flist, function(x) length(levels(x)))
@@ -282,6 +330,7 @@ setMethod("show", "summary.lmer",
               invisible(object)
           })
 
+
 setMethod("lmer", signature(formula = "formula"),
           function(formula, family, data,
                    method = c("REML", "ML", "PQL", "Laplace", "AGQ"),
@@ -299,8 +348,10 @@ setMethod("lmer", signature(formula = "formula"),
                                 'for a generalized linear mixed model.',
                                 '\nUsing method = "PQL".\n'))
           }
-          if (method %in% c("Laplace", "AGQ"))
-              stop("Laplace and AGQ methods not yet implemented")
+##           if (method %in% c("Laplace", "AGQ"))
+##               stop("Laplace and AGQ methods not yet implemented")
+          if (method %in% c("AGQ"))
+              stop("AGQ method not yet implemented")
           gVerb <- getOption("verbose")
                                         # match and check parameters
           controlvals <- do.call("lmerControl", control)
@@ -415,8 +466,296 @@ setMethod("lmer", signature(formula = "formula"),
               }
           }
           if (!conv) warning("IRLS iterations for glmm did not converge")
-          obj
+          controlvals$msMaxIter <- msMaxIter.orig
+
+
+###          if (TRUE) ## Laplace
+###          {
+          ## Need to optimize L(theta, beta) using Laplace approximation
+
+          ## Things needed for that:
+          ##
+          ## 1. reduced ssclme object, offset, weighted model matrices
+          ## 2. facs, reduced model matrices
+
+          ## Of these, those in 2 will be fixed given theta and beta,
+          ## and can be thought of arguments to the L(theta, beta)
+          ## function. However, the ones in 1 will have the same
+          ## structure. So the plan is to pre-allocate them and pass
+          ## them in too so they can be used without creating/copying
+          ## them more than once
+
+
+          ## reduced ssclme
+
+          reducedObj <- .Call("lmer_collapse", obj, PACKAGE = "Matrix")
+          reducedMmats.unadjusted <- mmats.unadjusted
+          reducedMmats.unadjusted$.fixed <-
+              reducedMmats.unadjusted$.fixed[, responseIndex, drop = FALSE]
+          reducedMmats <- mmats
+          reducedMmats$.fixed <-
+              reducedMmats$.fixed[, responseIndex, drop = FALSE]
+
+          ## define function that calculates bhats given theta and beta 
+
+          bhat <- 
+              function(pars = NULL) # 1:(responseIndex-1) - beta, rest - theta
+              {
+                  if (is.null(pars))
+                  {
+                      off <- drop(mmats.unadjusted$.fixed %*%
+                                  c(fixef(obj), 0)) + offset
+                  }
+                  else
+                  {
+                      .Call("lmer_coefGets",
+                            reducedObj,
+                            as.double(pars[responseIndex:length(pars)]),
+                            TRUE,
+                            PACKAGE = "Matrix")
+                      off <- drop(mmats.unadjusted$.fixed %*%
+                                  c(pars[1:(responseIndex-1)], 0)) + offset
+                  }
+                  niter <- 20
+                  conv <- FALSE
+
+                  eta <- offset + 
+                      .Call("lmer_fitted",
+                            obj, mmats.unadjusted, TRUE,
+                            PACKAGE = "Matrix")
+                  etaold <- eta
+                  
+                  for (iter in seq(length = niter))
+                  {
+                      mu <- family$linkinv(eta)
+                      dmu.deta <- family$mu.eta(eta)
+                      w <- weights * dmu.deta / sqrt(family$variance(mu))
+                      z <- eta - off + (reducedMmats.unadjusted$.fixed[, 1]
+                                        - mu) / dmu.deta 
+                      .Call("nlme_weight_matrix_list",
+                            reducedMmats.unadjusted, w, z, reducedMmats,
+                            PACKAGE="Matrix")
+                      .Call("lmer_update_mm",
+                            reducedObj, reducedMmats,
+                            PACKAGE="Matrix")
+                      eta[] <- off + 
+                          .Call("lmer_fitted", reducedObj, 
+                                reducedMmats.unadjusted, TRUE,
+                                PACKAGE = "Matrix")
+                      ##cat(paste("bhat Criterion:", max(abs(eta - etaold)) /
+                      ##          (0.1 + max(abs(eta))), "\n"))
+                      ## use this to determine convergence
+                      if (max(abs(eta - etaold)) <
+                          (0.1 + max(abs(eta))) * controlvals$tolerance)
+                      {
+                          conv <- TRUE
+                          break
+                      }
+                      etaold[] <- eta
+                      
+                  }
+                  if (!conv) warning("iterations for bhat did not converge")
+
+                  ## bhat doesn't really need to return anything, we
+                  ## just want the side-effect of modifying reducedObj
+                  ## In particular, we are interested in
+                  ## ranef(reducedObj) and reducedObj@bVar (?). But
+                  ## the mu-scale response will be useful for log-lik
+                  ## calculations later, so return them anyway
+
+                  invisible(family$linkinv(eta)) 
+              }
+
+          ## function that calculates log likelihood (the thing that
+          ## needs to get evaluated at each Gauss-Hermite location)
+          
+          ## log scale ? worry about details later, get the pieces in place
+          
+          ## this is for the Laplace approximation only. GH is more
+          ## complicated 
+
+          devLaplace <- function(pars = NULL)
+          {
+              ## FIXME: This actually returns half the deviance.
+              
+              ## gets correct values of bhat and bvars. As a side
+              ## effect, mu now has fitted values
+              mu <- bhat(pars = pars)
+
+              ## GLM family log likelihood (upto constant ?)(log scale)
+              ## FIXME: need to adjust for sigma^2 for appropriate models (not trivial!)
+
+              ## Keep everything on (log) likelihood scale
+              
+              ## log lik from observations given fixed and random effects
+              ## get deviance, then multiply by -1/2 (since deviance = -2 log lik)
+              ans <- -sum(family$dev.resids(y = mmats.unadjusted$.fixed[, responseIndex],
+                                            mu = mu,
+                                            wt = weights^2))/2
+              
+##               if (is.null(getOption("laplaceinR"))) 
+##               {
+              ans <- ans +
+                  .Call("lmer_laplace_devComp", reducedObj,
+                        PACKAGE = "Matrix")
+##               }
+##               else
+##               {
+##                   ranefs <- .Call("lmer_ranef", reducedObj, PACKAGE = "Matrix")
+##                   ## ans <- ans + reducedObj@devComp[2]/2 # log-determinant of Omega
+
+##                   Omega <- reducedObj@Omega
+##                   for (i in seq(along = ranefs))
+##                   {
+##                       ## contribution for random effects (get it working,
+##                       ## optimize later) 
+##                       ## symmetrize RE variance
+##                       Omega[[i]] <- Omega[[i]] + t(Omega[[i]])
+##                       diag(Omega[[i]]) <- diag(Omega[[i]]) / 2
+
+##                       ## want log of `const det(Omega) exp(-1/2 b'
+##                       ## Omega b )` i.e., const + log det(Omega) - .5
+##                       ## * (b' Omega b)
+
+##                       ## FIXME: need to adjust for sigma^2 for appropriate
+##                       ## models (easy).  These are all the b'Omega b,
+##                       ## summed as they eventually need to be.  Think of
+##                       ## this as sum(rowSums((ranefs[[i]] %*% Omega[[i]])
+##                       ## * ranefs[[i]]))
+
+##                       ranef.loglik.det <- nrow(ranefs[[i]]) *
+##                           determinant(Omega[[i]], logarithm = TRUE)$modulus/2
+
+## #                      print(ranef.loglik.det)
+
+##                       ranef.loglik.re <-
+##                           -sum((ranefs[[i]] %*% Omega[[i]]) * ranefs[[i]])/2
+
+## #                      print(ranef.loglik.re)
+                      
+##                       ranef.loglik <- ranef.loglik.det + ranef.loglik.re
+
+##                       ## Jacobian adjustment
+##                       log.jacobian <- 
+##                           sum(log(abs(apply(reducedObj@bVar[[i]],
+##                                             3,
+
+##                                             ## next line depends on
+##                                             ## whether bVars are variances
+##                                             ## or Cholesly factors
+
+##                                             ## function(x) sum(diag(x)))
+## ## Was this a bug?                          function(x) sum(diag( La.chol( x ) )))
+##                                             function(x) prod(diag( La.chol( x ) )))
+##                                       )))
+
+## #                      print(log.jacobian)
+
+
+##                       ## the constant terms from the r.e. and the final
+##                       ## Laplacian integral cancel out both being:
+##                       ## ranef.loglik.constant <- 0.5 * length(ranefs[[i]]) * log(2 * base::pi)
+
+##                       ans <- ans + ranef.loglik + log.jacobian
+##                   }
+##               }
+              ## ans is (up to some constant) log of the Laplacian
+              ## approximation of the likelihood. Return it's negative
+              ## to be minimized
+
+              ##              cat("Parameters: ")
+              ##              print(pars)
+
+              ##              cat("Value: ")
+              ##              print(as.double(-ans))
+
+              -ans 
+          }
+
+          if (method == "Laplace")
+          {
+###Rprof("/tmp/Laplace-profile.out") # trying to figure out if C-ifying bhat is worthwhile
+              ## no analytic gradients or hessians
+              optimRes <-
+                  optim(fn = devLaplace,
+                        par =
+                        c(fixef(obj),
+                          .Call("lmer_coef",
+                                obj,
+                                TRUE,
+                                PACKAGE = "Matrix")),
+                        ## WAS: coef(obj, unconst = TRUE)),
+                        method = "BFGS", hessian = TRUE,
+                        control = list(trace = getOption("verbose"),
+                        reltol = controlvals$msTol,
+                        maxit = controlvals$msMaxIter))
+              if (optimRes$convergence != 0)
+                  warning("optim failed to converge")
+              optpars <- optimRes$par
+              Hessian <- optimRes$hessian
+              
+              ##fixef(obj) <- optimRes$par[seq(length = responseIndex - 1)]
+              if (getOption("verbose")) {
+                  cat(paste("optim convergence code",
+                            optimRes$convergence, "\n"))
+                  cat("Fixed effects:\n")
+                  print(fixef(obj))
+                  print(optimRes$par[seq(length = responseIndex - 1)])
+                  cat("(Unconstrained) variance coefficients:\n")
+                  
+                  print(
+                        .Call("lmer_coef",
+                              obj,
+                              TRUE,
+                              PACKAGE = "Matrix"))
+
+                  ##coef(obj, unconst = TRUE) <-
+                  ##    optimRes$par[responseIndex:length(optimRes$par)]
+                  ##print(coef(obj, unconst = TRUE))
+                  print( optimRes$par[responseIndex:length(optimRes$par)] )
+              }
+                  
+              ## need to calculate likelihood.  also need to store
+              ## new estimates of fixed effects somewhere
+              ## (probably cannot update standard errors)
+###Rprof(NULL)
+          }
+          else
+          {
+              optpars <-
+                  c(fixef(obj),
+                    .Call("lmer_coef",
+                          obj,
+                          TRUE,
+                          PACKAGE = "Matrix"))
+              Hessian <- new("matrix")
+          }
+
+
+          ## Before finishing, we need to call devLaplace with the
+          ## optimum pars to get the final log likelihood (still need
+          ## to make sure it's the actual likelihood and not a
+          ## multiple). This would automatically call bhat() and hence
+          ## have the 'correct' random effects in reducedObj.
+
+          loglik <- -devLaplace(optpars)
+          ##print(loglik)
+          ff <- optpars[1:(responseIndex-1)]
+          names(ff) <- names(fixef(obj))
+
+          if (!x) mmats <- list()
+
+###      }
+
+          ##obj
+
+          new("glmer", obj,
+              family = family,
+              glmmll = loglik,
+              method = method,
+              fixed = ff)
       })
+
 
 ## calculates degrees of freedom for fixed effects Wald tests
 ## This is a placeholder.  The answers are generally wrong.  It will
@@ -439,6 +778,17 @@ setMethod("logLik", signature(object="lmer"),
               attr(val, "nall") <- attr(val, "nobs") <- nc[2]
               attr(val, "df") <- nc[1] + length(ccoef(object))
               attr(val, "REML") <- REML 
+              class(val) <- "logLik"
+              val
+          })
+
+setMethod("logLik", signature(object="glmer"),
+          function(object, ...) {
+              val <- object@glmmll
+              nc <- object@nc[-seq(a = object@Omega)]
+              attr(val, "nall") <- attr(val, "nobs") <- nc[2]
+              attr(val, "df") <- nc[1] + length(ccoef(object))
+              ## attr(val, "REML") <- REML 
               class(val) <- "logLik"
               val
           })
@@ -570,6 +920,12 @@ setMethod("deviance", "lmer",
               if (is.null(REML))
                   REML <- if (length(oR <- object@REML)) oR else FALSE
               object@deviance[[ifelse(REML, "REML", "ML")]]
+          })
+
+
+setMethod("deviance", "glmer",
+          function(object, ...) {
+              -2 * object@glmmll
           })
 
 setMethod("chol", signature(x = "lmer"),

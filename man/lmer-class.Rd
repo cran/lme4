@@ -1,32 +1,46 @@
 \name{lmer-class}
 \docType{class}
+\alias{glmer-class}
 \alias{lmer-class}
+\alias{summary.glmer-class}
+\alias{summary.lmer-class}
 \alias{VarCorr,lmer-method}
 \alias{anova,lmer-method}
+\alias{coef,lmer-method}
 \alias{coerce,lmer,dsTMatrix-method}
 \alias{coerce,lmer,dtTMatrix-method}
-\alias{coef,lmer-method}
 \alias{confint,lmer-method}
+\alias{deviance,glmer-method}
 \alias{deviance,lmer-method}
-\alias{formula,lmer-method}
 \alias{fitted,lmer-method}
+\alias{formula,lmer-method}
+\alias{logLik,glmer-method}
 \alias{logLik,lmer-method}
-\alias{residuals,lmer-method}
+\alias{plot,lmer.coef-method}
+\alias{plot,lmer.ranef-method}
 \alias{resid,lmer-method}
+\alias{residuals,lmer-method}
+\alias{show,glmer-method}
 \alias{show,lmer-method}
+\alias{show,summary.lmer-method}
+\alias{summary,glmer-method}
 \alias{summary,lmer-method}
+\alias{terms,lmer-method}
 \alias{update,lmer-method}
 \alias{vcov,lmer-method}
-\alias{plot,lmer.ranef-method}
-\alias{plot,lmer.coef-method}
-\alias{terms,lmer-method}
 \alias{with,lmer-method}
-\title{lmer model representation}
-\description{A representation of a linear mixed-effects model using a
-  blocked, sparse, symmetric, column-oriented matrix and dense matrices.}
+\title{Mixed model representations}
+\description{The \code{mer} class is mixed-effects representation using a
+  blocked, sparse, symmetric, column-oriented matrix and dense
+  matrices. The \code{lmer} class extends \code{mer} to represent a
+  fitted linear mixed-effects model.  The \code{glmer} class extends
+  \code{lmer} to represent a fitted generalized linear mixed-effects
+  model.  The \code{summary.lmer} class represents summaries of these objects.}
 \section{Objects from the Class}{
-Objects can be created by calls of the form \code{new("lmer", ...)}
-or, more commonly, via the \code{lmer} function.}
+  Objects can be created by calls of the form \code{new("lmer", ...)}
+    or, more commonly, via the \code{lmer} function or by applying the
+    \code{summary} generic to a \code{glmer} or
+    \code{\link{lmer}} object.}
 }
 \section{Slots}{
   \describe{
@@ -76,6 +90,12 @@ or, more commonly, via the \code{lmer} function.}
       inverted.}
     \item{\code{call}:}{A copy of the matched call to the function that
       created the object.}
+    \item{\code{useScale}:}{logical indicator of the use of the scale
+      factor when calculating variance-covariance objects.  Only present
+      in the \code{summary.lmer} class.}
+    \item{\code{showCorrelation}:}{Logical indicator of whether to
+      display the correlation of the fixed-effects estimates when
+      showing the object. Only present in the \code{summary.lmer} class.}
   }
 }
 \section{Methods}{

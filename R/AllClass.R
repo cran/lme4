@@ -16,8 +16,8 @@ setClass("VarCorr",
                         useScale="logical"),
          prototype = list(scale = 1.0, useScale = TRUE))
 
-## Representation of a linear mixed effects model
-setClass("lmer",
+## mixed effects representation
+setClass("mer",
          representation(
                         flist = "list", # list of grouping factors
                         perm = "list",  # list of permutations of levels (0-based)
@@ -39,31 +39,45 @@ setClass("lmer",
                         nc = "integer", # number of columns in (augmented)
                                         # model matrices and number of observations
                         Gp = "integer", # Pointers to groups of rows in RZX
-                        status = "logical",
-                        call = "call",
-                        terms = "terms",
-                        assign = "integer",
-                        fitted = "numeric",
-                        residuals = "numeric",
-                        frame = "data.frame"
+                        status = "logical"
                         ),
          validity = function(object) {
              .Call("lmer_validate", object, PACKAGE = "Matrix")
          })
 
+## Representation of a linear mixed effects model
+setClass("lmer",
+         representation(call = "call", terms = "terms",
+                        assign = "integer", fitted = "numeric",
+                        residuals = "numeric", frame = "data.frame"),
+         contains = "mer")
+                                
+## Representation of a generalized linear mixed effects model
+setClass("glmer",
+         representation(family = "family", glmmll = "numeric",
+                        method = "character", fixed = "numeric"),
+         contains = "lmer")
+
 setClass("summary.lmer",
          representation(useScale="logical",
-                        showCorrelation="logical"),
+                        showCorrelation="logical",
+                        method = "character",
+                        family = "family",
+                        logLik = "logLik",
+                        fixed = "numeric"),
          contains = "lmer")
 
 setClass("lmList.confint", contains = "array")
 
-setClass("lmer.ranef", representation(varFac = "list", stdErr =
-                                      "numeric"),
+setClass("lmer.ranef",
+         representation(varFac = "list", stdErr = "numeric"),
          contains = "list")
 
 setClass("lmer.ranef.confint", contains = "list")
 
-setClass("lmer.coef", representation(varFac = "list", stdErr =
-                                      "numeric"),
+setClass("lmer.coef",
+         representation(varFac = "list", stdErr = "numeric"),
          contains = "list")
+
+
+

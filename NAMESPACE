@@ -20,7 +20,7 @@ export(
        "ranef"
        )
 
-exportClasses("VarCorr", "lmList", "lmer", "summary.lmer")
+exportClasses("VarCorr", "glmer", "lmList", "lmer", "summary.lmer")
 
 exportMethods(
               "BIC",
