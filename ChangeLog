@@ -1,3 +1,7 @@
+2005-05-19  Douglas Bates  <bates@bates1-home>
+
+	* R/lmer.R (fn): Restored the ML in name MLdeviance from summary.
+
 2005-04-18  Douglas Bates  <bates@bates1-home>
 
 	* R/lmer.R: Choose method values appropriately for lmer with or

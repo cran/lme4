@@ -271,8 +271,8 @@ setMethod("show", "summary.lmer",
                       deparse(asOneSidedFormula(object@call$subset)[[2]]),"\n")
               }
               if (glz) {
-                  cat(" Family:", object@family$family, "(",
-                      object@family$link, "link)\n")
+                  cat(" Family: ", object@family$family, "(",
+                      object@family$link, " link)\n", sep = "")
                   print(data.frame(AIC = AIC(llik), BIC = BIC(llik),
                                logLik = c(llik),
                                deviance = -2*llik,
@@ -280,7 +280,7 @@ setMethod("show", "summary.lmer",
               } else {
                   print(data.frame(AIC = AIC(llik), BIC = BIC(llik),
                                logLik = c(llik),
-                               deviance = dev["ML"],
+                               MLdeviance = dev["ML"],
                                REMLdeviance = dev["REML"],
                                row.names = ""))
               }
