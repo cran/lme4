@@ -18,6 +18,6 @@ options(show.signif.stars = FALSE)
 (fm3 <- lmer(decrease ~ treatment + (1|rowpos) + (1|colpos),
              OrchardSprays, poisson()))
 
-## should produce an error
-try(fm4 <- lmer(decrease ~ treatment + (1|rowpos) + (1|colpos),
+## Laplace approximation
+(fm4 <- lmer(decrease ~ treatment + (1|rowpos) + (1|colpos),
                 OrchardSprays, poisson(), method = "Laplace"))
