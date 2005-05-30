@@ -693,21 +693,22 @@ setMethod("lmer", signature(formula = "formula"),
                              control = list(trace = getOption("verbose"),
                              iter.max = controlvals$msMaxIter))
                   optpars <- optimRes$par
+                  if (optimRes$convergence != 0)
+                      warning("nlminb failed to converge")
               } else {
                   optimRes <-
-                      optim(fn = 
-                            c(fixef(obj), .Call("lmer_coef", obj, TRUE,
-                                                PACKAGE = "Matrix")),
+                      optim(c(fixef(obj),
+                              .Call("lmer_coef", obj, TRUE, PACKAGE = "Matrix")),
                             devLaplace,
                             method = "BFGS", hessian = TRUE,
                             control = list(trace = getOption("verbose"),
                             reltol = controlvals$msTol,
                             maxit = controlvals$msMaxIter))
                   optpars <- optimRes$par
+                  if (optimRes$convergence != 0)
+                      warning("optim failed to converge")
                   Hessian <- optimRes$hessian
               }
-              if (optimRes$convergence != 0)
-                  warning("optim failed to converge")
 
               ##fixef(obj) <- optimRes$par[seq(length = responseIndex - 1)]
               if (getOption("verbose")) {
