@@ -1,8 +1,2 @@
-- Change Calloc/Free patterns in the calculation of bVar
-
 - Determine what a "coef" function should do for multiple, possibly
   non-nested, grouping  factors.
-
-- Re-write the ccoef methods in C
-
-- Evaluate the likelihood of a fitted GLMM by the Laplacian approximation

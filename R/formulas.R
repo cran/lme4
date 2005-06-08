@@ -63,56 +63,5 @@ setMethod("getGroups", signature(object="data.frame", form="formula"),
           function(object, form, level, data, sep, ...)
               eval(getGroupsFormula(form)[[2]], object))
 
-# Return the pairs of expressions separated by vertical bars
-
-findbars <- function(term)
-{
-    if (is.name(term) || is.numeric(term)) return(NULL)
-    if (term[[1]] == as.name("(")) return(findbars(term[[2]]))
-    if (!is.call(term)) stop("term must be of class call")
-    if (term[[1]] == as.name('|')) return(term)
-    if (length(term) == 2) return(findbars(term[[2]]))
-    c(findbars(term[[2]]), findbars(term[[3]]))
-}
-
-# Return the formula omitting the pairs of expressions separated by vertical bars
-
-nobars <- function(term)
-{
-    # FIXME: is the is.name in the condition redundant?
-    #   A name won't satisfy the first condition.
-    if (!('|' %in% all.names(term)) || is.name(term)) return(term)
-    if (is.call(term) && term[[1]] == as.name('|')) return(NULL)
-    if (length(term) == 2) {
-        nb <- nobars(term[[2]])
-        if (is.null(nb)) return(NULL)
-        term[[2]] <- nb
-        return(term)
-    }
-    nb2 <- nobars(term[[2]])
-    nb3 <- nobars(term[[3]])
-    if (is.null(nb2)) return(nb3)
-    if (is.null(nb3)) return(nb2)
-    term[[2]] <- nb2
-    term[[3]] <- nb3
-    term
-}
-
-# Substitute the '+' function for the '|' function
-
-subbars <- function(term)
-{
-    if (is.name(term) || is.numeric(term)) return(term)
-    if (length(term) == 2) {
-        term[[2]] <- subbars(term[[2]])
-        return(term)
-    }
-    stopifnot(length(term) == 3)
-    if (is.call(term) && term[[1]] == as.name('|')) term[[1]] <- as.name('+')
-    term[[2]] <- subbars(term[[2]])
-    term[[3]] <- subbars(term[[3]])
-    term
-}
-    
 
               

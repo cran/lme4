@@ -1,3 +1,9 @@
 - anova method for lmer objects.  Will entail saving the terms
   attribute.
 - Move large data sets into a MEMSS or mlmRev package
+
+- Change Calloc/Free patterns in the calculation of bVar
+
+- Re-write the ccoef methods in C
+
+- Evaluate the likelihood of a fitted GLMM by the Laplacian approximation

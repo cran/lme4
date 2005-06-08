@@ -1,11 +1,7 @@
-import("stats", "Matrix")
-importFrom("graphics", "plot")
+import("Matrix")
 
 export(
-       "BIC",
-       "VarCorr",
        "convertFromS3groupedData",
-       "fixef",
        "getCovariateFormula",
        "getGroups",
        "getGroupsFormula",
@@ -14,33 +10,23 @@ export(
        "groupedData",
        "gsummary",
        "lmList",
-       "lmer",
-       "lmerControl",
-       "pooledSD",
-       "ranef"
+       "pooledSD"
        )
 
-exportClasses("VarCorr", "glmer", "lmList", "lmer", "summary.lmer")
-
 exportMethods(
-              "BIC",
-              "anova",
               "coef",
-              "coerce",
               "confint",
-              "deviance",
-              "fitted",
-              "fixef",
+#              "fixef",
               "formula",
               "gsummary",
-              "logLik",
+#              "logLik",
               "plot",
-              "ranef",
-              "residuals",
-              "resid",
+#              "ranef",
+#              "residuals",
+#              "resid",
               "show",
-              "summary",
-              "update",
-              "vcov",
-              "with"
+#              "summary",
+              "update"
+#              "vcov",
+#              "with"
               )
