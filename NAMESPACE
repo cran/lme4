@@ -1,13 +1,13 @@
 import("Matrix")
 
 export(
-       "convertFromS3groupedData",
-       "getCovariateFormula",
-       "getGroups",
-       "getGroupsFormula",
-       "getResponse",
-       "getResponseFormula",      
-       "groupedData",
+#       "convertFromS3groupedData",
+#       "getCovariateFormula",
+#       "getGroups",
+#       "getGroupsFormula",
+#       "getResponse",
+#       "getResponseFormula",      
+#       "groupedData",
        "gsummary",
        "lmList",
        "pooledSD"

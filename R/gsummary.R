@@ -1,14 +1,13 @@
-setMethod("gsummary", signature(groups = "missing"),
-          function (object, FUN, form, level, groups,
-                    omitGroupingFactor = FALSE, 
-                    invariantsOnly = FALSE, ...)
-      {
-          gCall <- nCall <- match.call()
-          gCall[[1]] <- as.name("getGroups")
-          nCall$groups <- eval(gCall, parent.frame())
-          eval(nCall, parent.frame())
-      })
-
+#setMethod("gsummary", signature(groups = "missing"),
+#          function (object, FUN, form, level, groups,
+#                    omitGroupingFactor = FALSE, 
+#                    invariantsOnly = FALSE, ...)
+#      {
+#          gCall <- nCall <- match.call()
+#          gCall[[1]] <- as.name("getGroups")
+#          nCall$groups <- eval(gCall, parent.frame())
+#          eval(nCall, parent.frame())
+#      })
           
 setMethod("gsummary", signature(object = "data.frame", groups = "factor"),
           function (object, FUN, form, level, groups,

@@ -1,5 +1,3 @@
-getCovariate            Utilities for formulas
-groupedData             Creation of groupedData objects
 gsummary                Summarize a data frame by group
 lmList                  List of lm Objects with a Common Model
 lmList-class            Class "lmList"

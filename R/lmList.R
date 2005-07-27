@@ -1,17 +1,33 @@
 ## List of linear models according to a grouping factor
 
+## Extract the model formula
+modelFormula <- function(form)
+{
+    if (class(form) != "formula" || length(form) != 3)
+        stop("formula must be a two-sided formula object")
+    rhs <- form[[3]]
+    if (class(rhs) != "call" || rhs[[1]] != as.symbol('|'))
+        stop("rhs of formula must be a conditioning expression")
+    form[[3]] <- rhs[[2]]
+    list(model = form, groups = rhs[[3]])
+}
+
 setMethod("lmList", signature(formula = "formula", data = "data.frame"),
-          function(formula, data, level, subset, na.action, pool)
+          function(formula, data, family, subset, weights,
+                   na.action, offset, pool, ...)
       {
-          mCall <- frmCall <- match.call()
-          resp <- getResponseFormula(formula)[[2]]
-          cov <- getCovariateFormula(formula)[[2]]
-          lmForm <- eval(substitute(resp ~ cov))
-          gfm <- getGroupsFormula(formula)
-          if (is.null(gfm)) gfm <- getGroupsFormula(data)
-          if (is.null(gfm))
-              stop("Unable to determine a grouping formula from either the formula or the data")
-          val <- lapply(split(data, eval(gfm[[2]], data)),
+          mCall <- mf <- match.call()           
+          m <- match(c("family", "data", "subset", "weights",
+                       "na.action", "offset"), names(mf), 0)
+          mf <- mf[c(1, m)]
+          ## substitute `+' for `|' in the formula
+          mf$formula <- Matrix:::subbars(formula) 
+          mf$x <- mf$model <- mf$y <- mf$family <- NULL
+          mf$drop.unused.levels <- TRUE
+          mf[[1]] <- as.name("model.frame")
+          frm <- eval(mf, parent.frame())
+          mform <- modelFormula(formula)
+          val <- lapply(split(frm, eval(mform$groups, frm)),
                         function(dat, formula)
                     {
                         ans <- try({
@@ -21,14 +37,14 @@ setMethod("lmList", signature(formula = "formula", data = "data.frame"),
                         if (inherits(ans, "try-error"))
                             NULL
                         else ans
-                    }, formula = lmForm)
+                    }, formula = mform$model)
           if (missing(pool)) pool <- TRUE
           new("lmList", val, call = mCall, pool = pool)
       })
 
 
 setMethod("coef", signature(object = "lmList"),
-            ## Extract the coefficients and form a  data.frame if possible
+          ## Extract the coefficients and form a  data.frame if possible
           function(object, augFrame = FALSE, data = NULL,
                    which = NULL, FUN = mean, omitGroupingFactor = TRUE, ...)
       {
@@ -130,6 +146,7 @@ setMethod("confint", signature(object = "lmList"),
           val <- array(template, c(dim(template), length(object)),
                        c(dimnames(template), list(names(object))))
           pool <- list(...)$pool
+          if (is.null(pool)) pool <- object$pool
           if (length(pool) > 0 && pool[1]) {
               sd <- pooledSD(object)
               a <- (1 - level)/2

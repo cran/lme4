@@ -35,7 +35,6 @@
 <<preliminaries,echo=FALSE,print=FALSE>>=
 library(lattice)
 library(Matrix)
-library(latticeExtra)
 library(lme4)
 data("Early", package = "mlmRev")
 options(width=80, show.signif.stars = FALSE,

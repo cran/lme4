@@ -4,7 +4,8 @@
 \alias{lmList,formula,data.frame-method}
 \title{List of lm Objects with a Common Model}
 \usage{
-lmList(formula, data, level, subset, na.action, pool)
+lmList(formula, data, family, subset, weights,
+       na.action, offset, pool, \dots)
 }
 \arguments{
   \item{formula}{For \code{lmList},
@@ -17,29 +18,40 @@ lmList(formula, data, level, subset, na.action, pool)
     case the grouping structure will be obtained from \code{data}, which
     must inherit from class \code{groupedData}.
   }
+
   \item{data}{
     a data frame in which to interpret the variables named in
     \code{object}. 
   }
-  \item{level}{
-    an optional integer specifying the level of grouping to be used when 
-    multiple nested levels of grouping are present.
+
+  \item{family}{
+    an optional family specification for a generalized linear model.
   }
- \item{subset}{an optional expression indicating which subset of the rows of
-   \code{data} should  be  used in the fit. This can be a logical
-   vector, or a numeric vector indicating which observation numbers are
-   to be included, or a  character  vector of the row names to be
-   included.  All observations are included by default.}
- \item{na.action}{a function that indicates what should happen when the
-   data contain \code{NA}s.  The default action (\code{na.fail}) causes
-   \code{lmList} to print an error message and terminate if there are any
-   incomplete observations.
- }
+
+  \item{weights}{an optional vector of weights to be used
+    in the fitting process.}
+
+  \item{subset}{an optional vector specifying a subset of observations
+    to be used in the fitting process.}
+
+  \item{na.action}{a function which indicates what should happen
+    when the data contain \code{NA}s.  The default is set by
+    the \code{na.action} setting of \code{\link{options}}, and is
+    \code{\link{na.fail}} if that is unset.  The \dQuote{factory-fresh}
+    default is \code{\link{na.omit}}.}
+
+  \item{offset}{this can be used to specify an \emph{a priori}
+    known component to be included in the linear predictor
+    during fitting.}
+
  \item{pool}{
    an optional logical value that is preserved as an attribute of the
    returned value.  This will be used as the default for \code{pool} in
    calculations of standard deviations or standard errors for summaries.
  }
+
+ \item{\dots}{optional arguments to be passed to the model-fitting
+   function.}
 }
 \description{
   \code{Data} is partitioned according to the levels of the grouping

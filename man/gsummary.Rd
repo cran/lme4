@@ -2,22 +2,20 @@
 \alias{gsummary}
 \docType{methods}
 \alias{gsummary-methods}
-\alias{gsummary,ANY,ANY,ANY,ANY,missing-method}
-\alias{gsummary,groupedData,ANY,ANY,ANY,factor-method}
 \alias{gsummary,data.frame,ANY,ANY,ANY,factor-method}
 \title{Summarize a data frame by group}
 \description{
   Provide a summary of the variables in a data frame by groups of rows.
-  This is most useful with a \code{groupedData} object to examine the
-  variables by group.
+%  This is most useful with a \code{groupedData} object to examine the
+%  variables by group.
 }
 \usage{
 gsummary(object, FUN, form, level, groups, omitGroupingFactor = FALSE, invariantsOnly = FALSE, ...)
 }
 %- maybe also 'usage' for other objects documented here.
 \arguments{
-   \item{object}{an object to be summarized - usually a \code{groupedData}
-   object or a \code{data.frame}.
+   \item{object}{an object to be summarized - usually a \code{data.frame}
+%   object or a \code{data.frame}.
  }
  \item{FUN}{an optional summary function or a list of summary functions
    to be applied to each variable in the frame.  The function or
