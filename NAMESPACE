@@ -1,32 +1,21 @@
 import("Matrix")
+importFrom("graphics","plot")
+#import("stats")
 
 export(
-#       "convertFromS3groupedData",
-#       "getCovariateFormula",
-#       "getGroups",
-#       "getGroupsFormula",
-#       "getResponse",
-#       "getResponseFormula",      
-#       "groupedData",
        "gsummary",
        "lmList",
        "pooledSD"
        )
 
+exportClasses("lmList")
+              
 exportMethods(
               "coef",
               "confint",
-#              "fixef",
               "formula",
               "gsummary",
-#              "logLik",
               "plot",
-#              "ranef",
-#              "residuals",
-#              "resid",
               "show",
-#              "summary",
               "update"
-#              "vcov",
-#              "with"
               )
