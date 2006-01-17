@@ -1,21 +1,7 @@
 import("Matrix")
-importFrom("graphics","plot")
-#import("stats")
 
-export(
-       "gsummary",
-       "lmList",
-       "pooledSD"
-       )
+export("gsummary", "lmList", "pooledSD")
 
 exportClasses("lmList")
               
-exportMethods(
-              "coef",
-              "confint",
-              "formula",
-              "gsummary",
-              "plot",
-              "show",
-              "update"
-              )
+exportMethods("coef", "confint", "formula", "gsummary", "plot", "show", "update")

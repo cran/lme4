@@ -27,17 +27,31 @@ setMethod("lmList", signature(formula = "formula", data = "data.frame"),
           mf[[1]] <- as.name("model.frame")
           frm <- eval(mf, parent.frame())
           mform <- modelFormula(formula)
-          val <- lapply(split(frm, eval(mform$groups, frm)),
-                        function(dat, formula)
-                    {
-                        ans <- try({
-                            data <- as.data.frame(dat)
-                            lm(formula = formula, data = data)
-                        })
-                        if (inherits(ans, "try-error"))
-                            NULL
-                        else ans
-                    }, formula = mform$model)
+          if (missing(family)) {
+              val <- lapply(split(frm, eval(mform$groups, frm)),
+                            function(dat, formula)
+                        {
+                            ans <- try({
+                                data <- as.data.frame(dat)
+                                lm(formula, data)
+                            })
+                            if (inherits(ans, "try-error"))
+                                NULL
+                            else ans
+                        }, formula = mform$model)
+          } else {
+              val <- lapply(split(frm, eval(mform$groups, frm)),
+                            function(dat, formula)
+                        {
+                            ans <- try({
+                                data <- as.data.frame(dat)
+                                glm(formula, data, family)
+                            })
+                            if (inherits(ans, "try-error"))
+                                NULL
+                            else ans
+                        }, formula = mform$model, family = family)
+          }
           if (missing(pool)) pool <- TRUE
           new("lmList", val, call = mCall, pool = pool)
       })
@@ -230,7 +244,7 @@ setMethod("update", signature(object = "lmList"),
       {
           call <- object@call
           if (is.null(call))
-              stop("need an object with call component")
+              stop("need an object with call slot")
           extras <- match.call(expand.dots = FALSE)$...
           if (!missing(formula.))
               call$formula <- update.formula(formula(object), formula.)
