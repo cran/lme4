@@ -1,7 +1,62 @@
+useDynLib(lme4, .registration=TRUE)
+
 import("Matrix")
+importFrom("graphics", plot)
+import("stats", "lattice")
+#importFrom("utils", head, tail)  ## already available in Matrix
 
-export("gsummary", "lmList", "pooledSD")
+export(
+       "gsummary",
+       "hatTrace",
+       "lmList",
+       "lmer",
+       "mcmcsamp",
+       "pedigree",
+       "pooledSD"
+       )
 
-exportClasses("lmList")
-              
-exportMethods("coef", "confint", "formula", "gsummary", "plot", "show", "update")
+exportClasses(
+              "coef.lmer",
+              "glmer",
+              "lmList",
+              "lmer",
+              "mer",
+              "pedigree",
+              "ranef.lmer",
+              "summary.lmer",
+              "summary.mer"
+              )
+
+exportMethods(
+              "BIC",
+              "VarCorr",
+              "anova",
+              "chol",
+              "coef",
+              "coerce",
+              "confint",
+              "deviance",
+              "fitted",
+              "fixef",
+              "formula",
+              "gsummary",
+              "head",
+              "lmer",
+              "logLik",
+              "mcmcsamp",
+              "plot",
+              "print",
+              "qqmath",
+              "ranef",
+              "resid",
+              "residuals",
+              "show",
+              "simulate",
+              "summary",
+              "tail",
+              "terms",
+              "update",
+              "vcov",
+              "with"
+              )
+

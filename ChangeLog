@@ -1,17 +1,45 @@
-2005-07-26  Douglas Bates  <bates@localhost.localdomain>
+2006-09-11  Douglas Bates  <bates@R-project.org>
+
+	* src/lme4_utils.[ch]: Move the alloc_d**Matrix functions from the
+	Matrix package here.
+
+2006-09-09  Douglas Bates  <bates@R-project.org>
+
+	* R/lmer.R (expandSlash): Fix expansion of RHS when no fixed
+	effects terms are specified.
+
+2006-09-08  Douglas Bates  <bates@R-project.org>
+
+	* DESCRIPTION (Imports): Remove imports of utils and latticeExtra
+
+2006-09-07  Martin Maechler  <maechler@stat.math.ethz.ch>
+
+	* R/lmer.R (printMer): S4 method for print() needed
+	* NAMESPACE: and exported
+
+2006-09-06  Douglas Bates  <bates@R-project.org>
+
+	* src/cholmod.[ch]: Updates for CHOLMOD ver 1.2 installed in the
+	Matrix package
+
+2006-09-04  Douglas Bates  <bates@R-project.org>
+
+	* (many files): Move lmer files back to lme4.
+
+2005-07-26  Douglas Bates  <bates@R-project.org>
 
 	* R/AllGeneric.R: Remove the getCovariate, etc. generics and methods
 
-2005-07-13  Douglas Bates  <bates@bates1-home>
+2005-07-13  Douglas Bates  <bates@R-project.org>
 
 	* R/lmList.R: lmList now uses the standard non-standard evaluation
 	scheme for the model frame.
 
-2005-05-19  Douglas Bates  <bates@bates1-home>
+2005-05-19  Douglas Bates  <bates@R-project.org>
 
 	* R/lmer.R (fn): Restored the ML in name MLdeviance from summary.
 
-2005-04-18  Douglas Bates  <bates@bates1-home>
+2005-04-18  Douglas Bates  <bates@R-project.org>
 
 	* R/lmer.R: Choose method values appropriately for lmer with or
 	without a family argument.
@@ -21,37 +49,37 @@
 	* R/lmList.R: Added argument pool to confint method for lmList and
 	order to plot method for confint.lmList
 
-2005-04-15  Douglas Bates  <bates@bates1-home>
+2005-04-15  Douglas Bates  <bates@R-project.org>
 
 	* DESCRIPTION: Change dependence to R (>= 2.1.0) and remove the
 	contr.SAS definition and documentation.
 
-2005-04-12  Douglas Bates  <bates@bates1-home>
+2005-04-12  Douglas Bates  <bates@R-project.org>
 
 	* R/lmer.R: Fixed problem with assignment of frame in lmer method
 	with nonmissing family argument.
 
-2005-04-06  Douglas Bates  <bates@bates1-home>
+2005-04-06  Douglas Bates  <bates@R-project.org>
 
 	* R/lmer.R: Fix with method to accomodate for nontrivial na.action
 
 	* R/lmList.R: Repair the plot method for the lmList.confint class
 
-2005-04-05  Douglas Bates  <bates@bates1-home>
+2005-04-05  Douglas Bates  <bates@R-project.org>
 
 	* R/lmer.R: Update of the "with" method.
 	* : Removed humongous PDF file accidently included in tarball.
 	Created release 0.95-3.
-	
 
-2005-02-27  Douglas Bates  <bates@bates1-home>
+
+2005-02-27  Douglas Bates  <bates@R-project.org>
 
 	* R/lme.R: Removed the stubs of the plot methods.
 
 	* NAMESPACE: Remove imports from the Matrix package as it is
 	listed in the Depends.
 
-2005-02-24  Douglas Bates  <bates@bates1-home>
+2005-02-24  Douglas Bates  <bates@R-project.org>
 
 	* R/lmer.R (fn): Added an anova method for lmer objects that
 	provides F tests based on the terms object.
@@ -59,32 +87,32 @@
 	in S and S-PLUS" to the MEMSS package and all other test data sets
 	to the mlmRev package.
 
-2005-01-24  Douglas Bates  <bates@bates7>
+2005-01-24  Douglas Bates  <bates@R-project.org>
 
 	* man/{guPrenat.Rd,guImmun.Rd,s3bbx.Rd,s3bby.Rd}: Add
-	\encoding{latin1} per Kurt's request. 
+	\encoding{latin1} per Kurt's request.
 
-2005-01-23  Douglas Bates  <bates@bates7>
+2005-01-23  Douglas Bates  <bates@R-project.org>
 
 	* R/lmer.R (fn): In the gradient function passed to optim, check
 	if the parameters are equal to the current values before
 	installing them.  This could save an unnecessary decomposition.
 
-2005-01-22  Douglas Bates  <bates@bates7>
+2005-01-22  Douglas Bates  <bates@R-project.org>
 
 	* R/lmer.R (lmer): Changes in formulas code to allow explicit
 	interactions in the grouping factors and formula without a fixed
 	term.
 
-2005-01-03  Douglas Bates  <bates@bates1-home>
+2005-01-03  Douglas Bates  <bates@R-project.org>
 
 	* R/lmer.R: Switch from lmeRep to lmer representation
 
-2004-12-16  Douglas Bates  <bates@bates1-home>
+2004-12-16  Douglas Bates  <bates@R-project.org>
 
 	* R/lme.R (make.mf.call): Omit control values that are no longer used.
 
-2004-12-13  Douglas Bates  <bates@bates1-home>
+2004-12-13  Douglas Bates  <bates@R-project.org>
 
 	* R/lme.R (lmeControl): Change msVerbose to an integer value.
 
@@ -94,18 +122,18 @@
 	* tests/egsingle.R: Added regression test for multiple grouping
 	factors with multivariate random effects.
 
-2004-10-04  Douglas Bates  <bates@bates1-home>
+2004-10-04  Douglas Bates  <bates@R-project.org>
 
 	* R/lme.R: Corrected number of arguments to lmeRep_sigma
 
-2004-10-02  Douglas Bates  <bates@bates1-home>
+2004-10-02  Douglas Bates  <bates@R-project.org>
 
 	* R/lme.R Re-order random when facs is reordered (Closes #10)
 	Also add as.factor in creation of facs.  Previously using a
 	grouping factor that was not a factor produced an obscure error
 	message.
 
-2004-09-27  Douglas Bates  <bates@bates1-home>
+2004-09-27  Douglas Bates  <bates@R-project.org>
 
 	* man/lme-class.Rd: Added documentation for methods with lmeRep in
 	the signature.  Will need to remove all methods for ssclme objects
@@ -256,7 +284,7 @@
 2003-08-11  Douglas Bates  <bates@stat.wisc.edu>
 
 	* man/corMatrix.Rd: Add alias for method.
-	
+
 	* man/guImmun.Rd: docs for rural were missing
 
 	* DESCRIPTION: Version 0.3-4
@@ -359,7 +387,7 @@
 2003-06-30  Douglas Bates  <bates@stat.wisc.edu>
 
 	* DESCRIPTION (Version): 0.2-2
-	
+
 	* R/reStruct.R, src/reStruct.c: Move most of getFixDF method for
 	reStruct to C code.
 
@@ -537,13 +565,13 @@
 
 	* R/pdMat.R: Remove defaults in summary method arguments.
 	Build switch on noCorrelation into summary method for pdMat.
-	Remove summary method for other classes that inherit from pdMat. 
+	Remove summary method for other classes that inherit from pdMat.
 
 2003-06-03  Douglas Bates  <bates@stat.wisc.edu>
 
 	* DESCRIPTION (Version): Versions 0.1-17 and 0.1-18 for debugging
 	the methods package.
-	
+
 	* R/AllClass.R: remove the pdScalar class and definitions
 
 2003-05-23  Douglas Bates  <bates@stat.wisc.edu>
@@ -1187,11 +1215,11 @@
 
 	* R/pdMat.R, src/pdIdent.c, src/pdLogChol.c, R/AllClass.R,
 	R/pdDiag.R, R/pdIdent.R, R/pdLogChol.R:	Added slots to pdMat class
-	- removed them from inheriting classes 
+	- removed them from inheriting classes
 
 	* tests/pdCompSymm.R, tests/pdIdent.R, tests/pdNatural.R:
 	Adjustments for changes in slots.
-	
+
 	* tests/MathAchieve.R, tests/MathAchive.R: Corrected spelling of
 	file name.
 
@@ -1274,7 +1302,7 @@
 
 	* R/lme.R (lmeScale): drop unused levels in call to model frame.
 	Use the integer niterEM instead of the list in the replacement
-	EMsteps. 
+	EMsteps.
 
 2002-11-19  Saikat DebRoy  <saikat@stat.wisc.edu>
 

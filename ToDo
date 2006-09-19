@@ -1,2 +1,26 @@
-- Determine what a "coef" function should do for multiple, possibly
+-----
+Modify mcmcsamp to return the deviance in the sample only when the
+optional argument 'deviance' is TRUE (default FALSE).
+-----
+Replace the use of the unexported replacement function LMEoptimize<-
+in lmer.R by the function LMEopt, which always returns NULL but
+(in contradiction to the language specification) modifies its first argument.
+-----
+Modify the one-argument form of the anova method for lmer objects (yet
+  again) to calculate the F ratios.  It is the df, not the ratio that
+  is controversial.
+Should there be an extractor function for the mean square error?  If
+  so, what should it be called?
+-----
+Determine what a "coef" function should do for multiple, possibly
   non-nested, grouping  factors.
+-----
+- Revive the "lmer" and "glmer" classes.  Slots like "family" should
+  be in "glmer" only.  Many methods for "lmer" can be simplified as,
+  for example, they will always use the scale factor.
+
+- Add a "pedigree" class and methods for it.  Allow a pedigree
+  argument in lmer.
+
+- document print(<mer>) including an example  print(<lmer>, corr = FALSE)
+
