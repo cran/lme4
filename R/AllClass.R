@@ -17,16 +17,13 @@ setOldClass("terms")
 ## mixed effects representation
 setClass("mer",
 	 representation(## original data
-			flist = "list", # list of grouping factors
+			flist = "list",    # list of grouping factors
 			Zt = "dgCMatrix",  # sparse representation of Z'
 			X = "matrix",	   # X
 			y = "numeric",	   # y
 			wts = "numeric",   # weights
+                        ## do we need this for mer?
 			wrkres = "numeric",# working residuals (copy of y for LMMs)
-			method = "character", # parameter estimation method
-			useScale = "logical", # should scale factor be included
-                        family = "family",
-			call = "call",	   # call to model-fitting function
 			## invariants derived from data structure
 			cnames = "list",   # column names of model matrices
 			nc = "integer",	   # dimensions of blocks in Omega
@@ -55,22 +52,21 @@ setClass("mer",
 			bVar = "list",
 			gradComp = "list",
 			## status indicator
-			status = "logical"
+			status = "integer"
 			)
 	)
 
 ## Representation of linear and generalized linear mixed effects model
 setClass("lmer",
 	 representation(frame = "data.frame",
+                        call = "call",	   # call to model-fitting function
 			terms = "terms"),
 	 contains = "mer")
 
 setClass("glmer",
-	 representation(#family = "family", # glm family - move here later
-                        frame = "data.frame",
-			terms = "terms",
+	 representation(family = "family", # glm family - move here later
                         weights = "numeric"),
-	 contains = "mer")
+	 contains = "lmer")
 
 setClass("summary.mer", # the "mer" result ``enhanced'' :
 	 representation(
@@ -87,6 +83,8 @@ setClass("summary.mer", # the "mer" result ``enhanced'' :
 	 contains = "mer")
 
 setClass("summary.lmer", contains = c("summary.mer", "lmer"))
+
+setClass("summary.glmer", contains = c("summary.mer", "glmer"))
 
 setClass("ranef.lmer", contains = "list")
 
@@ -113,89 +111,4 @@ setClass("pedigree", representation =
                               n, "]", sep = ''))
 	     TRUE
 	 })
-
-## ----------------------- lmer-related Generics ---------------------------
-
-## Hmm: If this does not match *exactly* the "formula" - method in ./lmer.R
-## ---  the  match.call() in there may give a very different result
-setGeneric("lmer",
-	   function(formula, data, family = gaussian,
-		    method = c("REML", "ML", "PQL", "Laplace", "AGQ"),
-		    control = list(), start, subset, weights, na.action,
-		    offset, contrasts = NULL, model = TRUE,
-		    ...)
-	   standardGeneric("lmer"))
-
-if (!isGeneric("isNested"))
-    setGeneric("isNested", function(x, ...) standardGeneric("isNested"))
-
-if (!isGeneric("LMEoptimize<-")) {
-    setGeneric("LMEoptimize<-", function(x, ..., value)
-               standardGeneric("LMEoptimize<-"))
-}
-
-if (!isGeneric("fixef")) {
-    setGeneric("fixef", function(object, ...) standardGeneric("fixef"))
-}
-
-if (!isGeneric("denomDF")) {
-    setGeneric("denomDF", function(x, ...) standardGeneric("denomDF"))
-}
-
-fixed.effects <- function(object, ...) {
-    ## fixed.effects was an alternative name for fixef
-    .Deprecated("fixef")
-    mCall = match.call()
-    mCall[[1]] = as.name("fixef")
-    eval(mCall, parent.frame())
-}
-
-if (!isGeneric("ranef")) {
-    setGeneric("ranef", function(object, ...)
-               standardGeneric("ranef"))
-}
-
-random.effects <- function(object, ...) {
-    ## random.effects was an alternative name for ranef
-    .Deprecated("ranef")
-    mCall = match.call()
-    mCall[[1]] = as.name("ranef")
-    eval(mCall, parent.frame())
-}
-
-if (!isGeneric("BIC")) {
-    setGeneric("BIC", function(object, ...) standardGeneric("BIC"))
-}
-
-setMethod("BIC", "logLik",
-          function(object, ...)
-          -2 * (c(object) - attr(object, "df") * log(attr(object, "nobs"))/2)
-          )
-
-if (!isGeneric("VarCorr")) {
-    setGeneric("VarCorr", function(x, ...) standardGeneric("VarCorr"))
-}
-
-if (!isGeneric("postVar")) {            # posterior variances
-    setGeneric("postVar", function(object, ...)
-               standardGeneric("postVar"))
-}
-
-if (!isGeneric("gradient")) {           # not exported
-    setGeneric("gradient", function(x, ...) standardGeneric("gradient"))
-}
-
-if (!isGeneric("getFixDF")) {           # not exported
-    setGeneric("getFixDF", function(object, ...) standardGeneric("getFixDF"))
-}
-
-if (!isGeneric("mcmcsamp")) {
-    setGeneric("mcmcsamp", function(object, n = 1, verbose = FALSE, ...)
-	       standardGeneric("mcmcsamp"))
-}
-
-if (!exists("simulate", mode = "function")) {
-    setGeneric("simulate", function(object, nsim = 1, seed = NULL, ...)
-               standardGeneric("simulate"))
-}
 

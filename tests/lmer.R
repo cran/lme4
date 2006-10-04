@@ -1,13 +1,9 @@
 library(lme4)
 options(show.signif.stars = FALSE)
 
-data(sleepstudy)
 (fm1 <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy))
 (fm1a <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy, method = "ML"))
 (fm2 <- lmer(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy))
-
-## should produce a warning but fit by REML
-(fm1b <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy, method = "AGQ"))
 
 ## transformed vars [failed in 0.995-1]
 (fm2l <- lmer(log(Reaction) ~ log(Days+1) + (log(Days+1)|Subject),
@@ -17,7 +13,7 @@ data(sleepstudy)
 (fm3 <- lmer(decrease ~ treatment + (1|rowpos) + (1|colpos),
              OrchardSprays, family = poisson(), method = "PQL"))
 
-## PQL is used per default:
+## Laplace is used per default:
 fm3. <- lmer(decrease ~ treatment + (1|rowpos) + (1|colpos),
              OrchardSprays, family = poisson)
 fm3.@call <- fm3@call # so that they should be almost identical:
@@ -158,8 +154,9 @@ if (isTRUE(try(data(Early, package = 'mlmRev')) == 'Early')) {
 ## FIXME?
 tstDF <- data.frame(group = letters[1:5], y = 1:5)
 var(tstDF$y) # == 2.5
-f.oops <- lmer(y ~ 1 + (1|group), data = tstDF)
-summary(f.oops) ## or print(Matrix:::formatVC(VarCorr(f.oops)), quote = FALSE)
+## Now throws an error
+try(f.oops <- lmer(y ~ 1 + (1|group), data = tstDF))
+##  summary(f.oops) ## or print(Matrix:::formatVC(VarCorr(f.oops)), quote = FALSE)
 ## ...
 ##   Groups   Name        Variance Std.Dev.
 ##   group    (Intercept) 1.81818  1.34840

@@ -15,8 +15,6 @@ Objects can be created by calls of the form \code{new("VarCorr", ...)}.
     \item{\code{reSumry}:}{Object of class \code{"list"}, a list
       containing the summary of the positive-definte matrices for the
       random-effects levels.}
-    \item{\code{useScale}:}{Object of class \code{"logical"}, if TRUE
-      the slot \code{scale} is the estimated within-groups standard deviation.}
   }
 }
 \section{Methods}{

@@ -1,3 +1,28 @@
+2006-09-27  Douglas Bates  <bates@R-project.org>
+
+	* R/lmer.R (lmer): Moved argument checking and construction of
+	model matrices, etc. to auxillary functions for use with functions
+	to fit more general models.  Changed default method for GLMMs to
+	Laplace and default for usePQL to FALSE.
+
+2006-09-22  Douglas Bates  <bates@stat.wisc.edu>
+
+	* src/lmer.c (mer_create and other functions and files): Change
+	the status vector to an integer vector and just record the stage
+	as 0 to 4.  Also record REML as an integer and glmm method as an
+	integer instead of strings.
+
+2006-09-22  Douglas Bates  <bates@stat.wisc.edu>
+
+	* R/AllClass.R (and many other files): delete the useScale slot in
+	an mer object and incorporate the scale in the devComp slot.  A
+	negative value indicates a fixed scale.
+
+2006-09-21  Douglas Bates  <bates@stat.wisc.edu>
+
+	* R/AllClass.R: remove family and call slots from the mer object.
+	Adjust mer_create (src/lmer.c) and associated files accordingly.
+
 2006-09-11  Douglas Bates  <bates@R-project.org>
 
 	* src/lme4_utils.[ch]: Move the alloc_d**Matrix functions from the

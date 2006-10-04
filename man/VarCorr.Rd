@@ -4,15 +4,13 @@
 \alias{VarCorr,mer-method}
 \title{Extract variance and correlation components}
 \usage{
-\S4method{VarCorr}{mer}(x, REML = x@method == "REML", useScale = x@useScale, \dots)
+\S4method{VarCorr}{mer}(x, REML = x@method == "REML", \dots)
 }
 \arguments{
   \item{x}{a fitted model object, usually an object inheriting from
     class \code{\linkS4class{lmer}}.
   }
   \item{REML}{logical indicating if REML should be used.}
-  \item{useScale}{logical indicating if a scale should be computed and
-    used; otherwise \code{sc <- 1} is used.}
   \item{\dots}{Additional, optional arguments for some methods.  At
     present none are used.}
 }

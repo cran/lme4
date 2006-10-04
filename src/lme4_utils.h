@@ -59,5 +59,6 @@ SEXP alloc_dgeMatrix(int m, int n, SEXP rownms, SEXP colnms);
 SEXP alloc_dpoMatrix(int n, char *uplo, SEXP rownms, SEXP colnms);
 SEXP alloc_dtrMatrix(int n, char *uplo, char *diag, SEXP rownms, SEXP colnms);
 SEXP alloc_dsCMatrix(int n, int nz, char *uplo, SEXP rownms, SEXP colnms);
+SEXP alloc_dgCMatrix(int m, int n, int nz, SEXP rownms, SEXP colnms);
 
 #endif

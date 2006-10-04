@@ -53,11 +53,10 @@ subbars <- function(term)
 	term[[2]] <- subbars(term[[2]])
 	return(term)
     }
-    stopifnot(length(term) == 3)
+    stopifnot(length(term) >= 3)
     if (is.call(term) && term[[1]] == as.name('|'))
 	term[[1]] <- as.name('+')
-    term[[2]] <- subbars(term[[2]])
-    term[[3]] <- subbars(term[[3]])
+    for (j in 2:length(term)) term[[j]] <- subbars(term[[j]])
     term
 }
 
@@ -211,193 +210,239 @@ setMethod("with", signature(data = "lmer"),
 setMethod("terms", signature(x = "lmer"),
 	  function(x, ...) x@terms)
 
+## Utility functions used in lmer and variations on lmer
 
-setMethod("lmer", signature(formula = "formula"),
-	  function(formula, data, family = gaussian,
-		   method = c("REML", "ML", "PQL", "Laplace", "AGQ"),
-		   control = list(), start,
-		   subset, weights, na.action, offset, contrasts = NULL,
-		   model = TRUE, ...)
-      {
-	  ## match and check parameters
-	  if (length(formula) < 3) stop("formula must be a two-sided formula")
-	  cv <- do.call("lmerControl", control)
+## Check that the 'start' argument matches the form of the Omega
+## slot in mer.  If so, install start as the Omega slot.
+setOmega <- function(mer, start)
+{
+    Om <- mer@Omega
+    if (!is.list(start) || length(start) != length(Om) ||
+        !all.equal(names(Om), names(start)))
+        stop(paste("start must be a list of length", length(Om),
+                   "with names\n", paste(names(Om), collapse = ',')))
+    for (i in seq(along = start)) {
+        if (class(start[[i]]) != class(Om[[i]]) ||
+            !all.equal(dim(start[[i]]), dim(Om[[i]])))
+            stop(paste("start[[", i, "]] must be of class '", class(Om[[i]]),
+                       "' and dimension ", paste(dim(Om[[i]]), collapse = ','),
+                       sep = ''))
+    }
+    mer@Omega <- start
+    mer
+}
 
-	  ## Must evaluate the model frame first and then fit the glm using
-	  ## that frame.  Otherwise missing values in the grouping factors
-	  ## cause inconsistent numbers of observations.
-	  mf <- match.call()
-	  m <- match(c("data", "subset", "weights",
-		       "na.action", "offset"), names(mf), 0)
-	  mf <- mf[c(1, m)]
-	  frame.form <- subbars(formula) # substitute `+' for `|'
-	  fixed.form <- nobars(formula)	 # remove any terms with `|'
-	  if (inherits(fixed.form, "name")) # RHS is empty - use a constant
-	      fixed.form <- substitute(foo ~ 1, list(foo = fixed.form))
-	  environment(fixed.form) <- environment(frame.form) <- environment(formula)
+## Create model frame, terms, weights and offset from an lmer formula
+##
+## mc - matched call to parent function
+## formula - two-sided formula
+## data - data frame in which to evaluate formula
+## contrasts - contrasts argument
+lmerFrames <- function(mc, formula, data, contrasts)
+{
+    ## Must evaluate the model frame first and then fit the glm using
+    ## that frame.  Otherwise missing values in the grouping factors
+    ## cause inconsistent numbers of observations.
+    mf <- mc
+    m <- match(c("data", "subset", "weights", "na.action", "offset"),
+               names(mf), 0)
+    mf <- mf[c(1, m)]
+    frame.form <- subbars(formula)       # substitute `+' for `|'
+    fixed.form <- nobars(formula)	 # remove any terms with `|'
+    if (inherits(fixed.form, "name"))  # RHS is empty - use a constant
+        fixed.form <- substitute(foo ~ 1, list(foo = fixed.form))
+    environment(fixed.form) <- environment(frame.form) <- environment(formula)
 
-	  ## evaluate a model frame for fixed and random effects
-	  mf$formula <- frame.form
-	  mf$drop.unused.levels <- TRUE
-	  mf[[1]] <- as.name("model.frame")
-	  fe <- mf
-	  mf <- eval(mf, parent.frame())
+    ## evaluate a model frame for fixed and random effects
+    mf$formula <- frame.form
+    mf$drop.unused.levels <- TRUE
+    mf[[1]] <- as.name("model.frame")
+    fe <- mf
+    mf <- eval(mf, parent.frame(2))
 
-	  ## get the terms for the fixed-effects only
-	  fe$formula <- fixed.form
-	  fe <- eval(fe, parent.frame())
-	  mt <- attr(fe, "terms")   # allow model.frame to update them
-	  ## response vector
-	  Y <- model.response(mf, "numeric")
-	  ## avoid problems with 1D arrays, but keep names
-	  if(length(dim(Y)) == 1) {
-	      nm <- rownames(Y)
-	      dim(Y) <- NULL
-	      if(!is.null(nm)) names(Y) <- nm
-	  }
-	  ## null model support
-	  X <- if (!is.empty.model(mt))
-	      model.matrix(mt, mf, contrasts) else matrix(,NROW(Y),0)
+    ## get the terms for the fixed-effects only
+    fe$formula <- fixed.form
+    fe <- eval(fe, parent.frame(2))
+    mt <- attr(fe, "terms")         # allow model.frame to update them
+    ## response vector
+    Y <- model.response(mf, "numeric")
+    ## avoid problems with 1D arrays, but keep names
+    if(length(dim(Y)) == 1) {
+        nm <- rownames(Y)
+        dim(Y) <- NULL
+        if(!is.null(nm)) names(Y) <- nm
+    }
+    ## null model support
+    X <- if (!is.empty.model(mt))
+        model.matrix(mt, mf, contrasts) else matrix(,NROW(Y),0)
 
-	  weights <- model.weights(mf)
-	  offset <- model.offset(mf)
-	  ## check weights and offset
-	  if( !is.null(weights) && any(weights < 0) )
-	      stop("negative weights not allowed")
-	  if(!is.null(offset) && length(offset) != NROW(Y))
-	      stop(gettextf("number of offsets is %d should equal %d (number of observations)",
-			    length(offset), NROW(Y)), domain = NA)
-	  if (is.null(weights)) weights <- rep.int(1, NROW(Y))
-	  if (is.null(offset)) offset <- numeric(NROW(Y))
+    weights <- model.weights(mf)
+    offset <- model.offset(mf)
+    ## check weights and offset
+    if( !is.null(weights) && any(weights < 0) )
+        stop("negative weights not allowed")
+    if(!is.null(offset) && length(offset) != NROW(Y))
+        stop(gettextf("number of offsets is %d should equal %d (number of observations)",
+                      length(offset), NROW(Y)), domain = NA)
+    if (is.null(weights)) weights <- rep.int(1, NROW(Y))
+    if (is.null(offset)) offset <- numeric(NROW(Y))
+    list(Y = Y, X = X, weights = weights, offset = offset, mt = mt, mf = mf)
+}
 
-	  if(is.character(family))
-	      family <- get(family, mode = "function", envir = parent.frame())
-	  if(is.function(family)) family <- family()
-	  if(is.null(family$family)) {
-	      print(family)
-	      stop("'family' not recognized")
-	  }
-	  ## check for a linear mixed model
-	  lmm <- family$family == "gaussian" && family$link == "identity"
-	  if (lmm) { # linear mixed model
-	      method <- match.arg(method)
-	      if (method %in% c("PQL", "Laplace", "AGQ")) {
-		  warning(paste('Argument method = "', method,
-				'" is not meaningful for a linear mixed model.\n',
-				'Using method = "REML".\n', sep = ''))
-		  method <- "REML"
-	      }
-	  } else { # generalized linear mixed model
-	      if (missing(method)) method <- "PQL"
-	      else {
-		  method <- match.arg(method)
-		  if (method == "ML") method <- "PQL"
-		  if (method == "REML")
-		      warning('Argument method = "REML" is not meaningful ',
-			      'for a generalized linear mixed model.',
-			      '\nUsing method = "PQL".\n')
-	      }
-	  }
-	  if (method == "AGQ")
-	      stop('method = "AGQ" not yet implemented for supernodal representation')
-	  ## create factor list for the random effects
-	  bars <- expandSlash(findbars(formula[[3]]))
-	  names(bars) <- unlist(lapply(bars, function(x) deparse(x[[3]])))
-	  fl <- lapply(bars,
-		       function(x)
-		       eval(substitute(as.factor(fac)[,drop = TRUE],
-				       list(fac = x[[3]])), mf))
-	  ## order factor list by decreasing number of levels
-	  nlev <- sapply(fl, function(x) length(levels(x)))
-	  if(any(nlev == 0))
-	      stop("resulting factor(s) with 0 levels in random effects part:\n ",
-		   paste(sQuote(names(nlev[nlev == 0])), collapse=", "))
-	  if (any(diff(nlev) > 0)) {
-	      ord <- rev(order(nlev))
-	      bars <- bars[ord]
-	      fl <- fl[ord]
-	  }
-	  ## create list of transposed model matrices for random effects
-	  Ztl <- lapply(bars, function(x)
-			t(model.matrix(eval(substitute(~ expr,
-						       list(expr = x[[2]]))),
-				       mf)))
-	  if (lmm) {
-	      ## Create the mixed-effects representation (mer) object
-	      mer <- .Call(mer_create, fl,
-			   .Call(Zt_create, fl, Ztl),
-			   X, Y, method, sapply(Ztl, nrow),
-			   c(lapply(Ztl, rownames), list(.fixed = colnames(X))),
-			   !(family$family %in% c("binomial", "poisson")),
-			   match.call(), family)
-	      .Call(mer_ECMEsteps, mer, cv$niterEM, cv$EMverbose)
-	      LMEoptimize(mer) <- cv
-	      return(new("lmer", mer,
-			 frame = if (model) mf else data.frame(),
-			 terms = mt))
-	  }
+## Create the list of grouping factors and corresponding model
+## matrices.  The model matrices are transposed in the Ztl list
+lmerFactorList <- function(formula, mf)
+{
+    ## create factor list for the random effects
+    bars <- expandSlash(findbars(formula[[3]]))
+    names(bars) <- unlist(lapply(bars, function(x) deparse(x[[3]])))
+    fl <- lapply(bars,
+                 function(x)
+                 eval(substitute(as.factor(fac)[,drop = TRUE],
+                                 list(fac = x[[3]])), mf))
+    ## order factor list by decreasing number of levels
+    nlev <- sapply(fl, function(x) length(levels(x)))
+    nobs <- length(fl[[1]])
+    if(any(nlev == 0))
+        stop("resulting factor(s) with 0 levels in random effects part:\n ",
+             paste(sQuote(names(nlev[nlev == 0])), collapse=", "))
+    if(any(nlev >= nobs))
+        stop("number of levels in grouping factor(s)",
+             paste(sQuote(names(nlev[nlev >= nobs])), collapse=", "),
+             "is too large")
+    if (any(diff(nlev) > 0)) {
+        ord <- rev(order(nlev))
+        bars <- bars[ord]
+        fl <- fl[ord]
+    }
+    ## create list of transposed model matrices for random effects
+    Ztl <- lapply(bars, function(x)
+                  t(model.matrix(eval(substitute(~ expr,
+                                                 list(expr = x[[2]]))),
+                                 mf)))
+    list(fl = fl, Ztl = Ztl)
+}
 
-	  ## The rest of the function applies to generalized linear mixed models
-	  gVerb <- getOption("verbose")
-	  glmFit <- glm.fit(X, Y, weights = weights, offset = offset, family = family,
-			    intercept = attr(mt, "intercept") > 0)
-	  weights <- glmFit$prior.weights
-	  eta <- glmFit$linear.predictors
-	  Y <- as.double(glmFit$y)
-	  wtssqr <- weights * weights
-	  linkinv <- quote(family$linkinv(eta))
-	  mu.eta <- quote(family$mu.eta(eta))
-	  mu <- family$linkinv(eta)
-	  variance <- quote(family$variance(mu))
-	  dev.resids <- quote(family$dev.resids(Y, mu, wtssqr))
-	  LMEopt <- get("LMEoptimize<-")
-	  doLMEopt <- quote(LMEopt(x = mer, value = cv))
-	  mer <- .Call(mer_create, fl,
-		       .Call(Zt_create, fl, Ztl),
-		       X, Y, method, sapply(Ztl, nrow),
-		       c(lapply(Ztl, rownames), list(.fixed = colnames(X))),
-		       !(family$family %in% c("binomial", "poisson")),
-		       match.call(), family)
+lmer <- function(formula, data, family = gaussian,
+                 method = c("REML", "ML", "PQL", "Laplace", "AGQ"),
+                 control = list(), start = NULL,
+                 subset, weights, na.action, offset, contrasts = NULL,
+                 model = TRUE, ...)
+{
+    formula <- as.formula(formula)
+    if (length(formula) < 3) stop("formula must be a two-sided formula")
+    cv <- do.call("lmerControl", control)
 
-	  GSpt <- .Call(glmer_init, environment())
-	  if (cv$usePQL) {
-	      .Call(glmer_PQL, GSpt)  # obtain PQL estimates
-	      PQLpars <- c(fixef(mer),
-			   .Call(mer_coef, mer, 2))
-	  } else {
-	      PQLpars <- c(coef(glmFit),
-			   .Call(mer_coef, mer, 2))
-	  }
-	  if (method == "PQL") {
-	      .Call(glmer_devLaplace, PQLpars, GSpt)
-	      .Call(glmer_finalize, GSpt)
-	      return(new("glmer", mer,
-			 frame = if (model) mf else data.frame(),
-			 terms = mt, weights = weights))
-	  }
+    ## Establish model frame and fixed-effects model matrix and terms
+    mc <- match.call()
+    fr <- lmerFrames(mc, formula, data, contrasts)
+    Y <- fr$Y; X <- fr$X; weights <- fr$weights; offset <- fr$offset
+    mf <- fr$mf; mt <- fr$mt
 
-	  fixInd <- seq(ncol(X))
-	  ## pars[fixInd] == beta, pars[-fixInd] == theta
-	  ## indicator of constrained parameters
-	  const <- c(rep(FALSE, length(fixInd)),
-		     unlist(lapply(mer@nc[seq(along = fl)],
-				   function(k) 1:((k*(k+1))/2) <= k)
-			    ))
-	  devLaplace <- function(pars)
-	      .Call(glmer_devLaplace, pars, GSpt)
+    ## establish factor list and Ztl
+    FL <- lmerFactorList(formula, mf)
+    cnames <- with(FL, c(lapply(Ztl, rownames), list(.fixed = colnames(X))))
+    nc <- with(FL, sapply(Ztl, nrow))
+    Ztl <- with(FL, .Call(Ztl_sparse, fl, Ztl))
+    ## FIXME: change this when rbind has been fixed.
+    Zt <- if (length(Ztl) == 1) Ztl[[1]] else do.call("rbind", Ztl)
+    fl <- FL$fl
+    
+    ## check and evaluate the family argument
+    if(is.character(family))
+        family <- get(family, mode = "function", envir = parent.frame())
+    if(is.function(family)) family <- family()
+    if(is.null(family$family)) {
+        print(family)
+        stop("'family' not recognized")
+    }
+    method <- match.arg(method)
+    
+    ## quick return for a linear mixed model
+    if (family$family == "gaussian" && family$link == "identity") {
+        mer <- .Call(mer_create, fl, Zt, X, Y, method == "REML", nc, cnames)
+        if (!is.null(start)) mer <- setOmega(mer, start)
+        .Call(mer_ECMEsteps, mer, cv$niterEM, cv$EMverbose)
+        LMEoptimize(mer) <- cv
+        return(new("lmer", mer,
+                   frame = if (model) fr$mf else data.frame(),
+                   terms = mt,
+                   call = mc))
+    }
 
-	  optimRes <-
-	      nlminb(PQLpars, devLaplace,
-		     lower = ifelse(const, 5e-10, -Inf),
-		     control = list(trace = cv$msVerbose,
-		     iter.max = cv$msMaxIter))
-	  .Call(glmer_finalize, GSpt)
-	  return(new("glmer", mer,
-		     frame = if (model) mf else data.frame(),
-		     terms = mt,
-                     weights = weights))
+    ## The rest of the function applies to generalized linear mixed models
+    if (method %in% c("ML", "REML")) method <- "Laplace"
+    if (method == "AGQ")
+        stop('method = "AGQ" not yet implemented for supernodal representation')
+    if (method == "PQL") cv$usePQL <- TRUE # have to use PQL for method == "PQL"
+    
+    ## initial fit of a glm to the fixed-effects only.
+    glmFit <- glm.fit(X, Y, weights = weights, offset = offset, family = family,
+                      intercept = attr(mt, "intercept") > 0)
+    Y <- as.double(glmFit$y)
+    ## must do this after Y has possibly been reformulated
+    mer <- .Call(mer_create, fl, Zt, X, Y, 0, nc, cnames)
+    if (!is.null(start)) mer <- setOmega(mer, start)
 
-      })
+    gVerb <- getOption("verbose")
+
+    ## extract some of the components of glmFit
+    ## weights could have changed
+    weights <- glmFit$prior.weights
+    eta <- glmFit$linear.predictors
+    wtssqr <- weights * weights
+    linkinv <- quote(family$linkinv(eta))
+    mu.eta <- quote(family$mu.eta(eta))
+    mu <- family$linkinv(eta)
+    variance <- quote(family$variance(mu))
+    dev.resids <- quote(family$dev.resids(Y, mu, wtssqr))
+    LMEopt <- get("LMEoptimize<-")
+    doLMEopt <- quote(LMEopt(x = mer, value = cv))
+    if (family$family %in% c("binomial", "poisson")) # set the constant scale
+        mer@devComp[8] <- -mean(weights)
+    mer@status["glmm"] <- as.integer(switch(method, PQL = 1, Laplace = 2, AGQ = 3))
+    GSpt <- .Call(glmer_init, environment())
+    if (cv$usePQL) {
+        .Call(glmer_PQL, GSpt)  # obtain PQL estimates
+        PQLpars <- c(fixef(mer),
+                     .Call(mer_coef, mer, 2))
+    } else {
+        PQLpars <- c(coef(glmFit),
+                     .Call(mer_coef, mer, 2))
+    }
+    if (method == "PQL") {
+        .Call(glmer_devLaplace, PQLpars, GSpt)
+        .Call(glmer_finalize, GSpt)
+        return(new("glmer",
+                   new("lmer", mer,
+                       frame = if (model) mf else data.frame(),
+                       terms = mt, call = match.call()),
+                   weights = weights,
+                   family=family))
+    }
+
+    fixInd <- seq(ncol(X))
+    ## pars[fixInd] == beta, pars[-fixInd] == theta
+    ## indicator of constrained parameters
+    const <- c(rep(FALSE, length(fixInd)),
+               unlist(lapply(mer@nc[seq(along = fl)],
+                             function(k) 1:((k*(k+1))/2) <= k)
+                      ))
+    devLaplace <- function(pars) .Call(glmer_devLaplace, pars, GSpt)
+
+    optimRes <- nlminb(PQLpars, devLaplace,
+                       lower = ifelse(const, 5e-10, -Inf),
+                       control = list(trace = cv$msVerbose,
+                       iter.max = cv$msMaxIter))
+    .Call(glmer_finalize, GSpt)
+    new("glmer",
+        new("lmer", mer,
+            frame = if (model) mf else data.frame(),
+            terms = mt, call = match.call()),
+        weights = weights,
+        family=family)
+
+}
 
 ## Extract the L matrix
 setAs("mer", "dtCMatrix", function(from)
@@ -522,7 +567,7 @@ setMethod("qqmath", signature(x = "ranef.lmer"),
 
 setMethod("deviance", signature(object = "mer"),
 	  function(object, REML = NULL, ...) {
-              if (is.null(REML)) REML <- object@method == "REML"
+              if (is.null(REML)) REML <- object@status["REML"]
 	      .Call(mer_factor, object)
 	      object@deviance[[ifelse(REML, "REML", "ML")]]
 	  })
@@ -624,10 +669,7 @@ setMethod("simulate", signature(object = "mer"),
 	      stop("simulation of generalized linear mixed models not yet implemented")
 	  ## similate the linear predictors
 	  lpred <- .Call(mer_simulate, object, nsim)
-	  sc <-
-              if (object@useScale)
-                  .Call(mer_sigma, object, object@method == "REML")
-              else 1
+	  sc <- abs(object@devComp[8])
 
 	  ## add fixed-effects contribution and per-observation noise term
 	  lpred <- as.data.frame(lpred + drop(object@X %*% fixef(object)) +
@@ -646,9 +688,7 @@ simulestimate <- function(x, FUN, nsim = 1, seed = NULL, control = list())
     stopifnot(inherits(x, "lmer"))
     ## similate the linear predictors
     lpred <- .Call(mer_simulate, x, nsim)
-    sc <- 1
-    if (x@useScale)
-        sc <- .Call(mer_sigma, x, x@method == "REML")
+    sc <- abs(x@devComp[8])
     ## add fixed-effects contribution and per-observation noise term
     lpred <- lpred + drop(x@X %*% fixef(x)) + rnorm(prod(dim(lpred)), sd = sc)
 
@@ -676,7 +716,7 @@ simulestimate <- function(x, FUN, nsim = 1, seed = NULL, control = list())
 
 formatVC <- function(varc, digits = max(3, getOption("digits") - 2))
 {  ## "format()" the 'VarCorr'	matrix of the random effects -- for show()ing
-    sc <- attr(varc, "sc")
+    sc <- unname(attr(varc, "sc"))
     recorr <- lapply(varc, function(el) el@factors$correlation)
     reStdDev <- c(lapply(recorr, slot, "sd"), list(Residual = sc))
     reLens <- unlist(c(lapply(reStdDev, length)))
@@ -716,8 +756,7 @@ printMer <- function(x, digits = max(3, getOption("digits") - 3),
                      signif.stars = getOption("show.signif.stars"), ...)
 {
     so <- summary(x)
-    useScale <- so@useScale
-    REML <- so@method == "REML"
+    REML <- so@status["REML"]
     llik <- so@logLik
     dev <- so@deviance
     devc <- so@devComp
@@ -743,8 +782,8 @@ printMer <- function(x, digits = max(3, getOption("digits") - 3),
     cat(sprintf("number of obs: %d, groups: ", devc[1]))
     cat(paste(paste(names(ngrps), ngrps, sep = ", "), collapse = "; "))
     cat("\n")
-    if (!useScale)
-	cat("\nEstimated scale (compare to 1) ", so@sigma, "\n")
+    if (so@devComp[8] < 0)
+	cat("\nEstimated scale (compare to ", abs(so@devComp[8]), ") ", so@sigma, "\n")
     if (nrow(so@coefs) > 0) {
 	cat("\nFixed effects:\n")
 	printCoefmat(so@coefs, zap.ind = 3, #, tst.ind = 4
@@ -779,12 +818,8 @@ setMethod("show", "mer", function(object) printMer(object))
 
 
 setMethod("vcov", signature(object = "mer"),
-	  function(object, REML = object@method == "REML",
-		   useScale = object@useScale,...) {
-	      sc <- if (object@useScale) {
-		  .Call(mer_sigma, object, REML)
-	      } else { 1 }
-	      rr <- as(sc^2 * tcrossprod(solve(object@RXX)), "dpoMatrix")
+	  function(object, REML = object@status["REML"], ...) {
+	      rr <- as(object@devComp[8]^2 * tcrossprod(solve(object@RXX)), "dpoMatrix")
 	      rr@factors$correlation <- as(rr, "corMatrix")
 	      rr
 	  })
@@ -802,7 +837,7 @@ setMethod("getFixDF", signature(object="mer"),
 	  })
 
 setMethod("logLik", signature(object="mer"),
-	  function(object, REML = object@method == "REML", ...) {
+	  function(object, REML = object@status["REML"], ...) {
 	      val <- -deviance(object, REML = REML)/2
 	      devc <- as.integer(object@devComp[1:2])
 	      attr(val, "nall") <- attr(val, "nobs") <- devc[1]
@@ -814,11 +849,9 @@ setMethod("logLik", signature(object="mer"),
 	  })
 
 setMethod("VarCorr", signature(x = "mer"),
-	  function(x, REML = x@method == "REML", useScale = x@useScale, ...)
+	  function(x, REML = x@status["REML"], ...)
       {
-	  sc <- if (useScale)
-	      .Call(mer_sigma, x, REML) else 1
-	  sc2 <- sc * sc
+	  sc2 <- x@devComp[8]^2
 	  cnames <- x@cnames
 	  ans <- x@Omega
 	  for (i in seq(a = ans)) {
@@ -827,7 +860,7 @@ setMethod("VarCorr", signature(x = "mer"),
 	      el@factors$correlation <- as(el, "corMatrix")
 	      ans[[i]] <- el
 	  }
-	  attr(ans, "sc") <- sc
+	  attr(ans, "sc") <- sqrt(sc2)
 	  ans
       })
 
@@ -879,9 +912,6 @@ setMethod("anova", signature(object = "mer"),
 	  }
 	  else { ## ------ single model ---------------------
 	      foo <- object
-	      #foo@status["factored"] <- FALSE
-	      #.Call(mer_factor, foo)
-	      #dfr <- getFixDF(foo)
 	      ss <- foo@rXy^2
 	      ssr <- exp(foo@devComp["logryy2"])
 	      names(ss) <- object@cnames[[".fixed"]]
@@ -948,21 +978,21 @@ setMethod("summary", signature(object = "mer"),
 	  function(object, ...) {
 
 	      fcoef <- .Call(mer_fixef, object)
-	      useScale <- object@useScale
 	      vcov <- vcov(object)
 	      corF <- vcov@factors$correlation
 	      ## DF <- getFixDF(object)
 	      coefs <- cbind("Estimate" = fcoef, "Std. Error" = corF@sd) #, DF = DF)
-	      REML <- object@method == "REML"
+	      REML <- object@status["REML"]
 	      llik <- logLik(object, REML)
 	      dev <- object@deviance
 	      devc <- object@devComp
 
-	      glz <- !(object@method %in% c("REML", "ML"))
+	      glz <- is(object, "glmer")
 	      methTitle <-
 		  if (glz)
 		      paste("Generalized linear mixed model fit using",
-			    object@method)
+			    switch(object@status["glmm"],
+                                   "PQL", "Laplace", "AGQ"))
 		  else paste("Linear mixed-effects model fit by",
 			     if(REML) "REML" else "maximum likelihood")
 
@@ -980,10 +1010,10 @@ setMethod("summary", signature(object = "mer"),
 				 row.names = "")
 	      }
 	      REmat <- formatVC(VarCorr(object))
-	      if (!useScale) REmat <- REmat[-nrow(REmat), , drop = FALSE]
+	      if (object@devComp[8] < 0) REmat <- REmat[-nrow(REmat), , drop = FALSE]
 
 	      if (nrow(coefs) > 0) {
-		  if (useScale) {
+		  if (object@devComp[8] >= 0) {
 		      stat <- coefs[,1]/coefs[,2]
 		      ##pval <- 2*pt(abs(stat), coefs[,3], lower = FALSE)
 		      coefs <- cbind(coefs, "t value" = stat) #, "Pr(>|t|)" = pval)
@@ -995,7 +1025,8 @@ setMethod("summary", signature(object = "mer"),
 		  }
 	      } ## else : append columns to 0-row matrix ...
 
-	      new(if(is(object, "lmer")) "summary.lmer" else "summary.mer",
+	      new(if(is(object, "glmer")) "summary.glmer" else
+                  {if(is(object, "lmer")) "summary.lmer" else "summary.mer"},
 		  object,
 		  isG = glz,
 		  methTitle = methTitle,
@@ -1141,4 +1172,164 @@ hatTrace <- function(x)
 {
     stopifnot(is(x, "mer"))
     .Call(mer_hat_trace2, x)
+}
+
+carryOver <- function(formula, data, carry, REML = TRUE, control = list(),
+                      start = NULL, subset, weights, na.action, offset,
+                      contrasts = NULL, model = TRUE, ...)
+{
+    formula <- as.formula(formula)
+    if (length(formula) != 3) stop("formula must be a two-sided formula")
+    cv <- do.call("lmerControl", control)
+
+    ## Establish model frame and fixed-effects model matrix and terms
+    mc <- match.call()
+    fr <- lmerFrames(mc, formula, data, contrasts)
+    Y <- fr$Y; X <- fr$X; weights <- fr$weights; offset <- fr$offset
+    mf <- fr$mf; mt <- fr$mt
+    
+    ## establish factor list and Ztl
+    FL <- lmerFactorList(formula, mf)
+    fl <- FL$fl
+
+    ## parse the carry-over formula
+    carry <- as.formula(carry)
+    if (length(carry) != 3) stop("carry must be a two-sided formula")
+    if (!is.name(tvar <- carry[[2]]) ||
+        !match(as.character(tvar), names(mf), nomatch = 0))
+        stop("LHS of carry must be a name of a variable in formula")
+    tvar <- eval(tvar, mf)
+    if (!is.language(op <- carry[[3]]) || as.character(op[[1]]) != "/")
+        stop("RHS of carry must be an expression of the form 'inner/outer'")
+    if (!all(match(lapply(op[2:3], as.character), names(fl), nomatch = 0)))
+        stop("Variables on RHS of carry must be names of grouping factors")
+    outer <- eval(op[[3]], mf)
+
+    ## check the ordering
+    ord <- order(outer, tvar)
+    if (any(diff(ord) < 0)) {
+        warning("It is an advantage to have the data ordered by ",
+                as.character(op[[3]]), " then ", as.character(carry[[2]]),
+                " within ", as.character(op[[3]]), "\n")
+        Y <- Y[ord]; X <- X[ord,]; mf <- mf[ord,]
+        weights <- weights[ord]; offset <- offset[ord]
+        FL <- lmerFactorList(formula, mf)
+        fl <- FL$fl
+        outer <- outer[ord]
+    }
+
+    Ztsp <- .Call(Ztl_sparse, fl, FL$Ztl)
+    innm <- as.character(op[[2]])
+    Ztsp[[innm]] <- .Call(Zt_carryOver, outer, Ztsp[[innm]])
+    mer <- with(FL, .Call(mer_create, fl, do.call("rbind", Ztsp), X, Y, REML,
+                          sapply(Ztl, nrow), # nc
+                          c(lapply(Ztl, rownames), list(.fixed = colnames(X)))))
+    if (!is.null(start)) mer <- setOmega(mer, start)
+    .Call(mer_ECMEsteps, mer, cv$niterEM, cv$EMverbose)
+    LMEoptimize(mer) <- cv
+    new("lmer", mer, frame = if (model) fr$mf else data.frame(),
+        terms = mt, call = mc)
+}
+
+mlirt <-
+    function(formula, data, family = binomial("probit"),
+             control = list(), start = NULL,
+             subset, weights, na.action = na.ignore, offset,
+             contrasts = NULL, model = FALSE, ...)
+{
+    formula <- as.formula(formula)
+    if (length(formula) < 3) stop("formula must be a two-sided formula")
+    cv <- do.call("lmerControl", control)
+
+    ## Should difficulties be modeled as random effects?
+
+    ranDiff <- ".item" %in% all.vars(formula)
+    ## Establish model frame and fixed-effects model matrix and terms
+    mc <- match.call()
+    fr <- lmerFrames(mc, formula, data, contrasts)
+    Y <- fr$Y
+
+    ## check for a binary matrix response
+    if (!is.matrix(Y) || !is.numeric(Y) ||
+        any(!(unique(as.vector(Y)) %in% c(0, 1, NA)))) 
+        stop("Response must be a binary, numeric matrix")
+    nr <- nrow(Y)
+    nc <- ncol(Y)
+    ## expand model frame etc according to the items
+    ind <- rep.int(1:nr, nc)
+    mf <- fr$mf[ind, ]
+    X <- fr$X[ind, ]
+    if (ranDiff) mf$.item <- gl(nc, nr)
+    else X <- cbind(X, -contr.sum(nc)[rep(1:nc,each = nr),])
+    Y <- as.vector(Y)
+    offset <- fr$offset[ind]
+
+    mf$.subj <- gl(nr, 1, nr*nc)
+    form <- substitute(Y ~ base + (1|.subj), list(base = formula[[3]])) 
+    ## establish factor list and Ztl
+    FL <- lmerFactorList(form, mf)
+    cnames <- with(FL, c(lapply(Ztl, rownames), list(.fixed = colnames(X))))
+    nc <- with(FL, sapply(Ztl, nrow))
+    Ztl <- with(FL, .Call(Ztl_sparse, fl, Ztl))
+    ## FIXME: change this when rbind has been fixed.
+    Zt <- if (length(Ztl) == 1) Ztl[[1]] else do.call("rbind", Ztl)
+    fl <- FL$fl
+
+    ## check and evaluate the family argument
+    if(is.character(family))
+        family <- get(family, mode = "function", envir = parent.frame())
+    if(is.function(family)) family <- family()
+    if(is.null(family$family)) {
+        print(family)
+        stop("'family' not recognized")
+    }
+    if (family$family != "binomial")
+        stop("family must be a binomial family")
+
+    ## initial fit of a glm to the fixed-effects only.
+    glmFit <- glm.fit(X, Y, weights = fl$weights[ind],
+                      offset = offset, family = family,
+                      intercept = attr(fr$mt, "intercept") > 0)
+    Y <- as.double(glmFit$y)
+    ## must do this after Y has possibly been reformulated
+    mer <- .Call(mer_create, fl, Zt, X, Y, 0, nc, cnames)
+    if (!is.null(start)) mer <- setOmega(mer, start)
+
+    gVerb <- getOption("verbose")
+
+    ## extract some of the components of glmFit
+    ## weights could have changed
+    weights <- glmFit$prior.weights
+    eta <- glmFit$linear.predictors
+    wtssqr <- weights * weights
+    linkinv <- quote(family$linkinv(eta))
+    mu.eta <- quote(family$mu.eta(eta))
+    mu <- family$linkinv(eta)
+    variance <- quote(family$variance(mu))
+    dev.resids <- quote(family$dev.resids(Y, mu, wtssqr))
+    doLMEopt <- quote(LMEopt(x = mer, value = cv))
+    mer@devComp[8] <- -mean(weights)
+    mer@status["glmm"] <- as.integer(2) # always use Laplace
+    GSpt <- .Call(glmer_init, environment())
+    PQLpars <- c(coef(glmFit), .Call(mer_coef, mer, 2))
+    fixInd <- seq(ncol(X))
+    ## pars[fixInd] == beta, pars[-fixInd] == theta
+    ## indicator of constrained parameters
+    const <- c(rep(FALSE, length(fixInd)),
+               unlist(lapply(mer@nc[seq(along = fl)],
+                             function(k) 1:((k*(k+1))/2) <= k)
+                      ))
+    devLaplace <- function(pars) .Call(glmer_devLaplace, pars, GSpt)
+
+    optimRes <- nlminb(PQLpars, devLaplace,
+                       lower = ifelse(const, 5e-10, -Inf),
+                       control = list(trace = cv$msVerbose,
+                       iter.max = cv$msMaxIter))
+    .Call(glmer_finalize, GSpt)
+    new("glmer",
+        new("lmer", mer,
+            frame =  data.frame(),
+            terms = fr$mt, call = match.call()),
+        weights = weights,
+        family=family)
 }

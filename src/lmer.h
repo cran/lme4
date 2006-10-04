@@ -1,5 +1,5 @@
-#ifndef MATRIX_LMER_H
-#define MATRIX_LMER_H
+#ifndef LME4_LMER_H
+#define LME4_LMER_H
 
 #include "lme4_utils.h"
 #include <Rmath.h>
@@ -21,9 +21,7 @@ SEXP mer_ECMEsteps(SEXP x, SEXP nsteps, SEXP Verbp);
 SEXP mer_MCMCsamp(SEXP x, SEXP savebp, SEXP nsampp, SEXP transp, SEXP verbose);
 SEXP mer_coef(SEXP x, SEXP pType);
 SEXP mer_coefGets(SEXP x, SEXP coef, SEXP pType);
-SEXP mer_create(SEXP fl, SEXP Zt, SEXP Xp, SEXP yp, SEXP method,
-		 SEXP nc, SEXP cnames, SEXP useS, SEXP call,
-		 SEXP family);
+SEXP mer_create(SEXP fl, SEXP Zt, SEXP Xp, SEXP yp, SEXP REMLp, SEXP nc, SEXP cnames);
 SEXP mer_dtCMatrix(SEXP x);
 SEXP mer_dtCMatrix_inv(SEXP x);
 SEXP mer_factor(SEXP x);
@@ -44,6 +42,9 @@ SEXP mer_update_ZXy(SEXP x);
 SEXP mer_update_y(SEXP x, SEXP ynew);
 SEXP mer_validate(SEXP x);
 
-SEXP Zt_create(SEXP fl, SEXP Ztl);
+/* SEXP Zt_create(SEXP fl, SEXP Ztl); */
+/* SEXP Zt_create1(SEXP fl, SEXP Ztl); */
+SEXP Ztl_sparse(SEXP fl, SEXP Ztl);
+SEXP Zt_carryOver(SEXP f, SEXP Zt);
 
-#endif
+#endif /* LME4_LMER_H */

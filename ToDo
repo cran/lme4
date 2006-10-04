@@ -15,12 +15,7 @@ Should there be an extractor function for the mean square error?  If
 Determine what a "coef" function should do for multiple, possibly
   non-nested, grouping  factors.
 -----
-- Revive the "lmer" and "glmer" classes.  Slots like "family" should
-  be in "glmer" only.  Many methods for "lmer" can be simplified as,
-  for example, they will always use the scale factor.
-
-- Add a "pedigree" class and methods for it.  Allow a pedigree
-  argument in lmer.
+- add nicer (more realistic?) pedigree examples and tests
 
 - document print(<mer>) including an example  print(<lmer>, corr = FALSE)
 

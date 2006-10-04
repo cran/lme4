@@ -61,3 +61,19 @@ SEXP alloc_dsCMatrix(int n, int nz, char *uplo, SEXP rownms, SEXP colnms)
     UNPROTECT(1);
     return ans;
 }
+
+SEXP alloc_dgCMatrix(int m, int n, int nz, SEXP rownms, SEXP colnms)
+{
+    SEXP ans = PROTECT(NEW_OBJECT(MAKE_CLASS("dgCMatrix"))), dn;
+    int *dims = INTEGER(ALLOC_SLOT(ans, lme4_DimSym, INTSXP, 2));
+
+    dims[0] = m; dims[1] = n;
+    ALLOC_SLOT(ans, lme4_xSym, REALSXP, nz);
+    ALLOC_SLOT(ans, lme4_iSym, INTSXP, nz);
+    ALLOC_SLOT(ans, lme4_pSym, INTSXP, n + 1);
+    dn = ALLOC_SLOT(ans, lme4_DimNamesSym, VECSXP, 2);
+    SET_VECTOR_ELT(dn, 0, duplicate(rownms));
+    SET_VECTOR_ELT(dn, 1, duplicate(colnms));
+    UNPROTECT(1);
+    return ans;
+}

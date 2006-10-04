@@ -23,6 +23,7 @@ exportClasses(
               "mer",
               "pedigree",
               "ranef.lmer",
+              "summary.glmer",
               "summary.lmer",
               "summary.mer"
               )
@@ -41,7 +42,6 @@ exportMethods(
               "formula",
               "gsummary",
               "head",
-              "lmer",
               "logLik",
               "mcmcsamp",
               "plot",
