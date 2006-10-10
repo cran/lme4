@@ -2837,7 +2837,8 @@ SEXP Zt_carryOver(SEXP fp, SEXP Zt)
 	cmax = (cct[k] > cmax) ? cct[k] : cmax;
 	ntot += (cct[k] * (cct[k] + 1))/2;
     }
-    ant = M_cholmod_allocate_triplet(chtz->nrow, chtz->ncol, (size_t)(ntot*q), 
+    nnz = ntot * q;
+    ant = M_cholmod_allocate_triplet(chtz->nrow, chtz->ncol, (size_t)(nnz), 
 				     0 /*stype*/, CHOLMOD_REAL, &c);
     ip = 0; ii = (int*)(chtz->i); ij = (int*)(chtz->j); ix = (double*)(chtz->x);
     op = 0; oi = (int*)(ant->i); oj = (int*)(ant->j); ox = (double*)(ant->x);
@@ -2850,6 +2851,7 @@ SEXP Zt_carryOver(SEXP fp, SEXP Zt)
 	    ip++;
 	}
     }
+    ant->nnz = nnz;
 #if 0
 				/* fake it for the time being */
     nnz = ant->nnz = chtz->nnz;

@@ -1,3 +1,8 @@
+2006-10-10  Douglas Bates  <bates@stat.wisc.edu>
+
+	* DESCRIPTION: Release 0.9975-3
+	* src/lmer.c (Zt_carryOver): correct the calculation of nnz.
+
 2006-09-27  Douglas Bates  <bates@R-project.org>
 
 	* R/lmer.R (lmer): Moved argument checking and construction of
