@@ -1,5 +1,5 @@
 #include "lme4_utils.h"
-#include "lmer.h"
+#include "glmer.h"
 #include "pedigree.h"
 #include <R_ext/Rdynload.h>
 
@@ -8,8 +8,10 @@ static R_CallMethodDef CallEntries[] = {
     {"glmer_PQL", (DL_FUNC) &glmer_PQL, 1},
     {"glmer_devLaplace", (DL_FUNC) &glmer_devLaplace, 2},
     {"glmer_finalize", (DL_FUNC) &glmer_finalize, 1},
-    {"glmer_init", (DL_FUNC) &glmer_init, 1},
+    {"glmer_init", (DL_FUNC) &glmer_init, 2},
+
     {"lme4_rWishart", (DL_FUNC) &lme4_rWishart, 3},
+
     {"mer_ECMEsteps", (DL_FUNC) &mer_ECMEsteps, 3},
     {"mer_MCMCsamp", (DL_FUNC) &mer_MCMCsamp, 5},
     {"mer_coef", (DL_FUNC) &mer_coef, 2},
@@ -33,11 +35,12 @@ static R_CallMethodDef CallEntries[] = {
     {"mer_simulate", (DL_FUNC) &mer_simulate, 2},
     {"mer_update_ZXy", (DL_FUNC) &mer_update_ZXy, 1},
     {"mer_update_y", (DL_FUNC) &mer_update_y, 2},
+
     {"pedigree_chol", (DL_FUNC) &pedigree_chol, 2},
+
     {"Zt_carryOver", (DL_FUNC) &Zt_carryOver, 2},
-/*     {"Zt_create", (DL_FUNC) &Zt_create, 2}, */
-/*     {"Zt_create1", (DL_FUNC) &Zt_create1, 2}, */
     {"Ztl_sparse", (DL_FUNC) &Ztl_sparse, 2},
+
     {NULL, NULL, 0}
 };
 

@@ -141,6 +141,17 @@ lmerControl <-
 	 Hessian = as.logical(Hessian))
 }
 
+## check for predefined families
+mkFltype <- function(family)
+{
+    fltype <- 0                         # not a predefined type
+    if (family$family == "gaussian" && family$link == "identity") fltype <- -1
+    if (family$family == "binomial" && family$link == "logit") fltype <- 1
+    if (family$family == "binomial" && family$link == "probit") fltype <- 2
+    if (family$family == "poisson" && family$link == "link") fltype <- 3
+    as.integer(fltype)
+}
+
 rWishart <- function(n, df, invScal)
     .Call(lme4_rWishart, n, df, invScal)
 
@@ -356,10 +367,11 @@ lmer <- function(formula, data, family = gaussian,
         print(family)
         stop("'family' not recognized")
     }
+    fltype <- mkFltype(family)
     method <- match.arg(method)
     
     ## quick return for a linear mixed model
-    if (family$family == "gaussian" && family$link == "identity") {
+    if (fltype < 0) {
         mer <- .Call(mer_create, fl, Zt, X, Y, method == "REML", nc, cnames)
         if (!is.null(start)) mer <- setOmega(mer, start)
         .Call(mer_ECMEsteps, mer, cv$niterEM, cv$EMverbose)
@@ -401,7 +413,7 @@ lmer <- function(formula, data, family = gaussian,
     if (family$family %in% c("binomial", "poisson")) # set the constant scale
         mer@devComp[8] <- -mean(weights)
     mer@status["glmm"] <- as.integer(switch(method, PQL = 1, Laplace = 2, AGQ = 3))
-    GSpt <- .Call(glmer_init, environment())
+    GSpt <- .Call(glmer_init, environment(), fltype)
     if (cv$usePQL) {
         .Call(glmer_PQL, GSpt)  # obtain PQL estimates
         PQLpars <- c(fixef(mer),
@@ -641,7 +653,8 @@ setMethod("mcmcsamp", signature(object = "glmer"),
           dev.resids <- quote(family$dev.resids(Y, mu, wtssqr))
           LMEopt <- get("LMEoptimize<-")
           doLMEopt <- quote(LMEopt(x = mer, value = cv))
-          GSpt <- .Call(glmer_init, environment())
+          fltype <- mkFltype(family)
+          GSpt <- .Call(glmer_init, environment(), fltype)
           ans <- t(.Call(glmer_MCMCsamp, GSpt, saveb, n, trans, verbose))
           .Call(glmer_finalize, GSpt)
 	  attr(ans, "mcpar") <- as.integer(c(1, n, 1))
@@ -1285,6 +1298,7 @@ mlirt <-
     }
     if (family$family != "binomial")
         stop("family must be a binomial family")
+    fltype <- mkFltype(family)
 
     ## initial fit of a glm to the fixed-effects only.
     glmFit <- glm.fit(X, Y, weights = fl$weights[ind],
@@ -1310,7 +1324,7 @@ mlirt <-
     doLMEopt <- quote(LMEopt(x = mer, value = cv))
     mer@devComp[8] <- -mean(weights)
     mer@status["glmm"] <- as.integer(2) # always use Laplace
-    GSpt <- .Call(glmer_init, environment())
+    GSpt <- .Call(glmer_init, environment(), fltype)
     PQLpars <- c(coef(glmFit), .Call(mer_coef, mer, 2))
     fixInd <- seq(ncol(X))
     ## pars[fixInd] == beta, pars[-fixInd] == theta
