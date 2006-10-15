@@ -188,8 +188,8 @@ internal_mer_refactor(SEXP x)
  *
  * @return pointer to a numeric array of fitted values
  */
-double * attr_hidden
-internal_mer_fitted(SEXP x, const double initial[], double val[])
+double attr_hidden
+*internal_mer_fitted(SEXP x, const double initial[], double val[])
 {
     SEXP fixef = GET_SLOT(x, lme4_fixefSym),
 	ranef = GET_SLOT(x, lme4_ranefSym);

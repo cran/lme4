@@ -2,8 +2,8 @@
 
 static const double LTHRESH = 30.;
 static const double MLTHRESH = -30.;
-static double MPTHRESH = 0;
-static double PTHRESH = 0;
+static const double PTHRESH = 8.;
+static const double MPTHRESH = 8.;
 static const double INVEPS = 1/DOUBLE_EPS;
 
 /** 
@@ -226,15 +226,11 @@ static void glmer_linkinv(GlmerStruct GS)
 	}
 	break;
     case 2:			/* binomial with probit link */
-	if (!MPTHRESH) {
-	    MPTHRESH = qnorm5(DOUBLE_EPS, 0, 1, 1, 0);
-	    PTHRESH = -MPTHRESH;
-	}
 	for (i = 0; i < GS->n; i++) {
-	    double etai = eta[i];
-	    mu[i] = (etai < MPTHRESH) ? DOUBLE_EPS :
-		((etai > PTHRESH) ? 1 - DOUBLE_EPS :
-		 pnorm5(etai, 0, 1, 1, 0));
+	    double etai = eta[i], tmp;
+	    tmp = (etai < MPTHRESH) ? DOUBLE_EPS :
+		((etai > PTHRESH) ? INVEPS : etai);
+	    mu[i] = pnorm5(etai, 0, 1, 1, 0);
 	}
 	break;
     case 3:			/* Poisson with log link */
@@ -302,7 +298,7 @@ static void glmer_dmu_deta(GlmerStruct GS)
 	break;
     case 2:			/* binomial with probit link */
 	for (i = 0; i < GS->n; i++) {
-	    double tmp = dnorm4(eta[i], 0, 1, 0);
+	    double tmp = dnorm(eta[i], 0, 1, 0);
 	    GS->dmu_deta[i] = (tmp < DOUBLE_EPS) ? DOUBLE_EPS : tmp;
 	}
 	break;
@@ -328,27 +324,33 @@ static void glmer_dmu_deta(GlmerStruct GS)
 static void glmer_dev_resids(GlmerStruct GS)
 {
     int i;
-    double *y = REAL(GET_SLOT(GS->mer, lme4_ySym)), *mu = REAL(GS->mu);
+    double *eta = REAL(GS->eta);
 
     switch(GS->fltype) {
-    case 1: 			/* binomial with logit or probit link */
-    case 2:
+    case 1: 			/* binomial with logit link */
 	for (i = 0; i < GS->n; i++) {
-	    double mui = mu[i], yi = y[i];
+	    double etai = eta[i];
+	    double opexp = 1 + exp(etai);
 	    
-	    GS->dev_res[i] = 2 * GS->wtsqr[i] *
-		(y_log_y(yi, mui) + y_log_y(1 - yi, 1 - mui));
+	    GS->dmu_deta[i] = (etai > LTHRESH || etai < MLTHRESH) ?
+		DOUBLE_EPS : exp(etai)/(opexp * opexp);
+	}
+	break;
+    case 2:			/* binomial with probit link */
+	for (i = 0; i < GS->n; i++) {
+	    double tmp = dnorm(eta[i], 0, 1, 0);
+	    GS->dmu_deta[i] = (tmp < DOUBLE_EPS) ? DOUBLE_EPS : tmp;
 	}
 	break;
     case 3:			/* Poisson with log link */
 	for (i = 0; i < GS->n; i++) {
-	    double mui = mu[i], yi = y[i];
-	    GS->dev_res[i] = 2 * GS->wtsqr[i] * (y_log_y(yi, mui) - (yi - mui));
+	    double tmp = exp(eta[i]);
+	    GS->dmu_deta[i] = (tmp < DOUBLE_EPS) ? DOUBLE_EPS : tmp;
 	}
 	break;
     default: {
-	SEXP ans = PROTECT(eval_check(GS->dev_resfunc, GS->rho, REALSXP, GS->n));
-	Memcpy(GS->dev_res, REAL(ans), GS->n);
+	SEXP ans = PROTECT(eval_check(GS->mu_eta, GS->rho, REALSXP, GS->n));
+	Memcpy(GS->dmu_deta, REAL(ans), GS->n);
 	UNPROTECT(1);
     }
     }
@@ -425,13 +427,12 @@ internal_bhat(GlmerStruct GS, const double fixed[], const double varc[])
 static double
 random_effects_deviance(GlmerStruct GS)
 {
-    int i;
-    double ans;
+    double ans = 0;
 
     internal_mer_fitted(GS->mer, GS->offset, REAL(GS->eta));
     glmer_linkinv(GS);
     glmer_dev_resids(GS);
-    for (i = 0, ans = 0; i < GS->n; i++) ans += GS->dev_res[i];
+    for (int i = 0; i < GS->n; i++) ans += GS->dev_res[i];
     return ans;
 }
 
@@ -541,7 +542,7 @@ SEXP glmer_finalize(SEXP GSp) {
     GlmerStruct GS = (GlmerStruct) R_ExternalPtrAddr(GSp);
 
     Free(GS->dev_res); Free(GS->dmu_deta); Free(GS->var);
-    Free(GS->offset); Free(GS->wts); Free(GS->wtsqr); Free(GS->etaold);
+    Free(GS->offset); Free(GS->wts); Free(GS->etaold);
     Free(GS);
     return R_NilValue;
 }
@@ -580,8 +581,6 @@ SEXP glmer_init(SEXP rho, SEXP fltypep) {
     GS->offset = Memcpy(Calloc(GS->n, double), REAL(tmp), GS->n);
     tmp = find_and_check(rho, install("weights"), REALSXP, GS->n);
     GS->wts = Memcpy(Calloc(GS->n, double), REAL(tmp), GS->n);
-    GS->wtsqr = Calloc(GS->n, double);
-    for (int i = 0; i < GS->n; i++) GS->wtsqr[i] = GS->wts[i] *  GS->wts[i];
     GS->etaold = Calloc(GS->n, double);
     GS->cv = find_and_check(rho, install("cv"), VECSXP, 0);
     GS->niterEM = asInteger(internal_getElement(GS->cv, "niterEM"));
@@ -591,18 +590,16 @@ SEXP glmer_init(SEXP rho, SEXP fltypep) {
     GS->nf = LENGTH(GET_SLOT(GS->mer, lme4_flistSym));
     GS->npar = GS->p +
 	coef_length(GS->nf, INTEGER(GET_SLOT(GS->mer, lme4_ncSym)));
-    if (!fltype) { 
-	GS->linkinv = find_and_check(rho, install("linkinv"),
-				     LANGSXP, 0);
-	GS->mu_eta = find_and_check(rho, install("mu.eta"),
+/*     if (!fltype) { */
+    GS->linkinv = find_and_check(rho, install("linkinv"),
+				 LANGSXP, 0);
+    GS->mu_eta = find_and_check(rho, install("mu.eta"),
+				LANGSXP, 0);
+    GS->vfunc = find_and_check(rho, install("variance"),
+			     LANGSXP, 0);
+    GS->dev_resfunc = find_and_check(rho, install("dev.resids"),
 				    LANGSXP, 0);
-	GS->vfunc = find_and_check(rho, install("variance"),
-				   LANGSXP, 0);
-	GS->dev_resfunc = find_and_check(rho, install("dev.resids"),
-					 LANGSXP, 0);
-    } else {
-	GS->linkinv = GS->mu_eta = GS->vfunc = GS->dev_resfunc = (SEXP)NULL;
-    }
+/*     } else {GS->linkinv = GS->mu_eta = GS->vfunc = GS->dev_resfunc = (SEXP)NULL;} */
 
     GS->LMEopt = find_and_check(rho, install("doLMEopt"), LANGSXP, 0);
     return R_MakeExternalPtr(GS, R_NilValue, GS->mer);

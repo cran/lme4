@@ -337,6 +337,11 @@ internal_mer_update_ZXy(SEXP x, int *perm)
     if (((int)(ts2->ncol) + 1) != LENGTH(ZtZp))
 	error(_("Order of Z'Z has changed - was %d, now %d"),
 	      LENGTH(ZtZp) - 1, (int)(ts2->ncol));
+    /* double transpose to sort the columns */
+    M_cholmod_free_sparse(&ts1, &c);
+    ts1 = M_cholmod_transpose(ts2, 1, &c);
+    M_cholmod_free_sparse(&ts2, &c);
+    ts2 = M_cholmod_transpose(ts1, 1, &c);
     Memcpy(INTEGER(ZtZp), (int*)(ts2->p), LENGTH(ZtZp));
     if (nnz != LENGTH(ZtZx))
 	error(_("Number of nonzeros in Z'Z has changed - was %d, now %d"),
