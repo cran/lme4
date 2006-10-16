@@ -27,8 +27,10 @@
 \alias{plot,ranef.lmer-method}
 \alias{print,mer-method}
 \alias{qqmath,ranef.lmer-method}
-\alias{resid,mer-method}
-\alias{residuals,mer-method}
+\alias{resid,glmer-method}
+\alias{resid,lmer-method}
+\alias{residuals,glmer-method}
+\alias{residuals,lmer-method}
 \alias{show,mer-method}
 \alias{simulate,mer-method}
 \alias{summary,mer-method}
@@ -251,5 +253,6 @@
              data = sleepstudy))
 logLik(fm2)
 (V2 <- vcov(fm2))
+str(resid(fm2))
 }
 \keyword{classes}

@@ -1,8 +1,20 @@
+2006-10-16  Douglas Bates  <bates@stat.wisc.edu>
+
+	* DESCRIPTION (Version): New version
+
+	* R/lmer.R (resid): Methods for resid and residuals generics
+	should distinguish between glmer and lmer classes.
+
 2006-10-15  Douglas Bates  <bates@stat.wisc.edu>
 
 	* src/lmer.c (internal_mer_update_ZXy): double transpose to sort
 	columns in ZtZ.
 
+2006-10-13  Douglas Bates  <bates@stat.wisc.edu>
+
+	* src/glmer.c (glmer_linkinv): Repair code for probit link here
+	and in a couple of other places.
+	
 2006-10-12  Douglas Bates  <bates@stat.wisc.edu>
 
 	* src/glmer.c: pass and store family-link type allowing internal
