@@ -20,7 +20,6 @@ typedef struct glmer_struct
     double *var;     /* variance vector */
     double *offset;  /* offset for GLM */
     double *wts;     /* prior weights for GLM */
-    double *wtsqr;   /* square of prior weights (for evaluating deviance residuals) */
     double *y;       /* copy of response vector */
     double *etaold;  /* previous value of eta for evaluating  */
     int fltype;      /* family-link type */

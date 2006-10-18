@@ -368,6 +368,7 @@ lmer <- function(formula, data, family = gaussian,
         stop("'family' not recognized")
     }
     fltype <- mkFltype(family)
+    if (fltype == 1) fltype <- 0
     method <- match.arg(method)
     
     ## quick return for a linear mixed model
@@ -402,16 +403,15 @@ lmer <- function(formula, data, family = gaussian,
     ## weights could have changed
     weights <- glmFit$prior.weights
     eta <- glmFit$linear.predictors
-    wtssqr <- weights * weights
     linkinv <- quote(family$linkinv(eta))
     mu.eta <- quote(family$mu.eta(eta))
     mu <- family$linkinv(eta)
     variance <- quote(family$variance(mu))
-    dev.resids <- quote(family$dev.resids(Y, mu, wtssqr))
+    dev.resids <- quote(family$dev.resids(Y, mu, weights))
     LMEopt <- get("LMEoptimize<-")
     doLMEopt <- quote(LMEopt(x = mer, value = cv))
     if (family$family %in% c("binomial", "poisson")) # set the constant scale
-        mer@devComp[8] <- -mean(weights)
+        mer@devComp[8] <- -1
     mer@status["glmm"] <- as.integer(switch(method, PQL = 1, Laplace = 2, AGQ = 3))
     GSpt <- .Call(glmer_init, environment(), fltype)
     if (cv$usePQL) {
@@ -648,12 +648,11 @@ setMethod("mcmcsamp", signature(object = "glmer"),
           eta <- .Call(mer_fitted, mer)
           offset <- numeric(length(eta)) ## change this, save the offset in mer
           Y <- object@y
-          wtssqr <- weights * weights
           linkinv <- quote(family$linkinv(eta))
           mu.eta <- quote(family$mu.eta(eta))
           mu <- family$linkinv(eta)
           variance <- quote(family$variance(mu))
-          dev.resids <- quote(family$dev.resids(Y, mu, wtssqr))
+          dev.resids <- quote(family$dev.resids(Y, mu, weights))
           LMEopt <- get("LMEoptimize<-")
           doLMEopt <- quote(LMEopt(x = mer, value = cv))
           fltype <- mkFltype(family)
@@ -1246,7 +1245,7 @@ carryOver <- function(formula, data, carry, REML = TRUE, control = list(),
 mlirt <-
     function(formula, data, family = binomial("probit"),
              control = list(), start = NULL,
-             subset, weights, na.action = na.ignore, offset,
+             subset, weights, na.action = na.pass, offset,
              contrasts = NULL, model = FALSE, ...)
 {
     formula <- as.formula(formula)
@@ -1314,12 +1313,11 @@ mlirt <-
     ## weights could have changed
     weights <- glmFit$prior.weights
     eta <- glmFit$linear.predictors
-    wtssqr <- weights * weights
     linkinv <- quote(family$linkinv(eta))
     mu.eta <- quote(family$mu.eta(eta))
     mu <- family$linkinv(eta)
     variance <- quote(family$variance(mu))
-    dev.resids <- quote(family$dev.resids(Y, mu, wtssqr))
+    dev.resids <- quote(family$dev.resids(Y, mu, weights))
     doLMEopt <- quote(LMEopt(x = mer, value = cv))
     mer@devComp[8] <- -mean(weights)
     mer@status["glmm"] <- as.integer(2) # always use Laplace

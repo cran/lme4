@@ -336,14 +336,14 @@ static void glmer_dev_resids(GlmerStruct GS)
 	for (i = 0; i < GS->n; i++) {
 	    double mui = mu[i], yi = y[i];
 	    
-	    GS->dev_res[i] = 2 * GS->wtsqr[i] *
+	    GS->dev_res[i] = 2 * GS->wts[i] *
 		(y_log_y(yi, mui) + y_log_y(1 - yi, 1 - mui));
 	}
 	break;
     case 3:			/* Poisson with log link */
 	for (i = 0; i < GS->n; i++) {
 	    double mui = mu[i], yi = y[i];
-	    GS->dev_res[i] = 2 * GS->wtsqr[i] * (y_log_y(yi, mui) - (yi - mui));
+	    GS->dev_res[i] = 2 * GS->wts[i] * (y_log_y(yi, mui) - (yi - mui));
 	}
 	break;
     default: {
@@ -372,7 +372,7 @@ internal_glmer_reweight(GlmerStruct GS) {
     glmer_dmu_deta(GS);
     glmer_var(GS);
     for (i = 0; i < GS->n; i++) {
-	w[i] = GS->wts[i] * GS->dmu_deta[i]/sqrt(GS->var[i]);
+	w[i] = sqrt(GS->wts[i]/GS->var[i]) * GS->dmu_deta[i];
 	z[i] = eta[i] - GS->offset[i] + (y[i] - mu[i])/GS->dmu_deta[i];
     }
     mer_update_ZXy(GS->mer);
@@ -425,12 +425,12 @@ internal_bhat(GlmerStruct GS, const double fixed[], const double varc[])
 static double
 random_effects_deviance(GlmerStruct GS)
 {
-    double ans = 0;
+    int i; double ans = 0;
 
     internal_mer_fitted(GS->mer, GS->offset, REAL(GS->eta));
     glmer_linkinv(GS);
     glmer_dev_resids(GS);
-    for (int i = 0; i < GS->n; i++) ans += GS->dev_res[i];
+    for (i = 0; i < GS->n; i++) ans += GS->dev_res[i];
     return ans;
 }
 
@@ -540,7 +540,7 @@ SEXP glmer_finalize(SEXP GSp) {
     GlmerStruct GS = (GlmerStruct) R_ExternalPtrAddr(GSp);
 
     Free(GS->dev_res); Free(GS->dmu_deta); Free(GS->var);
-    Free(GS->offset); Free(GS->wts); Free(GS->wtsqr); Free(GS->etaold);
+    Free(GS->offset); Free(GS->wts); Free(GS->etaold);
     Free(GS);
     return R_NilValue;
 }
@@ -579,8 +579,6 @@ SEXP glmer_init(SEXP rho, SEXP fltypep) {
     GS->offset = Memcpy(Calloc(GS->n, double), REAL(tmp), GS->n);
     tmp = find_and_check(rho, install("weights"), REALSXP, GS->n);
     GS->wts = Memcpy(Calloc(GS->n, double), REAL(tmp), GS->n);
-    GS->wtsqr = Calloc(GS->n, double);
-    for (int i = 0; i < GS->n; i++) GS->wtsqr[i] = GS->wts[i] *  GS->wts[i];
     GS->etaold = Calloc(GS->n, double);
     GS->cv = find_and_check(rho, install("cv"), VECSXP, 0);
     GS->niterEM = asInteger(internal_getElement(GS->cv, "niterEM"));

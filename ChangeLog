@@ -1,3 +1,11 @@
+2006-10-18  Douglas Bates  <bates@stat.wisc.edu>
+
+	* DESCRIPTION (Version): Version 0.9975-7
+
+	* R/lmer.R (lmer): Remove wtssqr.  Use weights correctly in the
+	calls to dev.resids (problem reported by Renaud Lancelot).
+	(mlirt): Change na.ignore to na.pass.
+
 2006-10-16  Douglas Bates  <bates@stat.wisc.edu>
 
 	* DESCRIPTION (Version): New version
