@@ -1,6 +1,8 @@
 BIC                     Bayesian Information Criterion
 VarCorr                 Extract variance and correlation components
 VarCorr-class           Class "VarCorr"
+cbpp                    Serological Incidence of Contagious Bovine
+                        Pleuropneumonia in Ethiopia
 fixef                   Extract Fixed Effects
 gsummary                Summarize a data frame by group
 hatTrace                Extract the trace of the 'hat' matrix

@@ -38,7 +38,7 @@ static R_CallMethodDef CallEntries[] = {
 
     {"pedigree_chol", (DL_FUNC) &pedigree_chol, 2},
 
-    {"Zt_carryOver", (DL_FUNC) &Zt_carryOver, 2},
+    {"Zt_carryOver", (DL_FUNC) &Zt_carryOver, 4},
     {"Ztl_sparse", (DL_FUNC) &Ztl_sparse, 2},
 
     {NULL, NULL, 0}
@@ -55,7 +55,7 @@ void R_init_lme4(DllInfo *dll)
     R_useDynamicSymbols(dll, FALSE);
 
 
-    M_cholmod_start(&c);
+    M_R_cholmod_start(&c);
     lme4_DSym = install("D");
     lme4_DimSym = install("Dim");
     lme4_DimNamesSym = install("Dimnames");

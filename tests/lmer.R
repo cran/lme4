@@ -10,20 +10,8 @@ options(show.signif.stars = FALSE)
               data = sleepstudy, method = "ML"))
 
 ## generalized linear mixed model
-(fm3 <- lmer(decrease ~ treatment + (1|rowpos) + (1|colpos),
-             OrchardSprays, family = poisson(), method = "PQL"))
-
-## Laplace is used per default:
-fm3. <- lmer(decrease ~ treatment + (1|rowpos) + (1|colpos),
-             OrchardSprays, family = poisson)
-fm3.@call <- fm3@call # so that they should be almost identical:
-##MM: 'tol=0' now (2006-05-24) fails (on 32-bit Ubuntu; not 64-bit RHEL 4) ???
-##DMB: On 32-bit Debian this fails in R CMD check but not in R CMD BATCH ???
-#stopifnot(all.equal(fm3, fm3., tol = 1e-6))
-
-## Laplace approximation {takes time}
-(fm4 <- lmer(decrease ~ treatment + (1|rowpos) + (1|colpos),
-             data = OrchardSprays, family = poisson(), method = "Laplace"))
+(m1 <- lmer(cbind(incidence, size - incidence) ~ period + (1 | herd),
+            family = binomial, data = cbpp))
 
 ## Simple example by Andrew Gelman (2006-01-10) ----
 n.groups <- 10 ; n.reps <- 2
@@ -52,32 +40,6 @@ stopifnot(is.list(cc), length(cc) == 2,
           all((sapply(cc, class) == "data.frame")))
 print(plot(cc))
 
-
-## Many family = binomial cases
-if (isTRUE(try(data(Contraception, package = 'mlmRev')) == 'Contraception')) {
-    print(fm.1 <- lmer(use ~ urban + age + livch + (1 | district),
-                       Contraception, binomial))
-    print(system.time(fm1 <- lmer(use ~ urban + age + livch + (1 | district),
-                                  Contraception, binomial), gc = TRUE))
-    ## same model, using  "Laplace" :
-    print(fm.2 <- lmer(use ~ urban + age + livch + (1 | district),
-                       Contraception, binomial, method = 'Laplace'))
-    print(system.time(lmer(use ~ urban + age + livch + (1 | district),
-                           Contraception, binomial, method = 'Laplace'),
-                      gc = TRUE))
-##     print(fm.2a <- lmer(use ~ urban + age + livch + (1 | district),
-##                         Contraception, binomial, method = 'AGQ'))
-##     print(system.time(lmer(use ~ urban + age + livch + (1 | district),
-##                            Contraception, binomial, method = 'AGQ'),
-##                       gc = TRUE))
-
-    ## model + random intercept, with and w/o using  "Laplace" :
-    print(fm.3 <- lmer(use ~ urban + age + livch + (urban | district),
-                       Contraception, binomial))
-    print(fm.4 <- lmer(use ~ urban + age + livch + (urban | district),
-                       Contraception, binomial, method = 'Laplace'))
-}
-
 if (require('MASS', quietly = TRUE)) {
     bacteria$wk2 <- bacteria$week > 2
     contrasts(bacteria$trt) <-
@@ -105,6 +67,11 @@ try(
 reg <- lmer(y ~ habitat + (1|habitat*lagoon), data = dat) # did seg.fault
 ) # now gives error                 ^- should be ":"
 
+## Failure to specify a random effects term - used to give an obscure message
+try(
+m2 <- lmer(incidence / size ~ period, weights = size,
+            family = binomial, data = cbpp)
+)
 
 ### mcmcsamp() :
 ## From: Andrew Gelman <gelman@stat.columbia.edu>
@@ -126,7 +93,7 @@ r2 <- mcmcsamp (M1, saveb = TRUE)  # gave error in 0.99-* and 0.995-[12]
 y <- (1:20)*pi
 x <- (1:20)^2
 group <- gl(2,10)
-M1 <- lmer (y ~ 1 + (1 | group)) # << MM: why is the "1 + " needed ?
+M1 <- lmer (y ~ 1 | group)
 mcmcsamp (M1, n = 2, saveb=TRUE) # fine
 
 M2 <- lmer (y ~ 1 + x + (1 + x | group)) # false convergence
@@ -137,9 +104,9 @@ if(FALSE) ## try(..) fails here (in R CMD check) [[why ??]]
 ## Error: inconsistent degrees of freedom and dimension ...
 
 ## mcmc for glmer:
-rG1k <- mcmcsamp(fm3., n = 1000)
+rG1k <- mcmcsamp(m1, n = 1000)
 summary(rG1k)
-rG2 <- mcmcsamp(fm4, n = 3, verbose = TRUE)
+rG2 <- mcmcsamp(m1, n = 3, verbose = TRUE)
 
 # convergence on boundary warnings
 load(system.file("external/test3comp.rda", package = "Matrix"))

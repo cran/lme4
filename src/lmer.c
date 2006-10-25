@@ -18,67 +18,10 @@
 /* Internally used utilities */
 
 /**
- * Create the diagonal blocks of the variance-covariance matrix of the
- * random effects
+ * Create the RZX section of R^{-1} and store it in the RZXinv slot
  *
- * @param Linv - cholmod_sparse representation of L^{-1}
- * @param nf - number of grouping factors
- * @param Gp - group pointers
- * @param nc - number of columns per factor
- * @param bVar - list of 3-d arrays to be filled in
- * @param uplo - "U" or "L" for upper or lower triangle
+ * @param x - an mer object
  */
-static void
-Linv_to_bVar(cholmod_sparse *Linv, const int Gp[], const int nc[],
-	     SEXP bVar, const char uplo[])
-{
-    int *Lii = (int*)(Linv->i), *Lip = (int*)(Linv->p), i, nf = LENGTH(bVar);
-    double *Lix = (double*)(Linv->x), one[] = {1,0}, zero[] = {0,0};
-
-    for (i = 0; i < nf; i++) {
-	int *ind, j, nci = nc[i], maxnnz = 0;
-	int ncisqr = nci * nci, nlev = (Gp[i + 1] - Gp[i])/nci;
-	double *bVi = REAL(VECTOR_ELT(bVar, i)), *tmp;
-
-	AZERO(bVi, nlev * ncisqr);
-	for (j = 0; j < nlev; j++) {
-	    int nzm = Lip[Gp[i] + (j + 1) * nci] - Lip[Gp[i] + j * nci];
-	    if (nzm > maxnnz) maxnnz = nzm;
-	}
-	ind = Calloc(maxnnz, int);
-	tmp = Calloc(maxnnz * nci, double);
-	for (j = 0; j < nlev; j++) {
-	    int jj, k, kk;
-	    int *ap = Lip + Gp[i] + j * nci;
-	    int nr = ap[1] - ap[0];
-
-	    AZERO(tmp, maxnnz * nci);
-	    Memcpy(ind, Lii + ap[0], nr);
-	    Memcpy(tmp, Lix + ap[0], nr);
-	    for (jj = 1; jj < nci; jj++) {
-		for (k = ap[jj]; k < ap[jj + 1]; k++) {
-		    int aik = Lii[k];
-		    for (kk = 0; kk < nr; kk++) {
-			if (aik == ind[kk]) {
-			    tmp[kk + jj * maxnnz] = Lix[k];
-			    aik = -1;
-			    break;
-			}
-		    }
-		    if (aik >= 0) {	/* did not find the row index */
-			ind[nr] = aik;
-			tmp[nr + jj * maxnnz] = Lix[k];
-			nr++;
-		    }
-		}
-	    }
-	    F77_CALL(dsyrk)(uplo, "T", &nci, &nr, one, tmp, &maxnnz,
-			    zero, bVi + j * ncisqr, &nci);
-	}
-	Free(ind); Free(tmp);
-    }
-}
-
 static void
 internal_mer_RZXinv(SEXP x)
 {
@@ -89,8 +32,8 @@ internal_mer_RZXinv(SEXP x)
 	*Perm = (int *)(L->Perm);
     int i, j, p = dims[1], q = dims[0];
     int *iperm = Calloc(q, int);
-    double *RZXinv = REAL(GET_SLOT(GET_SLOT(x, lme4_RZXinvSym),
-				   lme4_xSym)), m1[2] = {-1, 0};
+    double *RZXinv = REAL(GET_SLOT(GET_SLOT(x, lme4_RZXinvSym), lme4_xSym)),
+	m1[2] = {-1, 0};
 
 				/* create the inverse permutation */
     for (j = 0; j < q; j++) iperm[Perm[j]] = j;
@@ -108,24 +51,51 @@ internal_mer_RZXinv(SEXP x)
     Free(iperm); Free(RZX); Free(L);
 }
 
+
+/**
+ * Evaluate the elements of the bVar slot (marginal
+ * variance-covariance matrices of the random effects)
+ *
+ * @param x - an mer object
+ */
 static void
 internal_mer_bVar(SEXP x)
 {
-    int q = LENGTH(GET_SLOT(x, lme4_rZySym));
+    SEXP bVar = GET_SLOT(x, lme4_bVarSym);
+    int *Gp = INTEGER(GET_SLOT(x, lme4_GpSym)),
+	*nc = INTEGER(GET_SLOT(x, lme4_ncSym)),
+	q = LENGTH(GET_SLOT(x, lme4_rZySym));
     cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
-    cholmod_sparse *eye = M_cholmod_speye(q, q, CHOLMOD_REAL, &c), *Linv;
-    int *Perm = (int *)(L->Perm), *iperm = Calloc(q, int), i;
-				/* create the inverse permutation */
-    for (i = 0; i < q; i++) iperm[Perm[i]] = i;
-				/* apply iperm to the identity matrix */
-    for (i = 0; i < q; i++) ((int*)(eye->i))[i] = iperm[i];
-				/* Create Linv */
-    Linv = M_cholmod_spsolve(CHOLMOD_L, L, eye, &c);
-    M_cholmod_free_sparse(&eye, &c);
-    Linv_to_bVar(Linv, INTEGER(GET_SLOT(x, lme4_GpSym)),
-		 INTEGER(GET_SLOT(x, lme4_ncSym)),
-		 GET_SLOT(x, lme4_bVarSym), "U");
-    M_cholmod_free_sparse(&Linv, &c);
+    cholmod_sparse *rhs, *sm1, *sm2;
+    cholmod_dense *dm1;
+    int *Perm = (int *)(L->Perm), *iperm = Calloc(q, int), i, nf = LENGTH(bVar);
+
+    for (i = 0; i < q; i++) iperm[Perm[i]] = i; /* inverse permutation */
+    for (i = 0; i < nf; i++) {
+	int j, nci = nc[i];
+	int ncisqr = nci * nci, nlev = (Gp[i + 1] - Gp[i])/nci;
+	double *bVi = REAL(VECTOR_ELT(bVar, i));
+
+	rhs = M_cholmod_allocate_sparse((size_t) q, (size_t) nci,
+					(size_t) nci, 1 /*sorted*/,
+					1 /*packed*/, 0 /*stype*/,
+					CHOLMOD_REAL, &c);
+	for (j = 0; j <= nci; j++) ((int *)(rhs->p))[j] = j;
+	for (j = 0; j < nci; j++) ((double *)(rhs->x))[j] = 1;
+	for (j = 0; j < nlev; j++) {
+	    int base = Gp[i] + j * nci, k;
+
+	    for (k = 0; k < nci; k++) ((int*)(rhs->i))[k] = iperm[base + k];
+	    sm1 = M_cholmod_spsolve(CHOLMOD_L, L, rhs, &c);
+	    sm2 = M_cholmod_transpose(sm1, 1 /*values*/, &c);
+	    M_cholmod_free_sparse(&sm1, &c);
+	    sm1 = M_cholmod_aat(sm2, (int*)NULL, (size_t)0, 1 /*mode*/, &c);
+	    dm1 = M_cholmod_sparse_to_dense(sm1, &c);
+	    M_cholmod_free_sparse(&sm1, &c); M_cholmod_free_sparse(&sm2, &c);
+	    Memcpy(bVi + j * ncisqr, (double*)(dm1->x), ncisqr);
+	    M_cholmod_free_dense(&dm1, &c);
+	}
+    }
     Free(L); Free(iperm);
 }
 
@@ -1400,28 +1370,29 @@ SEXP mer_postVar(SEXP x)
 	q = LENGTH(GET_SLOT(x, lme4_rZySym));
 
     sc = dcmp[7] * dcmp[7];
-    mer_gradComp(x);
+    mer_factor(x);
+    internal_mer_RZXinv(x);
+    internal_mer_bVar(x);
     ans = PROTECT(duplicate(GET_SLOT(x, lme4_bVarSym)));
     nf = LENGTH(ans);
     for (i = 0; i < nf; i++) {
 	SEXP ansi = VECTOR_ELT(ans, i);
 	int *dims = INTEGER(getAttrib(ansi, R_DimSymbol));
-	int j, nc = dims[1], nlev = dims[2];
-	int ncsqr = dims[0] * nc;
-	int ntot = ncsqr * nlev;
+	int j, nci = dims[1], nlev = dims[2], ntot = LENGTH(ansi);
+	int ncisqr = nci * nci;
 	double *vv = REAL(ansi);
 
-	if (dims[0] != nc)
+	if (dims[0] != nci)
 	    error(_("rows and columns of element %d of bVar do not match"),
 		  i + 1);
 	for (j = 0; j < nlev; j++)
-	    F77_CALL(dsyrk)("U", "N", &nc, &p,
-			    &one, RZXi + Gp[i] + j * nc, &q,
-			    &one, vv + j * ncsqr, &nc);
+	    F77_CALL(dsyrk)("U", "N", &nci, &p,
+			    &one, RZXi + Gp[i] + j * nci, &q,
+			    &one, vv + j * ncisqr, &nci);
 	if (sc != 1) F77_CALL(dscal)(&ntot, &sc, vv, &ione);
-	if (nc > 1) {
+	if (nci > 1) {
 	    for (j = 0; j < nlev; j++)
-		internal_symmetrize(vv + j * ncsqr, nc);
+		internal_symmetrize(vv + j * ncisqr, nci);
 	}
     }
     UNPROTECT(1);
@@ -1585,7 +1556,7 @@ SEXP SEXP_Zt(int n, int ii, SEXP fi, SEXP tmmat)
     int m = dims[0], nlev = LENGTH(getAttrib(fi, R_LevelsSymbol));
     SEXP ans = PROTECT(alloc_dgCMatrix(m * nlev, n, m * n, R_NilValue, R_NilValue));
     int *i = INTEGER(GET_SLOT(ans, lme4_iSym)), *p = INTEGER(GET_SLOT(ans, lme4_pSym));
-    
+
     if (!isFactor(fi) || LENGTH(fi) != n)
 	error(_("fl[[%d]] must be a factor of length %d"), ii + 1, n);
     if (!isMatrix(tmmat) || !isReal(tmmat))
@@ -1616,7 +1587,7 @@ SEXP Ztl_sparse(SEXP fl, SEXP Ztl)
 {
     int i, nf = LENGTH(fl), nobs = LENGTH(VECTOR_ELT(fl, 0));
     SEXP ans = PROTECT(allocVector(VECSXP, nf));
-    
+
     setAttrib(ans, R_NamesSymbol, duplicate(getAttrib(fl, R_NamesSymbol)));
     for (i = 0; i < nf; i++)
 	SET_VECTOR_ELT(ans, i, SEXP_Zt(nobs, i, VECTOR_ELT(fl, i), VECTOR_ELT(Ztl, i)));
@@ -1625,30 +1596,42 @@ SEXP Ztl_sparse(SEXP fl, SEXP Ztl)
 }
 
 /**
- * Create a new sparse Zt matrix by carrying over elements for the same level of f
+ * Create a new sparse Zt matrix by carrying over elements for the
+ * same level of f
  *
  * @param f factor determining the carryover (e.g. student)
  * @param Zt sparse model matrix for another factor (e.g. teacher)
+ * @param tvar numeric vector of time values
+ * @param discount numeric vector of discounting fractions
  *
  * @return modified model matrix
  */
-SEXP Zt_carryOver(SEXP fp, SEXP Zt)
+SEXP Zt_carryOver(SEXP fp, SEXP Zt, SEXP tvar, SEXP discount)
 {
     cholmod_sparse *ans, *chsz = M_as_cholmod_sparse(Zt);
     cholmod_triplet *ant, *chtz = M_cholmod_sparse_to_triplet(chsz, &c);
     int *cct, *p = (int*)(chsz->p), *f = INTEGER(fp);
     int cmax, j, jj, k, last, n = LENGTH(fp), nlev, nnz, ntot, q = p[1] - p[0];
-    int *ii, *ij, *oi, *oj, ip, op;
-    double *ix, *ox;
+    int *ii, *ij, *oi, *oj, dl = LENGTH(discount), ip, op;
+    double *ix, *ox, *disc, *tv;
 
+    if (!isReal(discount))
+	error(_("discount must be a numeric vector"));
+    if (!isReal(tvar))
+	error(_("tvar must be a numeric vector"));
+    if (LENGTH(tvar) != n)
+	error(_("tvar must have length %d"), n);
+    tv = REAL(tvar);
+    disc = REAL(discount);
     Free(chsz);
     if (!isFactor(fp)) error(_("f must be a factor"));
     nlev = LENGTH(getAttrib(fp, R_LevelsSymbol));
     cct = Calloc(nlev, int);
-    
+
     if (chtz->ncol != n) error(_("ncol(Zt) must match length(fp)"));
     for (j = 0; j < n; j++)	/* check consistency of p */
-	if (p[j+1] - p[j] != q) error(_("nonzeros per column in Zt must be constant"));
+	if (p[j+1] - p[j] != q)
+	    error(_("nonzeros per column in Zt must be constant"));
 				/* create column counts */
     for (last = -1, j = 0; j < n; j++) {
 	int ll = f[j] - 1;
@@ -1663,14 +1646,19 @@ SEXP Zt_carryOver(SEXP fp, SEXP Zt)
 	ntot += (cct[k] * (cct[k] + 1))/2;
     }
     nnz = ntot * q;
-    ant = M_cholmod_allocate_triplet(chtz->nrow, chtz->ncol, (size_t)(nnz), 
+    ant = M_cholmod_allocate_triplet(chtz->nrow, chtz->ncol, (size_t)(nnz),
 				     0 /*stype*/, CHOLMOD_REAL, &c);
     ip = 0; ii = (int*)(chtz->i); ij = (int*)(chtz->j); ix = (double*)(chtz->x);
     op = 0; oi = (int*)(ant->i); oj = (int*)(ant->j); ox = (double*)(ant->x);
     for (k = 0; k < nlev; k++) {
 	for (j = 0; j < cct[k]; j++) {
 	    for (jj = 0; jj < cct[k] - j; jj++) {
-		oi[op] = ii[ip]; oj[op] = ij[ip] + jj; ox[op] = ix[ip];
+		int dj = (int)(tv[ip + jj] - tv[ip]);
+		if (dj > dl)
+		    error(_("diff(tvar) (= %d) > length(discount) (= %d)"),
+			  dj, dl);
+		oi[op] = ii[ip]; oj[op] = ij[ip] + jj;
+		ox[op] = ix[ip] * disc[dj];
 		op++;
 	    }
 	    ip++;
@@ -1683,4 +1671,4 @@ SEXP Zt_carryOver(SEXP fp, SEXP Zt)
     Free(cct);
     return M_chm_sparse_to_SEXP(ans, 1, 0, 0, "", R_NilValue);
 }
-	
+

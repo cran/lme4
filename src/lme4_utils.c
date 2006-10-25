@@ -439,38 +439,38 @@ internal_betab_update(int p, int q, double sigma, cholmod_factor *L,
  *
  * @param x Pointer to an mer object
  *
- * @return
+ * @return pointer to the updated modes of the random effects
  */
 double attr_hidden *internal_mer_ranef(SEXP x)
 {
     SEXP ranef = GET_SLOT(x, lme4_ranefSym);
     int *status = INTEGER(GET_SLOT(x, lme4_statusSym));
+    double *ans = REAL(ranef);
+
     if (!status[0]) {
 	error("Applying internal_mer_ranef without factoring");
 	return (double*)NULL;	/* -Wall */
     }
     if (status[0] < 2) {
-	SEXP fixef = GET_SLOT(x, lme4_fixefSym),
-	    ranef = GET_SLOT(x, lme4_ranefSym);
+	SEXP fixef = GET_SLOT(x, lme4_fixefSym);
 	int ione = 1, p = LENGTH(fixef), q = LENGTH(ranef);
 	cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
-	cholmod_dense *td1, *td2,
-	    *chranef = M_as_cholmod_dense(ranef);
+	cholmod_dense *td1, *td2, *chranef = M_as_cholmod_dense(ranef);
 	double *RZX = REAL(GET_SLOT(GET_SLOT(x, lme4_RZXSym), lme4_xSym)),
 	    m1[] = {-1,0}, one[] = {1,0};
 
-	Memcpy(REAL(ranef), REAL(GET_SLOT(x, lme4_rZySym)), q);
+	Memcpy(ans, REAL(GET_SLOT(x, lme4_rZySym)), q);
 	F77_CALL(dgemv)("N", &q, &p, m1, RZX, &q, REAL(fixef), &ione,
-			one, REAL(ranef), &ione);
+			one, ans, &ione);
 	td1 = M_cholmod_solve(CHOLMOD_Lt, L, chranef, &c);
 	td2 = M_cholmod_solve(CHOLMOD_Pt, L, td1, &c);
 	Free(chranef); M_cholmod_free_dense(&td1, &c);
-	Memcpy(REAL(ranef), (double *)(td2->x), q);
+	Memcpy(ans, (double *)(td2->x), q);
 	M_cholmod_free_dense(&td2, &c);
 	status[0] = 2;
 	Free(L);
     }
-    return REAL(ranef);
+    return ans;
 }
 
 /**

@@ -79,8 +79,9 @@ int match_mat_dims(const int xd[], const int yd[])
 static R_INLINE double*
 internal_symmetrize(double *a, int nc)
 {
-    for (int i = 1; i < nc; i++)
-	for (int j = 0; j < i; j++)
+    int i,j;
+    for (i = 1; i < nc; i++)
+	for (j = 0; j < i; j++)
 	    a[i + j*nc] = a[j + i*nc];
     return a;
 }
@@ -97,12 +98,12 @@ static R_INLINE SEXP
 internal_make_named(int TYP, char **names)
 {
     SEXP ans, nms;
-    int n;
+    int n, i;
 
     for (n = 0; strlen(names[n]) > 0; n++) {}
     ans = PROTECT(allocVector(TYP, n));
     nms = PROTECT(allocVector(STRSXP, n));
-    for (int i = 0; i < n; i++) SET_STRING_ELT(nms, i, mkChar(names[i]));
+    for (i = 0; i < n; i++) SET_STRING_ELT(nms, i, mkChar(names[i]));
     setAttrib(ans, R_NamesSymbol, nms);
     UNPROTECT(2);
     return ans;
@@ -119,9 +120,9 @@ internal_make_named(int TYP, char **names)
 static R_INLINE SEXP
 internal_getElement(SEXP list, char *nm) {
     SEXP names = getAttrib(list, R_NamesSymbol);
-    int ll = LENGTH(list);
+    int ll = LENGTH(list), i;
 
-    for (int i = 0; i < ll; i++)
+    for (i = 0; i < ll; i++)
 	if (!strcmp(CHAR(STRING_ELT(names, i)), nm))
 	    return(VECTOR_ELT(list, i));
     return R_NilValue;

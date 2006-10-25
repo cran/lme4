@@ -1,4 +1,17 @@
+2006-10-19  Douglas Bates  <bates@stat.wisc.edu>
+
+	* data/cbpp.rda, man/cbpp.Rd: Added Contagious Bovine
+	Pleuropneumonia data contributed by Renaud Lancelot.
+
+	* src: Martin fixed more C99 usages.
+
+	* R/lmer.R (lmerFactorList): Throw an error if there are no random
+	effects terms in the model formula. (Also added a test of this in
+	tests/lmer.R)
+
 2006-10-18  Douglas Bates  <bates@stat.wisc.edu>
+
+	* R/lmer.R (mkFltype): typo
 
 	* DESCRIPTION (Version): Version 0.9975-7
 

@@ -28,6 +28,6 @@ SEXP mer_update_y(SEXP x, SEXP ynew);
 SEXP mer_validate(SEXP x);
 
 SEXP Ztl_sparse(SEXP fl, SEXP Ztl);
-SEXP Zt_carryOver(SEXP f, SEXP Zt);
+SEXP Zt_carryOver(SEXP f, SEXP Zt, SEXP tvar, SEXP discount);
 
 #endif /* LME4_LMER_H */
