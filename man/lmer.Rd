@@ -132,7 +132,8 @@ lmer(formula, data, family, method, control, start,
 %\references{ ~put references to the literature/web site here ~ }
 %\author{}
 %\note{}
-\seealso{\code{\linkS4class{lmer}}, \code{\link[stats]{lm}}
+\seealso{
+  The \code{\linkS4class{lmer}} class, \code{\link[stats]{lm}}
 }
 \examples{
 (fm1 <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy))

@@ -1014,6 +1014,7 @@ SEXP mer_factor(SEXP x)
 	    nreml*(1.+dcmp[3]+log(2.*PI/nreml));
 	if (dcmp[7] >= 0) dcmp[7] = internal_mer_sigma(x, -1);
 	Free(L);
+	status[0] = 1;
     }
     return R_NilValue;
 }
@@ -1079,7 +1080,6 @@ SEXP mer_gradComp(SEXP x)
 {
     int *status = INTEGER(GET_SLOT(x, lme4_statusSym));
 
-    mer_secondary(x);
     if (status[0] < 3) {
 	SEXP bVarP = GET_SLOT(x, lme4_bVarSym),
 	    OmegaP = GET_SLOT(x, lme4_OmegaSym),
@@ -1095,6 +1095,7 @@ SEXP mer_gradComp(SEXP x)
 				    lme4_xSym)),
 	    alpha;
 
+	mer_secondary(x);
 	alpha = 1./internal_mer_sigma(x, -1);
 	alpha = alpha * alpha;
 
@@ -1344,10 +1345,11 @@ SEXP mer_secondary(SEXP x)
 {
     int *status = INTEGER(GET_SLOT(x, lme4_statusSym));
 
-    mer_factor(x);
     if (status[0] < 2) {
+	mer_factor(x);
 	internal_mer_fixef(x);
 	internal_mer_ranef(x);
+	status[0] = 2;
     }
     return R_NilValue;
 }

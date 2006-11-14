@@ -1,6 +1,7 @@
 #include "lme4_utils.h"
 
-SEXP attr_hidden alloc_dgeMatrix(int m, int n, SEXP rownms, SEXP colnms)
+SEXP attr_hidden
+alloc_dgeMatrix(int m, int n, SEXP rownms, SEXP colnms)
 {
     SEXP ans = PROTECT(NEW_OBJECT(MAKE_CLASS("dgeMatrix"))), dn;
     int *dims = INTEGER(ALLOC_SLOT(ans, lme4_DimSym, INTSXP, 2));
@@ -14,7 +15,8 @@ SEXP attr_hidden alloc_dgeMatrix(int m, int n, SEXP rownms, SEXP colnms)
     return ans;
 }
 
-SEXP attr_hidden alloc_dpoMatrix(int n, char *uplo, SEXP rownms, SEXP colnms)
+SEXP attr_hidden
+alloc_dpoMatrix(int n, char *uplo, SEXP rownms, SEXP colnms)
 {
     SEXP ans = PROTECT(NEW_OBJECT(MAKE_CLASS("dpoMatrix"))), dn;
     int *dims = INTEGER(ALLOC_SLOT(ans, lme4_DimSym, INTSXP, 2));
@@ -29,7 +31,8 @@ SEXP attr_hidden alloc_dpoMatrix(int n, char *uplo, SEXP rownms, SEXP colnms)
     return ans;
 }
 
-SEXP attr_hidden alloc_dtrMatrix(int n, char *uplo, char *diag, SEXP rownms, SEXP colnms)
+SEXP attr_hidden
+alloc_dtrMatrix(int n, char *uplo, char *diag, SEXP rownms, SEXP colnms)
 {
     SEXP ans = PROTECT(NEW_OBJECT(MAKE_CLASS("dtrMatrix"))), dn;
     int *dims = INTEGER(ALLOC_SLOT(ans, lme4_DimSym, INTSXP, 2));
@@ -45,7 +48,8 @@ SEXP attr_hidden alloc_dtrMatrix(int n, char *uplo, char *diag, SEXP rownms, SEX
     return ans;
 }
 
-SEXP attr_hidden alloc_dsCMatrix(int n, int nz, char *uplo, SEXP rownms, SEXP colnms)
+SEXP attr_hidden
+alloc_dsCMatrix(int n, int nz, char *uplo, SEXP rownms, SEXP colnms)
 {
     SEXP ans = PROTECT(NEW_OBJECT(MAKE_CLASS("dsCMatrix"))), dn;
     int *dims = INTEGER(ALLOC_SLOT(ans, lme4_DimSym, INTSXP, 2));
@@ -62,7 +66,8 @@ SEXP attr_hidden alloc_dsCMatrix(int n, int nz, char *uplo, SEXP rownms, SEXP co
     return ans;
 }
 
-SEXP attr_hidden alloc_dgCMatrix(int m, int n, int nz, SEXP rownms, SEXP colnms)
+SEXP attr_hidden
+alloc_dgCMatrix(int m, int n, int nz, SEXP rownms, SEXP colnms)
 {
     SEXP ans = PROTECT(NEW_OBJECT(MAKE_CLASS("dgCMatrix"))), dn;
     int *dims = INTEGER(ALLOC_SLOT(ans, lme4_DimSym, INTSXP, 2));
@@ -88,7 +93,8 @@ SEXP attr_hidden alloc_dgCMatrix(int m, int n, int nz, SEXP rownms, SEXP colnms)
  *
  * @return A 3-dimensional array of the indicated dimensions and mode
  */
-SEXP attr_hidden alloc3Darray(SEXPTYPE mode, int nrow, int ncol, int nface)
+SEXP attr_hidden
+alloc3Darray(SEXPTYPE mode, int nrow, int ncol, int nface)
 {
     SEXP s, t;
     int n;

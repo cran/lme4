@@ -435,7 +435,7 @@ random_effects_deviance(GlmerStruct GS)
 }
 
 /**
- * Calculate the deviance for a generalizedlinear mixed model at
+ * Calculate the deviance for a generalized linear mixed model at
  * arbitrary parameter values.  This version restores the original
  * values of the fixef and ranef slots after evaluating at arbitrary
  * beta and b.

@@ -1,7 +1,6 @@
-## Optimize the profiled deviance with respect to the relative
-## variances and the discounting parameters
-##
-## Warning: this function modifies the value of the argument x
+## Preliminary version of a function to fit a model with carryover for
+## the effect of one grouping factor (e.g. teacher) on another
+## grouping factor (e.g. student)
 
 carryOver <- function(formula, data, carry, REML = TRUE, control = list(),
                       start = NULL, varycarry = TRUE,
@@ -34,6 +33,7 @@ carryOver <- function(formula, data, carry, REML = TRUE, control = list(),
     if (!all(match(lapply(op[2:3], as.character), names(fl), nomatch = 0)))
         stop("Variables on RHS of carry must be names of grouping factors")
     outer <- eval(op[[3]], mf)
+    if (is.factor(tvar)) tvar <- as.integer(tvar) - 1
 
     ## check the ordering
     ord <- order(outer, tvar)

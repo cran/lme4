@@ -1,13 +1,4 @@
-#include <Rdefines.h>
-#include <Rconfig.h>
-
-#ifdef HAVE_VISIBILITY_ATTRIBUTE
-# define attribute_hidden __attribute__ ((visibility ("hidden")))
-#else
-# define attribute_hidden
-#endif
-
-SEXP attribute_hidden
+SEXP attr_hidden
     lme4_DSym,
     lme4_DimSym,
     lme4_DimNamesSym,

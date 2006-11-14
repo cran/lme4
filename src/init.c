@@ -3,6 +3,11 @@
 #include "pedigree.h"
 #include <R_ext/Rdynload.h>
 
+/* Syms.h needs to be included a second time (it is already included
+ * through lme4_utils.h) so the symbols are defined without extern.
+ */
+#include "Syms.h" 
+
 static R_CallMethodDef CallEntries[] = {
     {"glmer_MCMCsamp", (DL_FUNC) &glmer_MCMCsamp, 5},
     {"glmer_PQL", (DL_FUNC) &glmer_PQL, 1},

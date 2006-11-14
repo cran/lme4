@@ -1,3 +1,18 @@
+2006-11-14  Douglas Bates  <bates@stat.wisc.edu>
+
+	* R/carryOver.R (fn): Allow factors on the LHS of carry.
+
+	* src/lmer.c: Reset the status appropriately.
+	* src/lme4_utils: Reformat source code.
+
+2006-11-13  Martin Maechler  <maechler@stat.math.ethz.ch>
+
+	* DESCRIPTION (Version, Date): 0.9975-9
+
+	* R/lmer.R (simulate): better test for "glmer"
+
+	* man/lmer-class.Rd: add simulate() example
+
 2006-10-19  Douglas Bates  <bates@stat.wisc.edu>
 
 	* data/cbpp.rda, man/cbpp.Rd: Added Contagious Bovine
@@ -35,7 +50,7 @@
 
 	* src/glmer.c (glmer_linkinv): Repair code for probit link here
 	and in a couple of other places.
-	
+
 2006-10-12  Douglas Bates  <bates@stat.wisc.edu>
 
 	* src/glmer.c: pass and store family-link type allowing internal

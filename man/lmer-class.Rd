@@ -136,7 +136,7 @@
     \item{\code{deviance}:}{Numeric vector of length 2 containing the
       deviance corresponding to the maximum likelihood (ML) and REML
       criteria.  This slot's contents are current if
-      \code{status$stage > 0factored}.} 
+      \code{status$stage > 0factored}.}
     \item{\code{fixef}:}{Numeric vector containing the conditional estimates
       of the fixed effects.  This slot's contents are current if
       \code{status$stage > 1}.}
@@ -254,5 +254,8 @@
 logLik(fm2)
 (V2 <- vcov(fm2))
 str(resid(fm2))
+
+## Simulate 'Reaction' according to the fitted model:
+dim(ss <- simulate(fm2, nsim = 200, seed = 101)) ## -> 180 x 200
 }
 \keyword{classes}
