@@ -105,7 +105,7 @@ lmer(formula, data, family, method, control, start,
 	  Default is 30.}%% unused currently?
 	\item{\code{usePQL}:}{Should the PQL method be used before
 	  switching to general optimization when fitting generalized linear mixed
-	  models using \code{method = "Laplace"}?  Default is \code{TRUE}.}
+	  models using \code{method = "Laplace"}?  Default is \code{FALSE}.}
 	\item{\code{gradient}:}{a logical value indicating if the
 	  analytic gradient of the objective should be used.  Use of an
 	  analytic gradient results in more stable convergence but can take

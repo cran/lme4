@@ -123,7 +123,7 @@ lmerControl <-
 	   niterEM = 15,
 	   EMverbose = getOption("verbose"),
 	   PQLmaxIt = 30,# FIXME: unused; PQL currently uses 'maxIter' instead
-	   usePQL = TRUE,
+	   usePQL = FALSE,
 	   gradient = TRUE,
 	   Hessian = FALSE # unused _FIXME_
 	   )
@@ -276,7 +276,7 @@ lmerFrames <- function(mc, formula, data, contrasts)
     fe <- eval(fe, parent.frame(2))
     mt <- attr(fe, "terms")         # allow model.frame to update them
     ## response vector
-    Y <- model.response(mf, "numeric")
+    Y <- model.response(mf, "any")
     ## avoid problems with 1D arrays, but keep names
     if(length(dim(Y)) == 1) {
         nm <- rownames(Y)
@@ -302,7 +302,7 @@ lmerFrames <- function(mc, formula, data, contrasts)
 
 ## Create the list of grouping factors and corresponding model
 ## matrices.  The model matrices are transposed in the Ztl list
-lmerFactorList <- function(formula, mf)
+lmerFactorList <- function(formula, mf, fltype)
 {
     ## create factor list for the random effects
     bars <- expandSlash(findbars(formula[[3]]))
@@ -318,10 +318,13 @@ lmerFactorList <- function(formula, mf)
     if(any(nlev == 0))
         stop("resulting factor(s) with 0 levels in random effects part:\n ",
              paste(sQuote(names(nlev[nlev == 0])), collapse=", "))
-    if(any(nlev >= nobs))
-        stop("number of levels in grouping factor(s)",
-             paste(sQuote(names(nlev[nlev >= nobs])), collapse=", "),
-             "is too large")
+    ## Max # of levels allowed for a grouping factor.
+    ## Binomial glmms can have nlev == nobs.
+    maxlev <- nobs - !(fltype %in% 1:2)
+    if (any(nlev > maxlev))
+        stop("number of levels in grouping factor(s) ",
+             paste(sQuote(names(nlev[nlev > maxlev])), collapse=", "),
+             " is too large")
     if (any(diff(nlev) > 0)) {
         ord <- rev(order(nlev))
         bars <- bars[ord]
@@ -341,6 +344,7 @@ lmer <- function(formula, data, family = gaussian,
                  subset, weights, na.action, offset, contrasts = NULL,
                  model = TRUE, ...)
 {
+    method <- match.arg(method)
     formula <- as.formula(formula)
     if (length(formula) < 3) stop("formula must be a two-sided formula")
     cv <- do.call("lmerControl", control)
@@ -351,15 +355,6 @@ lmer <- function(formula, data, family = gaussian,
     Y <- fr$Y; X <- fr$X; weights <- fr$weights; offset <- fr$offset
     mf <- fr$mf; mt <- fr$mt
 
-    ## establish factor list and Ztl
-    FL <- lmerFactorList(formula, mf)
-    cnames <- with(FL, c(lapply(Ztl, rownames), list(.fixed = colnames(X))))
-    nc <- with(FL, sapply(Ztl, nrow))
-    Ztl <- with(FL, .Call(Ztl_sparse, fl, Ztl))
-    ## FIXME: change this when rbind has been fixed.
-    Zt <- if (length(Ztl) == 1) Ztl[[1]] else do.call("rbind", Ztl)
-    fl <- FL$fl
-
     ## check and evaluate the family argument
     if(is.character(family))
         family <- get(family, mode = "function", envir = parent.frame())
@@ -369,12 +364,20 @@ lmer <- function(formula, data, family = gaussian,
         stop("'family' not recognized")
     }
     fltype <- mkFltype(family)
-    if (fltype == 1) fltype <- 0
-    method <- match.arg(method)
+
+    ## establish factor list and Ztl
+    FL <- lmerFactorList(formula, mf, fltype)
+    cnames <- with(FL, c(lapply(Ztl, rownames), list(.fixed = colnames(X))))
+    nc <- with(FL, sapply(Ztl, nrow))
+    Ztl <- with(FL, .Call(Ztl_sparse, fl, Ztl))
+    ## FIXME: change this when rbind has been fixed.
+    Zt <- if (length(Ztl) == 1) Ztl[[1]] else do.call("rbind", Ztl)
+    fl <- FL$fl
 
     ## quick return for a linear mixed model
     if (fltype < 0) {
-        mer <- .Call(mer_create, fl, Zt, X, Y, method == "REML", nc, cnames)
+        mer <- .Call(mer_create, fl, Zt, X, as.double(Y),
+                     method == "REML", nc, cnames)
         if (!is.null(start)) mer <- setOmega(mer, start)
         .Call(mer_ECMEsteps, mer, cv$niterEM, cv$EMverbose)
         LMEoptimize(mer) <- cv
@@ -443,7 +446,7 @@ lmer <- function(formula, data, family = gaussian,
                       ))
     devLaplace <- function(pars) .Call(glmer_devLaplace, pars, GSpt)
     rel.tol <- abs(0.01/devLaplace(PQLpars))
-    cat(paste("relative tolerance set to", rel.tol, "\n"))
+    if (cv$msVerbose) cat(paste("relative tolerance set to", rel.tol, "\n"))
 
     optimRes <- nlminb(PQLpars, devLaplace,
                        lower = ifelse(const, 5e-10, -Inf),

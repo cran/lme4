@@ -1674,3 +1674,66 @@ SEXP Zt_carryOver(SEXP fp, SEXP Zt, SEXP tvar, SEXP discount)
     return M_chm_sparse_to_SEXP(ans, 1, 0, 0, "", R_NilValue);
 }
 
+#if 0
+static void
+mer_diag_update(int b, int nci, const double *K,
+		const int *ap, double *ax, double *wrk)
+{
+    if (nci == 1) {
+	double *dd = &ax[ap[b + 1] - 1];
+	*dd *= K[0] * K[0];
+	*dd++;
+    } else {
+	int j;
+	AZERO(wrk, nci * nci);	/* zero the work array */
+	for (j = 0; j < nci; j++) { /* copy diagonal block */
+	}
+    }
+}
+	
+    
+
+/**
+ * Update A as \tilde{K}'A\tilde{K} + [I,0;0,0] and evaluate its
+ * numeric factorization in F.
+ *
+ * @param nf number of grouping factors
+ * @param nc length nf vector of number of random effects per factor
+ * @param Gp length nf+3 vector of group pointers for the rows of A
+ * @param Kl pointers to the nf lower Cholesky factors of the diagonal
+ *     elements of Sigma 
+ * @param A symmetric matrix of size Gp[nf+2]
+ * @param F factorization to be modified
+ *
+ * @return error code from cholmod_factor (0 indicates success)
+ */
+int
+internal_K_update(int n, const int *nc, const int *Gp,
+		  double **Kl, const cholmod_sparse *A,
+		  cholmod_factor *F)
+{
+    cholmod_sparse *Ac = M_cholmod_copy_sparse(A, &c);
+    int i, *ai = (int *)(Ac->i), *ap = (int *)(Ac->p);
+    double *ax = (double *)(Ac->x), one[] = {1, 0}, zero[] = {0, 0};
+
+    if (!Ac->sorted) M_cholmod_sort(Ac, &c);
+    for (i = 0; i < nf; i++) {
+	int base = Gp[i], j, nci = nc[i], nlev = (Gp[i + 1] - Gp[i])/nc[i];
+
+	for (j = 0; j < nlev; j++) {
+	    int cj = base + j * nci; /* first column in this group */
+	    int nnz = ap[cj + 1] - ap[cj]; /* nonzeros in first column */
+	    double *db = Calloc(nci * nci, double); /* diagonal blcok */
+	    
+	    if (nnz > 1) {
+		int nnzm1 = nnz - 1;
+		/* Multiply nci columns starting at cj (excluding the
+		   diagonal block) by K on rt */
+		F77_CALL(dtrmm)("R", "L", "N", "N", &nnzm1, &nci, one,
+				Kl[i], &nci, ax + ap[cj], &nnz);
+		/* copy and update diagonal block */
+	    }
+	}
+    }
+}
+#endif

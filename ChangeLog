@@ -1,3 +1,16 @@
+2006-12-01  Douglas Bates  <bates@stat.wisc.edu>
+
+	* DESCRIPTION (Version, Date): 0.9975-10
+	
+	* R/lmer.R (lmerFrames): Use model.response(mf, "any") (suggested
+	by Brian Ripley).
+	* R/lmer.R (lmerControl), man/lmer.Rd: Change default of usePQL
+	control option to FALSE.
+	* R/lmer.R (lmer): print revised relative tolerance only if
+	msVerbose is TRUE.
+	* R/lmer.R (lmerFactorList): allow nlev == nobs for binomial GLMMs
+	(problem report from Sandy Weisberg).
+
 2006-11-14  Douglas Bates  <bates@stat.wisc.edu>
 
 	* R/carryOver.R (fn): Allow factors on the LHS of carry.
