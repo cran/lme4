@@ -56,12 +56,41 @@ setClass("mer",
 			)
 	)
 
+setClass("mer2",
+	 representation(## original data
+			flist = "list",     # list of grouping factors
+			ZXyt = "dgCMatrix", # sparse form of [Z;X;-y]'
+			weights = "numeric",
+                        offset = "numeric",
+			cnames = "list",    # column names of model matrices
+			nc = "integer",     # dimensions of blocks in Omega
+			Gp = "integer",     # pointers to groups of rows in ZXyt
+                        dims = "integer",   # dimensions and indicator of REML and glmm
+			## quantities that vary when Z, X, y, weights or offset are changed
+			A = "dsCMatrix",    # tcrossprod(ZXyt) with weights and offset
+			## slots that vary during the optimization
+			ST = "list",        # list of LDL' factors of relative variance matrices
+			L = "CHMfactor",    # sparse Cholesky factor of A*
+			deviance = "numeric", # Current deviance (ML and REML) and logdet
+			## Secondary slots only evaluated when requested.
+			fixef = "numeric",
+			ranef = "numeric"
+			)
+         )
+
 ## Representation of linear and generalized linear mixed effects model
 setClass("lmer",
 	 representation(frame = "data.frame",
                         call = "call",	   # call to model-fitting function
 			terms = "terms"),
 	 contains = "mer")
+
+## Representation of linear and generalized linear mixed effects model
+setClass("lmer2",
+	 representation(frame = "data.frame",
+                        call = "call",	   # call to model-fitting function
+			terms = "terms"),
+	 contains = "mer2")
 
 setClass("glmer",
 	 representation(family = "family", # glm family - move here later
@@ -82,7 +111,23 @@ setClass("summary.mer", # the "mer" result ``enhanced'' :
 			),
 	 contains = "mer")
 
+setClass("summary.mer2", # the "mer2" result ``enhanced'' :
+	 representation(
+			isG   = "logical",
+			methTitle = "character",
+			logLik= "logLik",
+			ngrps = "integer",
+			sigma = "numeric", # scale, non-negative number
+			coefs = "matrix",
+			vcov = "dpoMatrix",
+			REmat = "matrix",
+			AICtab= "data.frame"
+			),
+	 contains = "mer2")
+
 setClass("summary.lmer", contains = c("summary.mer", "lmer"))
+
+setClass("summary.lmer2", contains = c("summary.mer2", "lmer2"))
 
 setClass("summary.glmer", contains = c("summary.mer", "glmer"))
 

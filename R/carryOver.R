@@ -18,7 +18,7 @@ carryOver <- function(formula, data, carry, REML = TRUE, control = list(),
     mf <- fr$mf; mt <- fr$mt
     
     ## establish factor list and Ztl
-    FL <- lmerFactorList(formula, mf)
+    FL <- lmerFactorList(formula, mf, -1)
     fl <- FL$fl
 
     ## parse the carry-over formula

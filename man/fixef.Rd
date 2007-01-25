@@ -4,6 +4,7 @@
 \alias{fixed.effects}
 \alias{fixef,ANY-method}
 \alias{fixef,mer-method}
+\alias{fixef,mer2-method}
 \alias{fixef,glmer-method}
 \title{Extract Fixed Effects}
 \description{

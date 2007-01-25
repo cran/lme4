@@ -398,6 +398,7 @@ internal_bhat(GlmerStruct GS, const double fixed[], const double varc[])
     if (varc)	  /* skip this step if varc == (double*) NULL */
 	internal_mer_coefGets(GS->mer, varc, 2);
     Memcpy(REAL(fixef), fixed, LENGTH(fixef));
+    internal_glmer_reweight(GS);
     internal_mer_Zfactor(GS->mer, L);
     internal_mer_ranef(GS->mer);
     internal_mer_fitted(GS->mer, GS->offset, etap);
@@ -629,7 +630,8 @@ SEXP glmer_init(SEXP rho, SEXP fltypep) {
  * @return a matrix
  */
 SEXP
-glmer_MCMCsamp(SEXP GSpt, SEXP savebp, SEXP nsampp, SEXP transp, SEXP verbosep)
+glmer_MCMCsamp(SEXP GSpt, SEXP savebp, SEXP nsampp, SEXP transp, SEXP verbosep,
+	       SEXP deviancep)
 {
     GlmerStruct GS = (GlmerStruct) R_ExternalPtrAddr(GSpt);
     SEXP ans, x = GS->mer;
@@ -643,6 +645,7 @@ glmer_MCMCsamp(SEXP GSpt, SEXP savebp, SEXP nsampp, SEXP transp, SEXP verbosep)
 	q = LENGTH(GET_SLOT(x, lme4_rZySym)),
 	saveb = asLogical(savebp),
 	trans = asLogical(transp),
+	deviance = asLogical(deviancep),
 	verbose = asLogical(verbosep);
     double
 	*RXX = REAL(GET_SLOT(GET_SLOT(x, lme4_RXXSym), lme4_xSym)),
@@ -652,8 +655,8 @@ glmer_MCMCsamp(SEXP GSpt, SEXP savebp, SEXP nsampp, SEXP transp, SEXP verbosep)
 	*bcur = Calloc(q, double), *betacur = Calloc(p, double), /* current */
 	*bnew = Calloc(q, double), *betanew = Calloc(p, double), /* proposed */
 	*ansp, MHratio;
-    int nrbase = p + 1 + coef_length(nf, nc); /* rows always included */
-    int nrtot = nrbase + (saveb ? q : 0);
+    int nrbase = p + coef_length(nf, nc); /* rows always included */
+    int nrtot = nrbase + deviance + (saveb ? q : 0);
 
     if (nsamp <= 0) nsamp = 1;
     ans = PROTECT(allocMatrix(REALSXP, nrtot, nsamp));
@@ -698,7 +701,8 @@ glmer_MCMCsamp(SEXP GSpt, SEXP savebp, SEXP nsampp, SEXP transp, SEXP verbosep)
 	internal_mer_refactor(x);
 	mer_secondary(x);
 
-	col[nrbase - 1] = glmm_deviance(GS, betacur, bcur); /* store deviance */
+	if (deviance) /* store deviance */
+	    col[nrbase - 1] = glmm_deviance(GS, betacur, bcur); 
     }
     PutRNGstate();
     Free(bcur); Free(betacur); Free(betanew); Free(bnew);

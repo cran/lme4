@@ -28,7 +28,10 @@ mcmcsamp(object, n, verbose, \dots)
     argument is \code{trans} which, if \code{TRUE} (the default), returns
     a sample of transformed parameters.  All variances are expressed on
     the logarithm scale and any covariances are converted to Fisher's "z"
-    transformation of the corresponding correlation.}
+    transformation of the corresponding correlation.  A third optional
+    argument is \code{deviance} which, if \code{TRUE}, saves the
+    conditional likelihood, expressed on the deviance scale, at each
+    iteration of the chain.  Default is \code{FALSE}.}
 }
 \value{
   An object of (S3) class \code{"mcmc"} suitable for use with the
@@ -55,8 +58,9 @@ mcmcsamp(object, n, verbose, \dots)
 }
 \examples{
 (fm1 <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy))
-set.seed(101)
-samp1 <- mcmcsamp(fm1, n = 1000)
+set.seed(101); samp0 <- mcmcsamp(fm1, n = 1000) # default deviance = FALSE
+set.seed(101); samp1 <- mcmcsamp(fm1, n = 1000, deviance = TRUE)
+colnames(samp1) # has "deviance"
 if (require("coda", quietly = TRUE, character.only = TRUE)) {
     densityplot(samp1)
     qqmath(samp1)
@@ -64,9 +68,11 @@ if (require("coda", quietly = TRUE, character.only = TRUE)) {
     print(summary(samp1))
     print(autocorr.diag(samp1))
 }
-(eDF <- mean(samp1[,"deviance"]) - deviance(fm1, REML=FALSE)) # potentially useful approximate D.F.
+## potentially useful approximate D.F. :
+(eDF <- mean(samp1[,"deviance"]) - deviance(fm1, REML=FALSE))
 \dontshow{
-stopifnot(abs(eDF - 7) < 1)
+stopifnot(abs(eDF - 7) < 1,
+          all.equal(samp0, samp1[,1:6], tol=0))
 }
 }
 \keyword{methods}

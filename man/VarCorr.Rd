@@ -2,13 +2,16 @@
 \docType{genericFunction}
 \alias{VarCorr}
 \alias{VarCorr,mer-method}
+\alias{VarCorr,mer2-method}
 \title{Extract variance and correlation components}
 \usage{
 \S4method{VarCorr}{mer}(x, REML = x@method == "REML", \dots)
+\S4method{VarCorr}{mer2}(x, REML = x@method == "REML", \dots)
 }
 \arguments{
   \item{x}{a fitted model object, usually an object inheriting from
-    class \code{\linkS4class{lmer}}.
+    class \code{\linkS4class{lmer}} (or, temporarily, class
+    \code{\linkS4class{lmer2}}).
   }
   \item{REML}{logical indicating if REML should be used.}
   \item{\dots}{Additional, optional arguments for some methods.  At

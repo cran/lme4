@@ -20,7 +20,7 @@ extern
 
 #ifdef ENABLE_NLS
 #include <libintl.h>
-#define _(String) dgettext ("Matrix", String)
+#define _(String) dgettext ("lme4", String)
 #else
 #define _(String) (String)
 #endif
@@ -98,7 +98,7 @@ internal_symmetrize(double *a, int nc)
  * @return pointer to a named vector of type TYP
  */
 static R_INLINE SEXP
-internal_make_named(int TYP, char **names)
+internal_make_named(int TYP, const char *names[])
 {
     SEXP ans, nms;
     int n, i;

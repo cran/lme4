@@ -33,7 +33,8 @@ typedef struct glmer_struct
     double tol;      /* convergence tolerance for IRLS iterations */
 } glmer_struct, *GlmerStruct;
 
-SEXP glmer_MCMCsamp(SEXP GSp, SEXP savebp, SEXP nsampp, SEXP transp, SEXP verbose);
+SEXP glmer_MCMCsamp(SEXP GSp, SEXP savebp, SEXP nsampp, SEXP transp,
+		    SEXP verbose, SEXP deviancep);
 SEXP glmer_PQL(SEXP GSp);
 SEXP glmer_devLaplace(SEXP pars, SEXP GSp);
 SEXP glmer_finalize(SEXP GSpt);

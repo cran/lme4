@@ -8,8 +8,15 @@
  */
 #include "Syms.h" 
 
+				/* positions in the deviance vector */
+const char attr_hidden *DEVIANCE_NAMES[] = {"ML", "REML",
+					    "ldZ", "ldX", "lr2", ""};
+				/* positions in the dims vector */
+const char attr_hidden *DIMS_NAMES[] = {"nf", "n", "p", "q",
+					"REML", "glmm", ""};
+
 static R_CallMethodDef CallEntries[] = {
-    {"glmer_MCMCsamp", (DL_FUNC) &glmer_MCMCsamp, 5},
+    {"glmer_MCMCsamp", (DL_FUNC) &glmer_MCMCsamp, 6},
     {"glmer_PQL", (DL_FUNC) &glmer_PQL, 1},
     {"glmer_devLaplace", (DL_FUNC) &glmer_devLaplace, 2},
     {"glmer_finalize", (DL_FUNC) &glmer_finalize, 1},
@@ -18,15 +25,18 @@ static R_CallMethodDef CallEntries[] = {
     {"lme4_rWishart", (DL_FUNC) &lme4_rWishart, 3},
 
     {"mer_ECMEsteps", (DL_FUNC) &mer_ECMEsteps, 3},
-    {"mer_MCMCsamp", (DL_FUNC) &mer_MCMCsamp, 5},
+    {"mer_MCMCsamp", (DL_FUNC) &mer_MCMCsamp, 6},
     {"mer_coef", (DL_FUNC) &mer_coef, 2},
     {"mer_coefGets", (DL_FUNC) &mer_coefGets, 3},
     {"mer_create", (DL_FUNC) &mer_create, 7},
+    {"mer2_create", (DL_FUNC) &mer2_create, 9},
+    {"mer2_deviance", (DL_FUNC) &mer2_deviance, 2},
     {"mer_dtCMatrix", (DL_FUNC) &mer_dtCMatrix, 1},
     {"mer_dtCMatrix_inv", (DL_FUNC) &mer_dtCMatrix_inv, 1},
     {"mer_factor", (DL_FUNC) &mer_factor, 1},
     {"mer_fitted", (DL_FUNC) &mer_fitted, 1},
     {"mer_fixef", (DL_FUNC) &mer_fixef, 1},
+    {"mer2_getPars", (DL_FUNC) &mer2_getPars, 1},
     {"mer_gradComp", (DL_FUNC) &mer_gradComp, 1},
     {"mer_gradient", (DL_FUNC) &mer_gradient, 2},
     {"mer_hat_trace", (DL_FUNC) &mer_hat_trace, 1},
@@ -36,10 +46,14 @@ static R_CallMethodDef CallEntries[] = {
     {"mer_postVar", (DL_FUNC) &mer_postVar, 1},
     {"mer_ranef", (DL_FUNC) &mer_ranef, 1},
     {"mer_secondary", (DL_FUNC) &mer_secondary, 1},
+    {"mer2_setPars", (DL_FUNC) &mer2_setPars, 2},
     {"mer_sigma", (DL_FUNC) &mer_sigma, 2},
+    {"mer2_sigma", (DL_FUNC) &mer2_sigma, 2},
     {"mer_simulate", (DL_FUNC) &mer_simulate, 2},
+    {"mer2_update_effects", (DL_FUNC) &mer2_update_effects, 1},
     {"mer_update_ZXy", (DL_FUNC) &mer_update_ZXy, 1},
     {"mer_update_y", (DL_FUNC) &mer_update_y, 2},
+    {"mer2_vcov", (DL_FUNC) &mer2_vcov, 1},
 
     {"pedigree_chol", (DL_FUNC) &pedigree_chol, 2},
 
@@ -61,6 +75,9 @@ void R_init_lme4(DllInfo *dll)
 
 
     M_R_cholmod_start(&c);
+    c.final_ll = 0;	    /* LDL form of simplicial factorization */
+
+    lme4_ASym = install("A");
     lme4_DSym = install("D");
     lme4_DimSym = install("Dim");
     lme4_DimNamesSym = install("Dimnames");
@@ -70,6 +87,7 @@ void R_init_lme4(DllInfo *dll)
     lme4_RXXSym = install("RXX");
     lme4_RZXSym = install("RZX");
     lme4_RZXinvSym = install("RZXinv");
+    lme4_STSym = install("ST");
     lme4_XSym = install("X");
     lme4_XtXSym = install("XtX");
     lme4_XtySym = install("Xty");
@@ -78,11 +96,13 @@ void R_init_lme4(DllInfo *dll)
     lme4_ZtXSym = install("ZtX");
     lme4_ZtZSym = install("ZtZ");
     lme4_ZtySym = install("Zty");
+    lme4_ZXytSym = install("ZXyt");
     lme4_bVarSym = install("bVar");
     lme4_cnamesSym = install("cnames");
     lme4_devCompSym = install("devComp");
     lme4_devianceSym = install("deviance");
     lme4_diagSym = install("diag");
+    lme4_dimsSym = install("dims");
     lme4_factorSym = install("factor");
     lme4_fixefSym = install("fixef");
     lme4_flistSym = install("flist");

@@ -1,21 +1,19 @@
 \name{lmer}
-\docType{genericFunction}
 \alias{lmer}
-\alias{lmer,formula-method}
+\alias{lmer2}
 \concept{GLMM}% << so it's found
 \title{Fit (Generalized) Linear Mixed-Effects Models}
 \description{
-  This generic function fits a linear mixed-effects model with nested or
+  Fit a linear or generalized linear mixed-effects model with nested or
   crossed grouping factors for the random effects.
 }
 \usage{
 lmer(formula, data, family, method, control, start,
      subset, weights, na.action, offset, contrasts,
      model, \dots)
-
-\S4method{lmer}{formula}(formula, data, family, method,
-    control, start, subset, weights, na.action, offset, contrasts,
-    model, \dots)
+lmer2(formula, data, family, method, control, start,
+      subset, weights, na.action, offset, contrasts,
+      model, \dots)
 }
 \arguments{
   \item{formula}{a two-sided linear formula object describing the
@@ -65,6 +63,20 @@ lmer(formula, data, family, method, control, start,
   specifying random-effects terms and allows for fitting generalized
   linear mixed models as well as linear mixed models.
 
+  The \code{lmer2} function is a development version of \code{lmer} that
+  uses a modified internal representation of the model.  Typically
+  \code{lmer2} is faster and more reliable than \code{lmer}.  At present
+  \code{lmer2} can only fit linear mixed-effects models (that is, the
+  \code{family} argument must be left unspecified) and not all the
+  methods for \code{"lmer"} objects are defined for \code{"lmer2"}
+  objects.  In particular, there is no \code{\link{mcmcsamp}} method for
+  \code{"lmer2"} objects.
+
+  When all the methods for the \code{"lmer"} objects and all the options
+  for the \code{lmer} function have been duplicated for the new
+  representation, the new representation will replace the old one and
+  the \code{"2"} will be dropped from the name.
+    
   Additional standard arguments to model-fitting functions can be passed
   to \code{lmer}.
   \describe{
