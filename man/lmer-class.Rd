@@ -205,8 +205,8 @@
   }% summary slots
 }
 \usage{
-\S4method{logLik}{mer}(object, REML = object@method == "REML", \dots)
-\S4method{vcov}{mer}(object, REML = object@method == "REML", \dots)
+\S4method{logLik}{mer}(object, REML = object@status["REML"], \dots)
+\S4method{vcov}{mer}(object, REML = object@status["REML"], \dots)
 }
 \arguments{
   \item{object}{object of class \code{mer} or \code{lmer}.}

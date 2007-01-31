@@ -2084,7 +2084,7 @@ SEXP mer2_getPars(SEXP x)
     SEXP ST = GET_SLOT(x, lme4_STSym), ans;
     int *nc = INTEGER(GET_SLOT(x, lme4_ncSym)),
 	i, nf = LENGTH(ST), ntot, pos;
-    double **st = Calloc(nc, double*), *par;
+    double **st = Calloc(nf, double*), *par;
 
     for (i = 0, ntot = 0; i < nf; i++) {
 	ntot += (nc[i] * (nc[i] + 1))/2;

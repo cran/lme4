@@ -5,8 +5,8 @@
 \alias{VarCorr,mer2-method}
 \title{Extract variance and correlation components}
 \usage{
-\S4method{VarCorr}{mer}(x, REML = x@method == "REML", \dots)
-\S4method{VarCorr}{mer2}(x, REML = x@method == "REML", \dots)
+\S4method{VarCorr}{mer}(x, REML = x@status["REML"], \dots)
+\S4method{VarCorr}{mer2}(x, REML = NULL, \dots)
 }
 \arguments{
   \item{x}{a fitted model object, usually an object inheriting from

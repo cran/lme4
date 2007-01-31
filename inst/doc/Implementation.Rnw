@@ -25,20 +25,20 @@
 \newcommand{\package}[1]{\textsf{\small{#1}}}
 \maketitle
 \begin{abstract}
-  We present the form of the model and details of the computational
-  methods in \code{lmer} for linear mixed models and for generalized
-  linear mixed models.  These techniques are illustrated on several
-  examples.
+  We describe the form of the linear mixed-effects and generalized
+  linear mixed-effects models fit by \code{lmer} and give details of
+  the representation and the computational techniques used to fit such
+  models.  These techniques are illustrated on several examples.
 \end{abstract}
 
 <<preliminaries,echo=FALSE,print=FALSE>>=
+options(width=80, show.signif.stars = FALSE,
+        lattice.theme = function() canonical.theme("pdf", color = FALSE))
 library(lattice)
 library(Matrix)
 library(lme4)
 data("Rail", package = "nlme")
 Rail <- data.frame(travel = Rail$travel, Rail = Rail$Rail)
-options(width=80, show.signif.stars = FALSE,
-        lattice.theme = function() canonical.theme("pdf", color = FALSE))
 @
 
 \section{A simple example}
@@ -56,7 +56,7 @@ str(Rail)
 Because there are only three observations on each of the rails a
 dotplot (Figure~\ref{fig:Raildotplot}) shows the structure of the data
 well.
-<<Raildotplot,fig=TRUE,include=FALSE,width=8,height=4>>=
+<<Raildotplot,fig=TRUE,include=FALSE,width=8,height=2>>=
 print(dotplot(Rail~travel,Rail,xlab="Travel time (ms)",ylab="Rail number"))
 @ 
 \begin{figure}[tb]
@@ -64,8 +64,7 @@ print(dotplot(Rail~travel,Rail,xlab="Travel time (ms)",ylab="Rail number"))
   \includegraphics{Implementation-Raildotplot}
   \caption{Travel time of sound waves in a sample of six railroad
     rails.  There were three measurements of the travel time on each
-    rail. The numbering of the rails has been reordered according to
-    increasing mean travel time.}
+    rail. The rail numbers are sorted by increasing mean travel time.}
   \label{fig:Raildotplot}
 \end{figure}
 
@@ -306,7 +305,7 @@ $\bm{\theta}$ minimizes the profiled deviance. The mle's of all the
 other parameters in the model can be derived from the estimate of this
 parameters.
 
-<<devcomp,echo=FALSE,fig=TRUE,height=3.5>>=
+<<devcomp,echo=FALSE,fig=TRUE,width=8, height=2.5>>=
 mm <- Rm1ML
 sg <- seq(0, 20, len = 101)
 dev <- mm@deviance
@@ -322,8 +321,10 @@ df <- data.frame(x = rep(sg, nc), y = as.vector(vals),
                  type = gl(nc, length(sg), labels = nms))
 print(xyplot(y ~ x | type, df, type = c("g", "l"),
              subset = !(type %in% c("REML", "ldX")),
-             scales = list(y = list(relation = "free")),
-             layout = c(1,3)))
+             scales = list(x = list(axs = 'i'),
+             y = list(relation = "free", rot = 0)),
+             aspect = 0.75, xlab = expression(sigma[1]), ylab = '',
+             layout = c(3,1)))
 @ 
 
 The term $n\left[1+\log\left(2\pi/n\right)\right]$ in (\ref{eq:2})
@@ -335,9 +336,12 @@ of the varying terms versus $\sigma_1$ in Figure~\ref{fig:devcomp}.
 \begin{figure}[tb]
   \centering
   \includegraphics{Implementation-devcomp}
-  \caption{The deviance and those components that vary with
-    $\bm{\theta}$ as a function of $\bm{\theta}$ (which is the
-    scalar $\sigma_1$ in this case).}
+  \caption{The profiled deviance, and those components of the profiled
+    deviance that vary with $\bm{\theta}$, as a function of
+    $\bm{\theta}$ in model \code{Rm1ML} for the \code{Rail} data. In
+    this model the parameter $\bm{\theta}$ is the scalar $\sigma_1$,
+    the standard deviation of the random effects relative to the
+    standard deviation of the per-observation noise.}
   \label{fig:devcomp}
 \end{figure}
 
@@ -375,14 +379,14 @@ print(xyplot(devC + ldZ ~ sg,
              data.frame(ldZ = vals[,"ldZ"], devC =
                         vals[, "ldZ"] + mm@dims['n'] * vals[, "lr2"] - base,
                         sg = sg), type = c("g", "l"),
-             scales = list(x = list(axs = 'i')),
+             scales = list(x = list(axs = 'i')), aspect = 1.8,
              xlab = expression(sigma[1]), ylab = "Shifted deviance",
              auto.key = list(text = c("deviance", "log|SZ'ZS + I|"),
              space = "right", points = FALSE, lines = TRUE)))
 @ 
 \begin{figure}[tb]
   \centering
-  \includegraphics{Implementation-devcomp2}
+  \includegraphics[width=0.7\textwidth]{Implementation-devcomp2}
   \caption{The part of the deviance that varies with $\sigma_1$ as a
     function of $\sigma_1$ near the optimum.  The component
     $\log\left|\bm{S}\bm{Z}\trans\bm{Z}\bm{S}+\bm{I}\right|$ is shown
@@ -778,7 +782,7 @@ $r^2/n$.  It is the ``restricted'' or ``residual'' maximum likelihood
 (REML) estimate, which takes into account that the residual vector
 $\bm{y}-\hat{\bm{y}}$ is constrained to a linear subspace of dimension
 $n-p$ in the response space.  Thus its squared length,
-$\left\|bm{y}-\hat{\bm{y}}\right\|^2=r^2$, has only $n=p$
+$\left\|\bm{y}-\hat{\bm{y}}\right\|^2=r^2$, has only $n-p$
 \emph{degrees of freedom} associated with it.
 
 The profiled REML deviance for a linear mixed model can be expressed as
@@ -786,6 +790,7 @@ The profiled REML deviance for a linear mixed model can be expressed as
   \label{eq:REMLdev}
   \tilde{\mathcal{D}}_R(\bm{\theta})=
   \log\left|{\bm{Z}^*}\trans\bm{Z}^*+\bm{I}\right|+
+  \log\left|\bm{L}_{\bm{X}}\right|^2+
   (n-p)\left(1+\log\frac{2\pi r^2}{n-p}\right) .
 \end{equation}
 

@@ -1,3 +1,15 @@
+2007-01-30  Douglas Bates  <bates@stat.wisc.edu>
+
+	* DESCRIPTION (Version): release 0.9975-12
+	* man/lmer-class.Rd: Fix default value of REML argument in
+	documentation of some methods (Kurt Hornik).
+	* src/lmer.c (mer2_getPars): fixed thinko, caught by Andrew
+	Robinson, in the declaration of **st.
+
+2007-01-28  Douglas Bates  <bates@R-project.org>
+
+	* R/lmer.R (lmer2): allow for specification of a start argument
+
 2007-01-25  Douglas Bates  <bates@stat.wisc.edu>
 
 	* DESCRIPTION (Version): release 0.9975-11
