@@ -1588,4 +1588,17 @@ ST2Omega <- function(ST)
     crossprod(solve(T)/dd)
 }
 
-
+## Extract the random effects
+setMethod("ranef", signature(object = "mer2"),
+	  function(object, postVar = FALSE, ...) {
+	      ans <- new("ranef.lmer",
+                         lapply(.Call(mer2_ranef, object),
+                                data.frame, check.names = FALSE))
+              names(ans) <- names(object@flist)
+              if (postVar) {
+                  pV <- .Call(mer2_postVar, object)
+                  for (i in seq(along = ans))
+                      attr(ans[[i]], "postVar") <- pV[[i]]
+              }
+              ans
+	  })

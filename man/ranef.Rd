@@ -6,10 +6,12 @@
 \alias{ranef,ANY-method}
 \alias{ranef,lmer-method}
 \alias{ranef,mer-method}
+\alias{ranef,mer2-method}
 \title{Extract Random Effects}
 \usage{
 ranef(object, \dots)
 \S4method{ranef}{lmer}(object, postVar, \dots)
+\S4method{ranef}{mer2}(object, postVar, \dots)
 }
 \description{
   A generic function to extract, and optionally accumulate, the random effects.
