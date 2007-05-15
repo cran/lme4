@@ -53,49 +53,83 @@ setClass("mer",
 			gradComp = "list",
 			## status indicator
 			status = "integer"
-			)
+			),
+         validity = function(object) .Call(mer_validate, object)
 	)
-
-setClass("mer2",
-	 representation(## original data
-			flist = "list",     # list of grouping factors
-			ZXyt = "dgCMatrix", # sparse form of [Z;X;-y]'
-			weights = "numeric",
-                        offset = "numeric",
-			cnames = "list",    # column names of model matrices
-			nc = "integer",     # dimensions of blocks in Omega
-			Gp = "integer",     # pointers to groups of rows in ZXyt
-                        dims = "integer",   # dimensions and indicator of REML and glmm
-			## quantities that vary when Z, X, y, weights or offset are changed
-			A = "dsCMatrix",    # tcrossprod(ZXyt) with weights and offset
-			## slots that vary during the optimization
-			ST = "list",        # list of LDL' factors of relative variance matrices
-			L = "CHMfactor",    # sparse Cholesky factor of A*
-			deviance = "numeric", # Current deviance (ML and REML) and logdet
-			## Secondary slots only evaluated when requested.
-			fixef = "numeric",
-			ranef = "numeric"
-			)
-         )
 
 ## Representation of linear and generalized linear mixed effects model
 setClass("lmer",
 	 representation(frame = "data.frame",
                         call = "call",	   # call to model-fitting function
-			terms = "terms"),
+                        terms = "terms"),  # terms for fixed-effects
 	 contains = "mer")
+
+setClass("glmer",
+	 representation(family = "family", # glm family
+                        weights = "numeric"),
+	 contains = "lmer")
 
 ## Representation of linear and generalized linear mixed effects model
 setClass("lmer2",
-	 representation(frame = "data.frame",
-                        call = "call",	   # call to model-fitting function
-			terms = "terms"),
-	 contains = "mer2")
+	 representation(## original data
+                        frame = "data.frame", # model frame or empty frame
+                        call = "call",	    # matched call to model-fitting function
+                        terms = "terms",    # terms for fixed-effects
+			flist = "list",     # list of grouping factors
+			ZXyt = "dgCMatrix", # sparse form of [Z;X;-y]'
+			weights = "numeric",# can be of length 0 for constant wts
+                        offset = "numeric", # can be of length 0 for 0 offset
+			cnames = "list",    # column names of model matrices
+			Gp = "integer",     # pointers to groups of rows in ZXyt
+                        dims = "integer",   # dimensions and indicators
+			## quantities that vary with Z, X, y, weights or offset
+			A = "dsCMatrix",    # tcrossprod(ZXyt) (w. wts and offset)
+			## slots that vary during the optimization
+			ST = "list",        # list of TSST' rep of rel. var. mats
+			L = "CHMfactor",    # sparse Cholesky factor of A*
+			deviance = "numeric", # ML and REML deviance and components
+			## Secondary slots only evaluated when requested.
+			fixef = "numeric",
+			ranef = "numeric"
+			),
+         validity = function(object) .Call(lmer2_validate, object)
+         )
 
-setClass("glmer",
-	 representation(family = "family", # glm family - move here later
-                        weights = "numeric"),
-	 contains = "lmer")
+setClass("glmer2",
+	 representation(family = "family",
+                        X = "matrix",      # model matrix for fixed effects
+                        eta = "numeric",   # linear predictor
+                        mu = "numeric",    # inverse link of linear predictor
+                        moff = "numeric",  # model offset, if any
+                        pwts = "numeric",  # prior weights, if any
+                        y = "numeric"),    # response
+	 contains = "lmer2")
+
+setClass("nlmer",
+	 representation(## original data
+                        frame = "data.frame", # model frame or empty frame
+                        pnames = "character", # parameter names for nonlinear model
+                        call = "call",	    # matched call to model-fitting function
+                        terms = "terms",    # terms for fixed-effects
+			flist = "list",     # list of grouping factors
+                        Xt = "dgCMatrix",   # sparse form of X'
+			Zt = "dgCMatrix",   # sparse form of Z'
+                        y = "numeric",      # response
+			weights = "numeric",# can be of length 0 for constant wts
+			cnames = "list",    # column names of model matrices
+			Gp = "integer",     # pointers to groups of columns in Z
+                        dims = "integer",   # dimensions and indicators
+			## quantities that vary with Z, X, y, weights or offset
+			## slots that vary during the optimization
+			ST = "list",        # list of TSST' rep of rel. var. mats
+			L = "CHMfactor",    # sparse Cholesky factor of A*
+			deviance = "numeric", # ML and REML deviance and components
+			fixef = "numeric",
+			ranef = "numeric"
+			),
+         validity = function(object) .Call(nlmer_validate, object)
+         )
+
 
 setClass("summary.mer", # the "mer" result ``enhanced'' :
 	 representation(
@@ -111,7 +145,7 @@ setClass("summary.mer", # the "mer" result ``enhanced'' :
 			),
 	 contains = "mer")
 
-setClass("summary.mer2", # the "mer2" result ``enhanced'' :
+setClass("summary.lmer2", # the "lmer2" result ``enhanced'' :
 	 representation(
 			isG   = "logical",
 			methTitle = "character",
@@ -123,11 +157,9 @@ setClass("summary.mer2", # the "mer2" result ``enhanced'' :
 			REmat = "matrix",
 			AICtab= "data.frame"
 			),
-	 contains = "mer2")
+	 contains = "lmer2")
 
 setClass("summary.lmer", contains = c("summary.mer", "lmer"))
-
-setClass("summary.lmer2", contains = c("summary.mer2", "lmer2"))
 
 setClass("summary.glmer", contains = c("summary.mer", "glmer"))
 

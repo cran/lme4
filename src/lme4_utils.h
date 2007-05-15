@@ -98,7 +98,7 @@ internal_symmetrize(double *a, int nc)
  * @return pointer to a named vector of type TYP
  */
 static R_INLINE SEXP
-internal_make_named(int TYP, const char *names[])
+internal_make_named(int TYP, char *names[])
 {
     SEXP ans, nms;
     int n, i;
@@ -172,7 +172,7 @@ SEXP mer_secondary(SEXP x);
 SEXP mer_gradComp(SEXP x);
 /* declared here but defined in Wishart.c */
 double attr_hidden
-*std_rWishart_factor(double df, int p, double ans[]);
+*std_rWishart_factor(double df, int p, int upper, double ans[]);
 
 double attr_hidden
 internal_betab_update(int p, int q, double sigma, cholmod_factor *L,

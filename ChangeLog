@@ -1,7 +1,21 @@
-2007-02-07  Douglas Bates  <bates@r-project.org>
+2007-04-04  Douglas Bates  <bates@stat.wisc.edu>
 
-	* src/lmer.c (mer2_create): disallow postordering on CHOLMOD
-	permutation (bug report by Ulrich Halekoh).
+	* src/lmer2.c (lmer2_create): allow for a glmer2 object and
+	methods for that class.
+
+2007-03-25  Douglas Bates  <bates@r-project.org>
+
+	* src/lmer2.c (lmer2_create): Removed the mer2 class and renamed
+	mer2_create as lmer2_create (and ZXyt_create).
+
+2007-02-12  Douglas Bates  <bates@r-project.org>
+
+	* DESCRIPTION (Version): Prepare for 0.9975-14 release.
+	* src/lmer.c (mer2_validate): Added validation function.  Split
+	several calculations into static functions that are available
+	internally.  Prepared for an mcmcsamp method for the mer2
+	representation.  Force a supernodal decomposition for models with
+	non-nested grouping factors.
 
 2007-02-03  Douglas Bates  <bates@r-project.org>
 

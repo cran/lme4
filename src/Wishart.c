@@ -6,12 +6,14 @@
  *
  * @param df degrees of freedom
  * @param p dimension of the Wishart distribution
+ * @param upper if 0 the result is lower triangular, otherwise upper
+                triangular
  * @param ans array of size p * p to hold the result
  *
  * @return ans
  */
 double attr_hidden
-*std_rWishart_factor(double df, int p, double ans[])
+*std_rWishart_factor(double df, int p, int upper, double ans[])
 {
     int i, j, pp1 = p + 1;
 
@@ -19,7 +21,12 @@ double attr_hidden
 	error("inconsistent degrees of freedom and dimension");
     for (j = 0; j < p; j++) {	/* jth column */
 	ans[j * pp1] = sqrt(rchisq(df - (double) j));
-	for (i = 0; i < j; i++) ans[i + j * p] = norm_rand();
+	for (i = 0; i < j; i++) {
+	    int uind = i + j * p, /* upper triangle index */
+		lind = j + i * p; /* lower triangle index */
+	    ans[(upper ? uind : lind)] = norm_rand();
+	    ans[(upper ? lind : uind)] = 0;
+	}
     }
     return ans;
 }
@@ -56,7 +63,7 @@ lme4_rWishart(SEXP ns, SEXP dfp, SEXP scal)
     GetRNGstate();
     for (j = 0; j < n; j++) {
 	double *ansj = ansp + j * psqr;
-	std_rWishart_factor(df, dims[0], tmp);
+	std_rWishart_factor(df, dims[0], 1, tmp);
 	F77_CALL(dtrmm)("R", "U", "N", "N", dims, dims,
 			&one, scCp, dims, tmp, dims);
 	F77_CALL(dsyrk)("U", "T", &(dims[1]), &(dims[1]),

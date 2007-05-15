@@ -522,7 +522,7 @@ internal_Omega_update(SEXP Omega, const double b[], double sigma, int nf,
 	if (info) error("Matrix is not pd after safe_pd_matrix!");
 				/* generate random factor from std Wishart */
 	AZERO(wfac, ncisqr);
-	std_rWishart_factor((double) (nlev - nci + 1), nci, wfac);
+	std_rWishart_factor((double) (nlev - nci + 1), nci, 1, wfac);
 
 	/* form the variance-covariance matrix and store elements */
 	Memcpy(tmp, scal, ncisqr);

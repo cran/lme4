@@ -19,10 +19,11 @@ export(
 exportClasses(
               "coef.lmer",
               "glmer",
+              "glmer2",
               "lmList",
               "lmer",
+              "lmer2",
               "mer",
-              "mer2",
               "pedigree",
               "ranef.lmer",
               "summary.glmer",

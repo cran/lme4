@@ -1,5 +1,6 @@
 #include "lme4_utils.h"
 #include "glmer.h"
+#include "lmer2.h"
 #include "pedigree.h"
 #include <R_ext/Rdynload.h>
 
@@ -8,35 +9,42 @@
  */
 #include "Syms.h" 
 
-				/* positions in the deviance vector */
-const char attr_hidden *DEVIANCE_NAMES[] = {"ML", "REML",
-					    "ldZ", "ldX", "lr2", ""};
-				/* positions in the dims vector */
-const char attr_hidden *DIMS_NAMES[] = {"nf", "n", "p", "q",
-					"REML", "glmm", ""};
-
 static R_CallMethodDef CallEntries[] = {
     {"glmer_MCMCsamp", (DL_FUNC) &glmer_MCMCsamp, 6},
     {"glmer_PQL", (DL_FUNC) &glmer_PQL, 1},
+    {"glmer_bhat", (DL_FUNC) &glmer_bhat, 1},
+    {"glmer_bhat2", (DL_FUNC) &glmer_bhat2, 1},
     {"glmer_devLaplace", (DL_FUNC) &glmer_devLaplace, 2},
     {"glmer_finalize", (DL_FUNC) &glmer_finalize, 1},
     {"glmer_init", (DL_FUNC) &glmer_init, 2},
+    {"glmer_eta", (DL_FUNC) &glmer_eta, 1},
+    {"glmer_reweight", (DL_FUNC) &glmer_reweight, 1},
 
     {"lme4_rWishart", (DL_FUNC) &lme4_rWishart, 3},
+    {"lmer2_create", (DL_FUNC) &lmer2_create, 7},
+    {"lmer2_MCMCsamp", (DL_FUNC) &lmer2_MCMCsamp, 6},
+    {"lmer2_deviance", (DL_FUNC) &lmer2_deviance, 2},
+    {"lmer2_getPars", (DL_FUNC) &lmer2_getPars, 1},
+    {"lmer2_optimize", (DL_FUNC) &lmer2_optimize, 2},
+    {"lmer2_postVar", (DL_FUNC) &lmer2_postVar, 1},
+    {"lmer2_ranef", (DL_FUNC) &lmer2_ranef, 1},
+    {"lmer2_setPars", (DL_FUNC) &lmer2_setPars, 2},
+    {"lmer2_sigma", (DL_FUNC) &lmer2_sigma, 2},
+    {"lmer2_update_effects", (DL_FUNC) &lmer2_update_effects, 1},
+    {"lmer2_update_y", (DL_FUNC) &lmer2_update_y, 2},
+    {"lmer2_validate", (DL_FUNC) &lmer2_validate, 1},
+    {"lmer2_vcov", (DL_FUNC) &lmer2_vcov, 1},
 
     {"mer_ECMEsteps", (DL_FUNC) &mer_ECMEsteps, 3},
     {"mer_MCMCsamp", (DL_FUNC) &mer_MCMCsamp, 6},
     {"mer_coef", (DL_FUNC) &mer_coef, 2},
     {"mer_coefGets", (DL_FUNC) &mer_coefGets, 3},
     {"mer_create", (DL_FUNC) &mer_create, 7},
-    {"mer2_create", (DL_FUNC) &mer2_create, 9},
-    {"mer2_deviance", (DL_FUNC) &mer2_deviance, 2},
     {"mer_dtCMatrix", (DL_FUNC) &mer_dtCMatrix, 1},
     {"mer_dtCMatrix_inv", (DL_FUNC) &mer_dtCMatrix_inv, 1},
     {"mer_factor", (DL_FUNC) &mer_factor, 1},
     {"mer_fitted", (DL_FUNC) &mer_fitted, 1},
     {"mer_fixef", (DL_FUNC) &mer_fixef, 1},
-    {"mer2_getPars", (DL_FUNC) &mer2_getPars, 1},
     {"mer_gradComp", (DL_FUNC) &mer_gradComp, 1},
     {"mer_gradient", (DL_FUNC) &mer_gradient, 2},
     {"mer_hat_trace", (DL_FUNC) &mer_hat_trace, 1},
@@ -44,18 +52,15 @@ static R_CallMethodDef CallEntries[] = {
     {"mer_initial", (DL_FUNC) &mer_initial, 1},
     {"mer_isNested", (DL_FUNC) &mer_isNested, 1},
     {"mer_postVar", (DL_FUNC) &mer_postVar, 1},
-    {"mer2_postVar", (DL_FUNC) &mer2_postVar, 1},
     {"mer_ranef", (DL_FUNC) &mer_ranef, 1},
-    {"mer2_ranef", (DL_FUNC) &mer2_ranef, 1},
     {"mer_secondary", (DL_FUNC) &mer_secondary, 1},
-    {"mer2_setPars", (DL_FUNC) &mer2_setPars, 2},
     {"mer_sigma", (DL_FUNC) &mer_sigma, 2},
-    {"mer2_sigma", (DL_FUNC) &mer2_sigma, 2},
     {"mer_simulate", (DL_FUNC) &mer_simulate, 2},
-    {"mer2_update_effects", (DL_FUNC) &mer2_update_effects, 1},
     {"mer_update_ZXy", (DL_FUNC) &mer_update_ZXy, 1},
     {"mer_update_y", (DL_FUNC) &mer_update_y, 2},
-    {"mer2_vcov", (DL_FUNC) &mer2_vcov, 1},
+    {"mer_validate", (DL_FUNC) &mer_validate, 1},
+
+    {"nlmer_bhat", (DL_FUNC) &nlmer_bhat, 1},
 
     {"pedigree_chol", (DL_FUNC) &pedigree_chol, 2},
 
@@ -105,12 +110,15 @@ void R_init_lme4(DllInfo *dll)
     lme4_devianceSym = install("deviance");
     lme4_diagSym = install("diag");
     lme4_dimsSym = install("dims");
+    lme4_etaSym = install("eta");
     lme4_factorSym = install("factor");
     lme4_fixefSym = install("fixef");
     lme4_flistSym = install("flist");
     lme4_gradCompSym = install("gradComp");
     lme4_iSym = install("i");
+    lme4_muSym = install("mu");
     lme4_ncSym = install("nc");
+    lme4_offsetSym = install("offset");
     lme4_pSym = install("p");
     lme4_permSym = install("perm");
     lme4_rXySym = install("rXy");
@@ -118,6 +126,7 @@ void R_init_lme4(DllInfo *dll)
     lme4_ranefSym = install("ranef");
     lme4_statusSym = install("status");
     lme4_uploSym = install("uplo");
+    lme4_weightsSym = install("weights");
     lme4_wrkresSym = install("wrkres");
     lme4_wtsSym = install("wts");
     lme4_xSym = install("x");
