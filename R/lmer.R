@@ -60,6 +60,19 @@ subbars <- function(term)
     term
 }
 
+## Substitute any names from nlist in term with 1
+subnms <- function(term, nlist)
+{
+    if (!is.language(term)) return(term)
+    if (is.name(term)) {
+        if (any(unlist(lapply(nlist, get("=="), term)))) return(1)
+        return(term)
+    }
+    stopifnot(length(term) >= 2)
+    for (j in 2:length(term)) term[[j]] <- subnms(term[[j]], nlist)
+    term
+}
+
 ## Return the list of '/'-separated terms in an expression that
 ## contains slashes
 slashTerms <- function(x) {
@@ -247,9 +260,9 @@ setOmega <- function(mer, start)
 ##
 ## mc - matched call to parent function
 ## formula - two-sided formula
-## data - data frame in which to evaluate formula
 ## contrasts - contrasts argument
-lmerFrames <- function(mc, formula, data, contrasts)
+## vnms - names of variables to be included in the model frame
+lmerFrames <- function(mc, formula, contrasts, vnms = character(0))
 {
     ## Must evaluate the model frame first and then fit the glm using
     ## that frame.  Otherwise missing values in the grouping factors
@@ -259,6 +272,11 @@ lmerFrames <- function(mc, formula, data, contrasts)
                names(mf), 0)
     mf <- mf[c(1, m)]
     frame.form <- subbars(formula)      # substitute `+' for `|'
+    if (length(vnms) > 0)
+        frame.form[[3]] <-
+            substitute(foo + bar,
+                       list(foo = parse(text = paste(vnms, collapse = ' + '))[[1]],
+                            bar = frame.form[[3]]))
     fixed.form <- nobars(formula)       # remove any terms with `|'
     if (inherits(fixed.form, "name"))  # RHS is empty - use a constant
         fixed.form <- substitute(foo ~ 1, list(foo = fixed.form))
@@ -300,6 +318,8 @@ lmerFrames <- function(mc, formula, data, contrasts)
 
 ## Create the list of grouping factors and corresponding model
 ## matrices.  The model matrices are transposed in the Ztl list
+
+## FIXME: Should the check on fltype be in this function or an auxillary check?
 lmerFactorList <- function(formula, mf, fltype)
 {
     ## create factor list for the random effects
@@ -349,7 +369,7 @@ lmer <- function(formula, data, family = gaussian,
 
     ## Establish model frame and fixed-effects model matrix and terms
     mc <- match.call()
-    fr <- lmerFrames(mc, formula, data, contrasts)
+    fr <- lmerFrames(mc, formula, contrasts)
     Y <- fr$Y; X <- fr$X; weights <- fr$weights; offset <- fr$offset
     mf <- fr$mf; mt <- fr$mt
 
@@ -943,7 +963,7 @@ setMethod("anova", signature(object = "mer"),
 		  nmeffects <- c("(Intercept)", nmeffects)
 	      ss <- unlist(lapply(split(ss, asgn), sum))
 	      df <- unlist(lapply(split(asgn,  asgn), length))
-	      #dfr <- unlist(lapply(split(dfr, asgn), function(x) x[1]))
+	      #dfr <- getFixDF(object)
 	      ms <- ss/df
 	      #f <- ms/(ssr/dfr)
 	      #P <- pf(f, df, dfr, lower.tail = FALSE)
@@ -1228,7 +1248,7 @@ lmer2 <- function(formula, data, family = gaussian,
 
     ## Establish model frame and fixed-effects model matrix and terms
     mc <- match.call()
-    fr <- lmerFrames(mc, formula, data, contrasts)
+    fr <- lmerFrames(mc, formula, contrasts)
     storage.mode(fr$X) <- "double" # when ncol(X) == 0, X is logical
 
     ## Fit a glm to the fixed-effects only.
@@ -1456,6 +1476,32 @@ setMethod("VarCorr", signature(x = "lmer2"),
 	  ans
       })
 
+# Create the VarCorr object of variances and covariances
+setMethod("VarCorr", signature(x = "nlmer"),
+	  function(x, REML = NULL, ...)
+      {
+	  sc <- sqrt(sum(x@deviance[c("bqd", "Sdr")])/x@dims["n"])
+	  cnames <- x@cnames
+	  ans <- x@ST
+          for (i in seq(along = ans)) {
+              ai <- ans[[i]]
+              dm <- dim(ai)
+              if (dm[1] < 2) {
+                  el <- (sc * ai)^2
+              } else {
+                  dd <- diag(ai)
+                  diag(ai) <- rep(1, dm[1])
+                  el <- sc^2 * crossprod(dd * t(ai))
+              }
+              el <- as(el, "dpoMatrix")
+              el@Dimnames <- list(cnames[[i]], cnames[[i]])
+	      el@factors$correlation <- as(el, "corMatrix")
+	      ans[[i]] <- el
+	  }
+	  attr(ans, "sc") <- sc
+	  ans
+      })
+
 setMethod("print", "lmer2", printMer2)
 setMethod("show", "lmer2", function(object) printMer2(object))
 
@@ -1613,22 +1659,116 @@ setMethod("simulate", "lmer2",
           ans + rnorm(prod(dim(ans)), sd = attr(vc, "sc"))
       })
 
-nlmer <- function(formula, data, family = gaussian,
-                  control = list(), start = NULL,
-                  subset, weights, na.action, offset, contrasts = NULL,
+## Remove the intercept row from a transposed model matrix
+## first checking that it is not the only column
+rmIntr <- function(mm)
+{
+    if (is.na(irow <- match("(Intercept)", rownames(mm)))) return(mm)
+    if (ncol(mm) < 2)
+        stop("lhs of a random-effects term cannot be an intercept only")
+    mm[-irow, , drop = FALSE]
+}
+
+
+## Fit a nonlinear mixed-effects model
+nlmer <- function(formula, data,
+                  control = list(), start = NULL, verbose = FALSE,
+                  subset, weights, na.action, contrasts = NULL,
                   model = TRUE, ...)
 {
     mc <- match.call()
     formula <- as.formula(formula)
-    if (length(formula) < 2) stop("formula must be a 3-part formula")
-    formula[[2]] <- as.formula(formula[[2]])
-    if (length(formula) < 3 || length(formula[[2]]) < 3)
+    if (length(formula) < 3) stop("formula must be a 3-part formula")
+    nlform <- as.formula(formula[[2]])
+    if (length(nlform) < 3)
         stop("formula must be a 3-part formula")
+    nlmod <- as.call(nlform[[3]])
+
     cv <- do.call("lmerControl", control)
-
+    if (missing(verbose)) verbose <- cv$msVerbose
     if (is.numeric(start)) start <- list(fixed = start)
-    stopifnot(length(start$fixed), length(pnames <- names(start$fixed)))
+    s <- length(pnames <- names(start$fixed))
+    stopifnot(length(start$fixed) > 0, s > 0,
+              inherits(data, "data.frame"), nrow(data) > 1)
+    if (any(pnames %in% names(data)))
+        stop("parameter names must be distinct from names of the variables in data")
+    anms <- all.vars(nlmod)
+    if (!all(pnames %in% anms))
+        stop("not all parameter names are used in the nonlinear model expression")
 
+    if (!length(vnms <- setdiff(anms, pnames)))
+        stop("there are no variables used in the nonlinear model expression")
+    ## create a frame in which to evaluate the factor list
+    fr <- lmerFrames(mc,
+                     eval(substitute(foo ~ bar,
+                                     list(foo = nlform[[2]],
+                                          bar = subnms(formula[[3]], lapply(pnames, as.name))))),
+                     contrasts, vnms)
+    mf <- fr$mf
+    attr(mf, "terms") <- NULL
+    env <- new.env()
+    lapply(names(mf), function(nm) assign(nm, env = env, mf[[nm]]))
+    n <- nrow(mf)
+    lapply(pnames, function(nm) assign(nm, env = env, rep(start$fixed[[nm]], length.out = n)))
+
+    mf <- mf[rep(seq_len(nrow(data)), s), ]
+    row.names(mf) <- seq_len(nrow(mf))
+    ss <- rep.int(nrow(data), s)
+    for (nm in pnames) mf[[nm]] <- rep.int(as.numeric(nm == pnames), ss)
+                                        # factor list and model matrices
+    FL <- lmerFactorList(substitute(foo ~ bar, list(foo = nlform[[2]], bar = formula[[3]])),
+                         mf, -1)
+    FL$Ztl <- lapply(FL$Ztl, rmIntr)    # Remove any intercept columns
+
+    Xt <- t(Matrix(as.matrix(mf[,pnames]), sparse = TRUE))
+    xnms <- colnames(fr$X)
+    if (!is.na(icol <- match("(Intercept)",xnms))) xnms <- xnms[-icol]
+    Xt@Dimnames[[2]] <- NULL
+### FIXME: The only times there would be additional columns in the
+### fixed effects would be as interactions with parameter names and
+### they must be constructed differently
+    if (length(xnms) > 0)
+        Xt <- rBind(Xt, t(Matrix(fr$X[rep.int(seq_len(n), s), xnms, drop = FALSE])))
+
+    wts <- fr$weights
+    if (is.null(wts)) wts <- numeric(0)
+    Ztl1 <- lapply(with(FL, .Call(Ztl_sparse, fl, Ztl)), drop0)
+    Gp <- unname(c(0L, cumsum(unlist(lapply(Ztl1, nrow)))))
+    Zt <- do.call(rBind, Ztl1)
+    attr(fr$mf, "terms") <- NULL
+    fixef <- unlist(start$fixed)
+    storage.mode(fixef) <- "double"
+    val <- .Call(nlmer_create, env, nlmod, fr$mf, pnames, call = mc,
+                 FL$fl, Xt, Zt, unname(fr$Y), wts,
+                 cnames = lapply(FL$Ztl, rownames), Gp = Gp,
+                 fixef = fixef)
+    .Call(nlmer_optimize, val, verbose)
+    .Call(nlmer_update_ranef, val)
+    val
 }
 
+setMethod("show", "nlmer", function(object)
+      {
+          dims <- object@dims
+          cat("Nonlinear mixed model fit by Laplace\n")
+          if (!is.null(object@call$formula))
+              cat("Formula:", deparse(object@call$formula),"\n")
+          if (!is.null(object@call$data))
+              cat("   Data:", deparse(object@call$data), "\n")
+          if (!is.null(object@call$subset))
+              cat(" Subset:",
+                  deparse(asOneSidedFormula(object@call$subset)[[2]]),"\n")
+
+          cat("Random effects:\n")
+          print(formatVC(VarCorr(object)), quote = FALSE,
+                digits = max(3, getOption("digits") - 3))
+
+          cat(sprintf("Number of obs: %d, groups: ", dims["n"]))
+          ngrps <- sapply(object@flist, function(x) length(levels(x)))
+          cat(paste(paste(names(ngrps), ngrps, sep = ", "), collapse = "; "))
+          cat("\n")
+          cat("\nFixed effects:\n")
+          print(object@fixef)
+          invisible(object)
+      })
 

@@ -55,7 +55,6 @@ lmer2(formula, data, family, method, control, start,
     should be returned (in slot \code{frame}).}
   \item{\dots}{potentially further arguments for methods.  Currently
     none are used.}
-  }
 }
 \details{
   This is a revised version of the \code{\link[nlme]{lme}} function from the

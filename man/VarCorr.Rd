@@ -3,10 +3,12 @@
 \alias{VarCorr}
 \alias{VarCorr,mer-method}
 \alias{VarCorr,lmer2-method}
+\alias{VarCorr,nlmer-method}
 \title{Extract variance and correlation components}
 \usage{
 \S4method{VarCorr}{mer}(x, REML = x@status["REML"], \dots)
 \S4method{VarCorr}{lmer2}(x, REML = NULL, \dots)
+\S4method{VarCorr}{nlmer}(x, \dots)
 }
 \arguments{
   \item{x}{a fitted model object, usually an object inheriting from

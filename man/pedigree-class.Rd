@@ -32,7 +32,7 @@
 }
 \section{Methods}{
   \describe{
-    \item{chol}{\code{signature(x = "pedigree"}}: returns the
+    \item{chol}{\code{signature(x = "pedigree")}: returns the
       lower-triangular, sparse matrix (a
       \code{\link[Matrix:dtCMatrix-class]{dtCMatrix}} object) that is
       the left Cholesky factor of the relationship matrix of the pedigree.}

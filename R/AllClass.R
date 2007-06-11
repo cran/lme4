@@ -107,10 +107,11 @@ setClass("glmer2",
 
 setClass("nlmer",
 	 representation(## original data
+                        env = "environment", # evaluation environment for model
+                        model = "call",     # model function as a function call
                         frame = "data.frame", # model frame or empty frame
                         pnames = "character", # parameter names for nonlinear model
                         call = "call",	    # matched call to model-fitting function
-                        terms = "terms",    # terms for fixed-effects
 			flist = "list",     # list of grouping factors
                         Xt = "dgCMatrix",   # sparse form of X'
 			Zt = "dgCMatrix",   # sparse form of Z'
@@ -119,13 +120,16 @@ setClass("nlmer",
 			cnames = "list",    # column names of model matrices
 			Gp = "integer",     # pointers to groups of columns in Z
                         dims = "integer",   # dimensions and indicators
-			## quantities that vary with Z, X, y, weights or offset
 			## slots that vary during the optimization
 			ST = "list",        # list of TSST' rep of rel. var. mats
-			L = "CHMfactor",    # sparse Cholesky factor of A*
+			Vt = "dgCMatrix",   # sparse form of V'=(ZTS)'
+			L = "CHMfactor",    # sparse Cholesky factor of V'V + I
+                        mu = "numeric",     # fitted values at current values of beta and b
+                        Mt = "dgCMatrix",   # transpose of gradient matrix d mu/d u
 			deviance = "numeric", # ML and REML deviance and components
-			fixef = "numeric",
-			ranef = "numeric"
+			fixef = "numeric",  # the fixed effects, beta
+			ranef = "numeric",  # the random effects, b
+                        uvec = "numeric"    # orthogonal random effects, u, s.t. b=TSu
 			),
          validity = function(object) .Call(nlmer_validate, object)
          )

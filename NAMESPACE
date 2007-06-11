@@ -12,6 +12,7 @@ export(
        "lmer",
        "lmer2",
        "mcmcsamp",
+       "nlmer",
        "pedigree",
        "pooledSD"
        )
@@ -24,6 +25,7 @@ exportClasses(
               "lmer",
               "lmer2",
               "mer",
+              "nlmer",
               "pedigree",
               "ranef.lmer",
               "summary.glmer",
