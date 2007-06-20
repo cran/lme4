@@ -1,15 +1,7 @@
 # Methods for lmer and for the objects that it produces
 
-## To Do: Check if it would be worthwhile using a few ECME iterations
-##   to stabilize the variance parameters at the beginning of a Laplace
-##   fit.
-
 ## To Do: Determine why the names of the components of the values of
 ##   the ranef and coef extractor methods are not printed.
-
-## To Do: Change the output format for lmer objects to always print
-##   the values of the log-likelihood and the
-##   restricted-log-likelihood.  Base AIC and BIC on the log-likelihood.
 
 ## Some utilities
 
@@ -338,7 +330,7 @@ lmerFactorList <- function(formula, mf, fltype)
              paste(sQuote(names(nlev[nlev == 0])), collapse=", "))
     ## Max # of levels allowed for a grouping factor.
     ## Binomial glmms can have nlev == nobs.
-    maxlev <- nobs - !(fltype %in% 1:2)
+    maxlev <- nobs - !(fltype %in% 1:3)
     if (any(nlev > maxlev))
         stop("number of levels in grouping factor(s) ",
              paste(sQuote(names(nlev[nlev > maxlev])), collapse=", "),

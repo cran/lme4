@@ -88,7 +88,11 @@ nonlinear model parameters.
 The dimension of the fixed-effects parameter vector $\bm{\beta}$ is
 $p$ and the dimension of the random effects vector $\bm{b}$ is $q$.
 Together with the matrices $\bm{X}$ and $\bm{Z}$ these vectors
-determine the linear predictor $\bm{X}\bm\beta+\bm{Z}\bm{b}$.
+determine the linear predictor
+\begin{equation}
+  \label{eq:linpred}
+  \bm\eta_{\bm{b}}\left(\bm\beta,\bm{b}\right)=\bm{X}\bm\beta+\bm{Z}\bm{b} .
+\end{equation}
 
 The elements of $\bm\beta$ are parameters in the model.  Strictly
 speaking, the elements of $\bm{b}$ are not parameters -- they are
@@ -101,18 +105,23 @@ the form
 \begin{equation}
   \label{eq:conddens}
   f_{\bm{y}|\bm{b}}(\bm{y}|\bm{b},\bm{\beta},\sigma^2)=
-  k(\sigma^2)e^{-d(\bm\mu(\bm{X}\bm\beta+\bm{Z}\bm{b}),\bm{y})/(2\sigma^2)} .
+  k(\sigma^2,\bm y)e^{-d(\bm\mu(\bm{X}\bm\beta+\bm{Z}\bm{b}),\bm{y})/(2\sigma^2)}=
+  k(\sigma^2,\bm y)e^{-d\left(\bm\mu\left(\bm\eta_{\bm{b}}(\bm\beta,\bm{b})\right),
+      \bm{y}\right)/\left(2\sigma^2\right)}
 \end{equation}
 In (\ref{eq:conddens}) the \emph{discrepancy function},
-$d(\bm{\mu},\bm{y})$, expresses the ``distance'' between the
-\emph{conditional mean}, $\bm\mu(\bm{X}\bm\beta+\bm{Z}\bm{b})$ and the
-observed data, $\bm{y}$, according to the form of the model.  In fact,
-for linear mixed models and for nonlinear mixed models the discrepancy
-function is the usual Euclidean distance,
-$\left\|\bm{y}-\bm\mu\right\|^2$.  For generalized linear mixed models
-the discrepancy function can be expressed as the sum of the squares of
-the \emph{deviance residuals} that are defined in
-\S\ref{sec:devianceres}.
+$d(\bm{\mu},\bm{y})$, defines the ``squared distance'' between the
+\emph{conditional mean},
+\begin{equation}
+  \label{eq:conditionalmean}
+  \bm\mu(\bm\eta)=\bm\mu\left(\bm\eta_{\bm{b}}(\bm\beta,\bm{b})\right)
+  =\bm\mu\left(\bm{X}\bm\beta+\bm{Z}\bm{b}\right)
+\end{equation}
+and the observed data, $\bm{y}$, according to the form of the model.
+
+In fact, for linear mixed models and for nonlinear mixed models, the
+discrepancy is exactly the square of the usual Euclidean
+distance, $d(\bm\mu,\bm y)=\left\|\bm y-\bm\mu\right\|^2$.
 
 The scale factor, $\sigma^2$, if it is used in the model, only
 determines the variance-covariance of the conditional distribution of
@@ -120,10 +129,14 @@ $\bm{y}$; it does not affect the conditional mean.  Some mixed models,
 such as generalized linear mixed models for which the conditional
 distribution of $\bm{y}$ is Bernoulli or binomial or Poisson, do not
 have a separate scale factor because the mean of the conditional
-distribution completely determines the variance.
+distribution completely determines the variance.  In such cases the
+conditional density or conditional probability mass function can be
+written $f_{\bm y|\bm b}(\bm y|\bm b,\bm\beta)=
+k(\bm y)e^{-d(\bm\mu(\bm{X}\bm\beta+\bm{Z}\bm{b}),\bm{y})/2}$.
 
-The normalization factor $k(\sigma^2)$ depends only on the scale
-factor, $\sigma^2$, if it is used in the model, and the data, $\bm{y}$.
+The normalization factor $k(\sigma^2,\bm y)$ depends only on the scale
+factor, $\sigma^2$, if it is used in the model, and the observed
+response, $\bm{y}$.
 
 The marginal distribution of $\bm{b}$ is modelled as a multivariate
 normal (or Gaussian) distribution of the form
@@ -132,10 +145,10 @@ normal (or Gaussian) distribution of the form
   \bm{b}\sim\mathcal{N}\left(\bm{0},\sigma^2\bm{\Sigma}(\bm{\theta})\right)
 \end{equation}
 where $\sigma^2$ is the same scale factor as in (\ref{eq:conddens})
-and $\bm{\Sigma}$ is a $q\times q$ positive-semidefinite matrix
-determined by a parameter $\bm{\theta}$.  The symmetric matrix
-$\bm\Sigma$ is called the \emph{relative variance-covariance matrix}
-of the random effects $\bm{b}$.  The condition that it is
+and the $q\times q$ symmetric, positive-semidefinite matrix
+$\bm\Sigma(\bm\theta)$, called the \emph{relative variance-covariance
+  matrix} of the random effects $\bm{b}$, is a function of a parameter
+$\bm{\theta}$.  The condition that $\bm\Sigma$ is
 positive-semidefinite means that $\bm{v}\trans\bm{\Sigma}\bm{v}\ge 0,
 \forall\bm{v}\in\mathbb{R}^q$.
 
@@ -170,56 +183,65 @@ for model matrices, in the case of linear or generalized linear
 models, and according to slightly modified rules, as described in
 \S\ref{sec:nlmmmodelmats}, for nonlinear mixed models.
 
-Together $\bm{f}_i$ and $\bm{Z}_i$ determine an \emph{extended
-model matrix} $\tilde{\bm{Z}}_i$ of size $m\times n_iq_i$  in a manner
-similar to the construction of indicator variables.  In fact, in the
-not-uncommon case that the linear model formula in a random-effects
-term is `\code{1}' then $q_i=1$, $\bm{Z}_i$ is an $m\times 1$ matrix
-all of whose elements are $1$ and $\tilde{\bm{Z}}_i$ is the $m\times n_i$
-matrix of indicators of the levels of $\bm{f}_i$.
+Together $\bm{f}_i$ and $\bm{Z}_i$ determine the \emph{indicator
+  interaction matrix} $\tilde{\bm{Z}}_i$ that is the horizontal
+concatenation of the interaction of the columns of $\bm{Z}_i$ with the
+matrix of indicators of the levels of $\bm{f}_i$.  That is, the
+$m\times n_iq_i$ matrix $\tilde{\bm{Z}}_i$ consists of $q_i$ vertical
+blocks, each of size $m\times n_i$, whose nonzeros are in the form of
+the indicator columns for $\bm{f}_i$.  The values of the nonzeros in
+the $j$th vertical block in $\tilde{\bm{Z}}_i$ are the $j$th column of
+$\bm{Z}_i$.
+
+In the not-uncommon case that the linear model formula in a
+random-effects term is `\code{1}' then $q_i=1$, $\bm{Z}_i$ is an
+$m\times 1$ matrix all of whose elements are $1$ and
+$\tilde{\bm{Z}}_i$ is the $m\times n_i$ matrix of indicators of the
+levels of $\bm{f}_i$.
 
 Suppose, for example, that we wish to model data where three
 observations have been recorded on each of five subjects.  A
-data frame with a ``subject'' factor could be
+data frame with a ``subject'' factor could be constructed as
 <<subj>>=
-str(dat <- data.frame(subj = gl(5, 3)))
+str(dat <- data.frame(subj = gl(5, 3, labels = LETTERS[1:5])))
 @
-when the data are ordered by subject.  A random effects term of the
+if the data are ordered by subject.  A random effects term of the
 form \code{(1|subj)} generates a model matrix $\bm{Z}_i$ which has one
 column, all of whose elements are unity
 <<trivialMM>>=
 str(Zi <- model.matrix(~1, dat))
 @
-and an extended model matrix, $\tilde{\bm{Z}}_i$, of the form
+and the indicator interaction matrix, $\tilde{\bm{Z}}_i$, which, in
+this case, is simply the matrix of indicators,
 <<extendedMM1,echo=FALSE>>=
-with(dat, t(.Call("Ztl_sparse", list(subj), list(t(Zi)), PACKAGE = "lme4")[[1]]))
+with(dat, t(as(subj, "sparseMatrix")))
 @
-That is, $\tilde{\bm{Z}}_i$ is exactly the matrix of indicators of
-the levels of \code{subj}.  In the \package{lme4} package such
-matrices are stored as compressed, column-oriented, sparse
-matrices~\citep{davis06:csparse_book} and printed with a `.'
-representing a systematic zero entry.
 
-In the general case, we consider the $n_iq_i$ columns of
-$\tilde{\bm{Z}}_i$ to be divided into $n_i$ adjacent groups of $q_i$
-columns.  In any given row all but one of these groups will be zero.
-The elements of the nonzero group, determined by the level of the
-grouping factor at that row, are a copy of the corresponding row of
-$\bm{Z}_i$.
+In the \package{lme4} package these sparse model matrices are stored
+as compressed, column-oriented, sparse
+matrices~\citep{davis06:csparse_book} of class \code{"dgCMatrix"}.
+When such a matrix is printed, the systematic zeros are shown as `.'.
 
-For example, if \code{time} is a numeric variable, say,
+For a more general example, assume that each subject was observed at
+times 1, 2 and 3.  If the \code{time} variable is
 <<Z1prep>>=
 dat$time <- rep(1:3, 5)
 @
-indicating that each subject was observed at times 1, 2 and 3, then
-the first few rows of $\bm{Z}_1$ for a random-effects term
-\code{(time|Subject)} are
+so that the first few rows of the model frame are
+<<dathead>>=
+head(dat, n = 5)
+@
+(i.e. we have ordered the data first by subject then by time within
+subject) then the first few rows of $\bm{Z}_1$ for a random-effects
+term \code{(time|Subject)} are
 <<Z1mat>>=
 head(Z1 <- model.matrix(~ time, dat), n = 7)
 @
 and the matrix $\tilde{\bm{Z}}_i$ is
 <<Z1tilde,echo=FALSE>>=
-with(dat, t(.Call("Ztl_sparse", list(subj=subj), list(subj = t(Z1)), PACKAGE = "lme4")[[1]]))
+tim <- ind <- as(dat$subj, "sparseMatrix")
+tim@x <- as.numeric(dat$time)
+t(rBind(ind, tim))
 @
 
 The $m\times q$ matrix $\bm{Z}$ is the horizontal concatenation of the
@@ -262,16 +284,27 @@ with the $i$th diagonal block of the form
   \label{eq:bSigma}
   \tilde{\bm{\Sigma}}_i =
   \begin{bmatrix}
-    \bm{\Sigma}_i & \bm{0}     & \hdots & \bm{0}\\
-    \bm{0}     & \bm{\Sigma}_i & \hdots & \bm{0}\\
+    \sigma_{1,1}\bm{I}_{n_i}&\sigma_{1,2}\bm{I}_{n_i}& \hdots &\sigma_{1,q_i}\bm{I}_{n_i}\\
+    \sigma_{1,2}\bm{I}_{n_i}&\sigma_{2,2}\bm{I}_{n_i}& \hdots &\sigma_{2,q_i}\bm{I}_{n_i}\\
     \vdots    & \vdots    & \ddots & \vdots\\
-    \bm{0}     & \bm{0}     & \hdots & \bm{\Sigma}_i
+    \sigma_{1,q_i}\bm{I}_{n_i}&\sigma_{2,q_i}\bm{I}_{n_i}& \hdots &\sigma_{q_i,q_i}\bm{I}_{n_i}\\
   \end{bmatrix}=
-  \bm{I}_{n_i}\otimes\bm{\Sigma}_i
+  \bm{\Sigma}_i\otimes\bm{I}_{n_i}
 \end{equation}
-where $\bm{\Sigma}_i$ is a $q_i\times q_i$ symmetric matrix. (The symbol
+where
+\begin{equation}
+  \label{eq:Sigmai}
+  \bm{\Sigma}_i=
+  \begin{bmatrix}
+    \sigma_{1,1}&\sigma_{1,2}&\hdots&\sigma_{1,q_i}\\
+    \sigma_{1,2}&\sigma_{2,2}&\hdots&\sigma_{2,q_i}\\
+    \vdots    & \vdots    & \ddots & \vdots\\
+    \sigma_{1,q_i}&\sigma_{2,q_i}&\hdots&\sigma_{q_i,q_i}
+  \end{bmatrix}
+\end{equation}
+is a $q_i\times q_i$ symmetric matrix. (The symbol
 $\otimes$ denotes the Kronecker product of matrices, which is a
-convenient shorthand for a structure like that on the left of
+convenient shorthand for a structure like that shown in
 (\ref{eq:bSigma}).)
 
 The matrix $\bm{\Sigma}$ will be positive-semidefinite if all the
@@ -301,23 +334,35 @@ row-major order.
 
 Finally, let $\bm{\theta}$ be the concatenation of the $\bm{\theta}_i,i=1,\dots,k$.
 
-The factors $\bm{T}(\bm{\theta})$ and $\bm{S}(\bm{\theta})$ are
-constructed from the $\bm{T}_i$, $\bm{S}_i$ and $n_i$, $i=1,\dots,k$
-according to the same ``repeated block/block'' structure for
-$\bm{\Sigma}$ illustrated in (\ref{eq:relvarcov}) and (\ref{eq:bSigma}).
+The unit lower-triangular and non-negative diagonal factors,
+$\bm{T}(\bm{\theta})$ and $\bm{S}(\bm{\theta})$, of
+$\bm\Sigma(\bm\theta)$ are constructed from the $\bm{T}_i$, $\bm{S}_i$
+and $n_i$, $i=1,\dots,k$ according to the pattern of $\bm{\Sigma}$
+illustrated in (\ref{eq:relvarcov}) and (\ref{eq:bSigma}).  That is,
+$\bm T(\bm\theta)$ (respectively $\bm S(\bm\theta)$) is block-diagonal
+with $i$th diagonal block $\tilde{\bm T}_i=\bm T\otimes{\bm I}_{n_i}$
+(respectively $\tilde{\bm S}_i=\bm S\otimes{\bm I}_{n_i}$).
 
-Consider, for example, a term of the form \code{(1|subj)} for which
-$q_i=1$.  Then $\bm{T}_i$, which is a $1\times 1$ unit lower
-triangular matrix, must be $[1]$ and $\tilde{\bm{T}}_i=\bm{I}_{n_i}$,
-the $n_i\times n_i$ identity matrix.  Furthermore,
-$\bm{S}_i=[\theta_{i,1}]$ subject to $\theta_{i,1}\ge 0$,
+Although the number of levels of the $i$th factor, $n_i$, can be very
+large, the number of columns in $\bm Z_i$, $q_i$, is typically very
+small.  Hence the dimension of the parameter $\bm\theta_i$, which
+depends on $q_i$ but not on $n_i$, is also small and the structure of
+$\bm T_i$ and $\bm S_i$ is often very simple.
+
+Consider our example of 3 observations on each of 5 subjects.  For the
+random effects term \code{(1|subj)} $q_i=1$ and $\bm{T}_i$, which is a
+$1\times 1$ unit lower triangular matrix, must be $[1]$, the $1\times
+1$ identity matrix. Hence $\tilde{\bm{T}}_i=\bm{I}_{5}$ and the
+decomposition $\tilde{\bm\Sigma}=\tilde{\bm T}\tilde{\bm S}\tilde{\bm S}
+\tilde{\bm T}\trans$ reduces to
+$\tilde{\bm\Sigma}=\tilde{\bm S}\tilde{\bm S}$.
+Furthermore, $\bm{S}_i=[\theta_{i,1}]$ subject to $\theta_{i,1}\ge 0$,
 \begin{displaymath}
-  \tilde{\bm{S}}_i=\theta_{i,1}\bm{I}_{n_i}
+  \tilde{\bm S}_i=\theta_{i,1}\bm I_5
 \end{displaymath}
 and
 \begin{displaymath}
-  \tilde{\bm\Sigma}_i=\tilde{\bm{T}}_i\tilde{\bm{S}}_i\tilde{\bm{S}}_i\tilde{\bm{T}}_i\trans=
-    \theta_{i,1}^2\bm{I}_{n_i}
+  \tilde{\bm\Sigma}_i=\tilde{\bm S}_i\tilde{\bm S}_i=\theta_{i,1}^2\bm{I}_5 .
 \end{displaymath}
 
 For a term like \code{(time|subj)} in which $q_i=2$ let us write
@@ -329,14 +374,30 @@ $\bm\theta_i$ as $[a,b,c]\trans$.  Then
     0 & b
   \end{bmatrix}
 \end{displaymath}
+so that
+\begin{displaymath}
+  \tilde{\bm S}_i=
+  \begin{bmatrix}
+    a\bm I_5 & \bm 0\\
+    \bm 0 & b\bm I_5
+  \end{bmatrix}
+\end{displaymath}
 and
 \begin{displaymath}
   \bm{T}_i=
   \begin{bmatrix}
     1 & 0 \\
     c & 1
-  \end{bmatrix} .
+  \end{bmatrix}
 \end{displaymath}
+so that
+\begin{displaymath}
+  \tilde{\bm T}_i=
+  \begin{bmatrix}
+    \bm I_5 & \bm 0\\
+    c\bm I_5 & \bm I_5
+  \end{bmatrix}
+\end{displaymath} .
 The constraints on $\bm\theta_i$ are $a\ge 0$ and $b\ge 0$.
 
 \subsection{Orthogonal random effects}
@@ -395,9 +456,10 @@ Note that $d_{\bm{u}}$ depends on $\bm\theta$ but $d_{\bm{b}}$ does not.
 
 In the next section we will evaluate an integral with respect to
 $\bm{b}$ by changing the variable of integration to $\bm{u}$.  When
-performing the change of variable we must incorporate
-the determinant of the Jacobian of the transformation
-$\bm{b}=\bm{T}\bm{S}\bm{u}$, which is
+performing the change of variable on an integral with respect to a
+vector we must incorporate the determinant of the Jacobian of the
+transformation.  For the transformation $\bm{b}=\bm{T}\bm{S}\bm{u}$
+this is
 \begin{displaymath}
   \left|\frac{d\bm{b}}{d\bm{u}}\right|=
   \left|\bm{T}\bm{S}\right|=\left|\bm{T}\right|\,\left|\bm{S}\right|=\left|\bm{S}\right|
@@ -418,13 +480,14 @@ non-negative.  Furthermore,
 \label{sec:log-likelihood}
 
 If the distribution of $\bm{y}$ is continuous, the likelihood of the
-parameters $\bm{\beta}$, $\bm{\theta}$ and $\sigma^2$ given $\bm{y}$,
-written $L(\bm{\beta},\bm{\theta},\sigma^2|\bm{y})$, is equal to the
+parameters, $\bm{\beta}$, $\bm{\theta}$ and $\sigma^2$, given the
+observed data, $\bm{y}$,
+is equal to the
 marginal density of $\bm{y}$ given the parameters.  If the
 distribution of $\bm{y}$ is discrete, the likelihood is equal to the
 marginal probability mass function of $\bm{y}$ given the parameters.
 
-In either case we can write
+In either case we can write the likelihood as
 \begin{equation}
   \label{eq:marginal}
   L(\bm{\beta},\bm{\theta},\sigma^2|\bm{y})=\int_{\bm{b}}
@@ -444,15 +507,16 @@ which the density function is
   {\left(2\pi\sigma^2\right)^{q/2}|\bm{\Sigma}|^{1/2}} .
 \end{equation}
 Substituting (\ref{eq:conddens}) and (\ref{eq:bdensity}) into
-(\ref{eq:marginal}) produces
+(\ref{eq:marginal}) and changing the variable of integration
+from $\bm b$ to $\bm u$ produces
 \begin{equation}
   \label{eq:likelihoodb}
   \begin{aligned}
     L(\bm{\beta},\bm{\theta},\sigma^2|\bm{y})
-    =&\int_{\bm{b}}\frac{k(\sigma^2)}{\left(2\pi\sigma^2\right)^{q/2}|\bm{\Sigma}|^{1/2}}
+    =&\int_{\bm{b}}\frac{k(\sigma^2,\bm y)}{\left(2\pi\sigma^2\right)^{q/2}|\bm{\Sigma}|^{1/2}}
     \exp\left[{\frac{d_{\bm{b}}(\bm{b},\bm\beta,\bm{y})+
           \bm{b}\trans\bm{\Sigma}^{-1}\bm{b}}{-2\sigma^2}}\right]\,d\bm{b}\\
-    =&\int_{\bm{u}}\frac{k(\sigma^2)}{\left(2\pi\sigma^2\right)^{q/2}}
+    =&\int_{\bm{u}}\frac{k(\sigma^2,\bm y)}{\left(2\pi\sigma^2\right)^{q/2}}
     \exp\left[\frac{d_{\bm{u}}(\bm{u},\bm\beta,\bm\theta,\bm{y})+\bm{u}\trans\bm{u}}{-2\sigma^2}\right]\,d\bm{u}
   \end{aligned}
 \end{equation}
@@ -466,28 +530,28 @@ The numerator of the exponent in (\ref{eq:likelihoodb}),
 \begin{equation}
   \label{eq:delta}
   \delta(\bm{u}|\bm\beta,\bm\theta,\bm{y})=
-  d_{\bm{u}}(\bm{u},\bm\beta,\bm\theta,\bm{y})+\bm{u}\trans\bm{u}
+  d_{\bm{u}}(\bm{u},\bm\beta,\bm\theta,\bm{y})+\bm{u}\trans\bm{u} ,
 \end{equation}
-is called the \emph{penalized discrepancy}.  For the
-models we will consider it is relatively straightforward to
+is called the \emph{penalized discrepancy}.  We will see that, for the
+models we are considering, it is relatively straightforward to
 determine the minimizer of the penalized discrepancy
 \begin{equation}
   \label{eq:tildeu}
-  \tilde{\bm{u}}(\bm{\beta},\bm{\theta})=
+  \tilde{\bm{u}}(\bm\beta,\bm\theta,\bm y)=
   \arg\min_{\bm{u}}\delta(\bm{u}|\bm{\beta},\bm{\theta},\bm{y}) ,
 \end{equation}
 either directly, as the solution to a penalized least squares problem,
 or through an iterative algorithm in which each iteration requires the
-solution to a penalized least squares problem.
+solution of a penalized least squares problem.
 
-Because the minimizer of the penalized discrepancy maximizes the conditional
-density
+For a fixed value of $\sigma^2$ the minimizer of the penalized
+discrepancy maximizes the conditional density
 \begin{displaymath}
   f_{\bm{u}|\bm{y}}(\bm{u}|\bm\beta,\bm\theta,\bm{y})=
-  \frac{k(\sigma^2)e^{-\delta_{\bm{u}}(\bm{u},\bm\beta,\bm\theta,\bm{y})
-      /(2\sigma^2)}}{(2\pi\sigma^2)^{q/2}}
+  \frac{k(\sigma^2,\bm y)e^{-\delta(\bm{u},\bm\beta,\bm\theta,\bm{y})
+      /(2\sigma^2)}}{(2\pi\sigma^2)^{q/2}}.
 \end{displaymath}
-we call $\tilde{\bm{u}}(\bm{\beta},\bm{\theta})$ the
+That is, $\tilde{\bm{u}}(\bm\beta,\bm\theta,\bm y)$ is the
 \emph{conditional mode} of $\bm{u}$ given $\bm{\beta}$, $\bm{\theta}$
 and $\bm{y}$.
 
@@ -513,39 +577,53 @@ exponent.  To evaluate an integral of the form
   \exp\left[\frac{(\bm{u}-\tilde{\bm{u}})\trans\bm{L}\bm{L}\trans(\bm{u}-\tilde{\bm{u}})}
     {-2\sigma^2}\right]\,d\bm{u}
 \end{displaymath}
-we use a change of variable to
-\begin{displaymath}
-  \bm{v}=\bm{L}\trans(\bm{u}-\tilde{\bm{u}})/\sigma
-\end{displaymath}
-for which the determinant of the Jacobian is
+we change the variable variable of integration from $\bm u$ to
+\begin{equation}
+  \label{eq:vLu}
+  \bm{v}=\bm{L}\trans(\bm{u}-\tilde{\bm{u}})/\sigma .
+\end{equation}
+The determinant of the Jacobian of the transformation (\ref{eq:vLu}) is
 \begin{displaymath}
   \left|\frac{d\bm{v}}{d\bm{u}}\right|=\frac{|\bm{L}|}{\sigma^q} .
 \end{displaymath}
-This change of variable reduces the integral to
+and $I$ becomes a multiple of the integral of the standard $q$-variate
+normal density
 \begin{equation}
   \label{eq:reducedint}
   I=\int_{\bm{v}}\frac{e^{-\bm{v}\trans\bm{v}/2}}{\left(2\pi\right)^{q/2}}
   \frac{d\bm{v}}{|\bm{L}|}= \frac{1}{|\bm{L}|}
   \int_{\bm{v}}\frac{e^{-\bm{v}\trans\bm{v}/2}}{\left(2\pi\right)^{q/2}}\,d\bm{v}
-  =|\bm{L}|^{-1}
+  =|\bm{L}|^{-1} .
 \end{equation}
-provided that $\bm{L}$ is non-singular, which will be the case when
-$\bm{L}$ is the Cholesky factor of $\left.\frac{1}{2}\nabla_{\bm{u}}^2
+Expression (\ref{eq:reducedint}) requires that $\bm{L}$ is
+non-singular, which will be the case when $\bm{L}$ is the Cholesky
+factor of $\left.\frac{1}{2}\nabla_{\bm{u}}^2
   \delta(\bm{u}|\bm{\beta},\bm{\theta},\bm{y})\right|_{\bm{u}=\tilde{\bm{u}}}$.
 
 Returning to expression (\ref{eq:likelihoodb}), we can now express the
-Laplace approximation to the likelihood function or, as more commonly
-used as an optimization criterion, the log-likelihood
-$\ell(\bm{\beta},\bm{\theta},\sigma^2|\bm{y})=
-\log L(\bm{\beta},\bm{\theta},\sigma^2|\bm{y})$.  On the deviance scale
-(twice the negative log-likelihood) the approximation is
+Laplace approximation to the likelihood function or the log-likelihood,
+\begin{equation}
+  \label{eq:loglikelihood}
+  \ell(\bm{\beta},\bm{\theta},\sigma^2|\bm{y})=
+  \log L(\bm{\beta},\bm{\theta},\sigma^2|\bm{y}) ,
+\end{equation}
+which is more commonly used as the optimization criterion when
+determining maximum likelihood estimates.  (Because the logarithm
+function is monotonic, the maximizer of the log-likelihood function
+also maximizes the likelihood function and generally the quadratic
+approximation to the log-likelihood is much better than the quadratic
+approximation to the likelihood.)
+
+On the deviance scale (twice the negative log-likelihood) the Laplace
+approximation is
 \begin{equation}
   \label{eq:LaplaceDev}
-  -2\ell(\bm{\beta},\bm{\theta},\sigma^2|\bm{y})=-2\log[k(\sigma^2)]+
-  \frac{\delta(\tilde{\bm{u}}|\bm{\beta},\bm{\theta},\bm{y})}{\sigma^2}
-  +2\log|\bm{L}|
+  -2\ell(\bm{\beta},\bm{\theta},\sigma^2|\bm{y})\approx-2\log[k(\sigma^2)]+
+  \frac{\delta(\tilde{\bm u}|\bm\beta,\bm\theta,\bm y)}{\sigma^2}
+  +2\log|\bm L| .
 \end{equation}
-The Laplace approximation (\ref{eq:LaplaceDev}) will be exact when the
+Expression (\ref{eq:LaplaceDev}) will be an exact expression for the
+log-likelihood and not just an approximation whenever the
 penalized discrepancy $\delta(\bm{u}|\bm{\beta},\bm{\theta},\bm{y})$
 is a quadratic function of $\bm{u}$.
 
@@ -628,15 +706,14 @@ $\bm{V}(\bm\theta)\trans\bm{V}(\bm\theta)+\bm{I}$.
 
 We could use $\bm{L}(\bm\theta)$ and
 $\tilde{\bm{u}}(\bm\beta,\bm\theta,\bm{y})$ from
-(\ref{eq:conditionalMode}) to evaluate (\ref{eq:LaplaceDev}), the
-expression for the Laplace approximation to the deviance which, in
-this case, is an exact expression for the deviance and not just an
-approximation.
+(\ref{eq:conditionalMode}) to evaluate the log-likelihood using
+(\ref{eq:LaplaceDev}), which is exact because the penalized
+discrepancy is quadratic for linear mixed models.
 However, we can take advantage of the fact that
 $\delta(\bm{u}|\bm{\beta},\bm{\theta},\bm{y})$ is a quadratic function
 of both $\bm{u}$ and $\bm{\beta}$ to minimize $\delta$ with respect to
 $\bm{u}$ and $\bm{\beta}$ simultaneously.  For a given value of
-$\bm{\theta}$ we form the Cholesky factorization
+$\bm{\theta}$ we evaluate the Cholesky factorization
 \begin{equation}
   \label{eq:bigChol}
     \begin{bmatrix}
@@ -679,23 +756,30 @@ With the factorization (\ref{eq:bigChol}) we can write
     \right\|^2\\
     &=r^2+\left\|\bm{L}_X\trans\bm{\beta}-\bm{\ell}_{Xy}\right\|^2+
     \left\|\bm{L}\trans\bm{u}+\bm{L}_{VX}\trans\bm{\beta}-\bm{\ell}_{Vy}\right\|^2\\
-    &=r^2+\left\|\bm{L}_X\trans\left(\bm{\beta}-\widehat{\bm{\beta}}\right)\right\|^2+
-    \left\|\bm{L}\trans\left(\bm{u}-\widehat{\bm{u}}\right)\right\|^2
+    &=r^2+\left\|\bm{L}_X(\bm\theta)\trans\left(\bm{\beta}-
+        \widehat{\bm\beta}(\bm\theta)\right)\right\|^2+
+    \left\|\bm{L}(\bm\theta)\trans\left(\bm u-\widehat{\bm u}(\bm\theta)\right)\right\|^2
   \end{aligned}
 \end{equation}
-where $\widehat{\bm{\beta}}$, the conditional estimate of $\bm{\beta}$
-given $\bm{\theta}$, and $\widehat{\bm{u}}$, the conditional mode of
+where $\widehat{\bm\beta}(\bm\theta)$, the conditional estimate of $\bm{\beta}$
+given $\bm{\theta}$, and $\widehat{\bm u}(\bm\theta)$, the conditional mode of
 $\bm{u}$ given $\bm{\theta}$ and $\widehat{\bm{\beta}}(\bm{\theta})$, are
 the solutions to
 \begin{align}
   \label{eq:conditionalbeta}
-  \bm{L}_X\trans\widehat{\bm{\beta}}(\bm{\theta})&=\bm{\ell}_{Xy}\\
+  \bm{L}_X(\bm\theta)\trans\widehat{\bm\beta}(\bm\theta)&=\bm{\ell}_{Xy}(\bm\theta)\\
   \label{eq:conditionalu}
-  \bm{L}\trans\widehat{\bm{u}}(\bm{\theta})
-  &=\bm{\ell}_{Vy}-\bm{L}_{VX}\trans\widehat{\bm{\beta}} .
+  \bm{L}(\bm\theta)\trans\widehat{\bm{u}}(\bm{\theta})
+  &=\bm{\ell}_{Vy}(\bm\theta)-\bm{L}_{VX}(\bm\theta)\trans\widehat{\bm\beta}(\bm\theta) .
 \end{align}
 Furthermore, the minimum of the penalized discrepancy, conditional on
-$\bm{\theta}$, is $r^2$.
+$\bm{\theta}$, is
+\begin{equation}
+  \label{eq:mindisc}
+  \min_{\bm u}\delta(\bm u|\widehat{\bm\beta}(\bm\theta),\bm\theta,
+  \bm y)=r^2(\bm\theta) .
+\end{equation}
+
 
 The deviance function,
 $-2\ell(\bm{\beta},\bm{\theta},\sigma^2|\bm{y})$, at the conditional
@@ -714,7 +798,7 @@ provides the conditional estimate
   \widehat{\sigma^2}(\bm{\theta})=\frac{r^2(\bm\theta)}{n} .
 \end{equation}
 Substituting this estimate into (\ref{eq:reducedDev}) provides the
-profiled deviance function
+\emph{profiled deviance} function
 \begin{equation}
   \label{eq:profiledDeviance}
   \begin{aligned}
@@ -732,16 +816,16 @@ That is, the maximum likelihood estimate (mle) of $\bm{\theta}$ is
 \end{equation}
 The mle's of the other parameters are determined from
 $\widehat{\bm\theta}$ using (\ref{eq:mlsigmasq}) and
-(\ref{eq:conditionalbeta}).  The conditional mode of the orthogonal
-random effects $\widehat{\bm{u}}(\widehat{\bm\theta})$, from
-(\ref{eq:conditionalu}) and the corresponding conditional mode of the
+(\ref{eq:conditionalbeta}).  The conditional modes of the orthogonal
+random effects, $\widehat{\bm{u}}(\widehat{\bm\theta})$, evaluated using
+(\ref{eq:conditionalu}), and the corresponding conditional modes of the
 untransformed random effects,
 \begin{equation}
   \label{eq:lmmBLUP}
   \widehat{\bm{b}}(\widehat{\bm\theta})=
   \bm{T}(\widehat{\bm\theta})
   \bm{S}(\widehat{\bm\theta})
-  \widehat{\bm{u}}(\widehat{\bm\theta})
+  \widehat{\bm{u}}(\widehat{\bm\theta}) ,
 \end{equation}
 are called the \emph{Best Linear Unbiased Predictor} (BLUPs) of the
 random effects.
@@ -749,8 +833,8 @@ random effects.
 The three terms in the objective function being minimized in
 (\ref{eq:lmmThetaMle}) are, respectively, a constant,
 $n\left[1+\log\left(2\pi/n\right)\right]$, a measure of the fidelity
-of the fitted values to the observed data, $n\log r^2(\bm{\theta})$,
-and a measure of model complexity, $2\log|\bm{L}(\bm{\theta})|$.
+of the fitted values to the observed data, $n\log r^2(\widehat{\bm\theta})$,
+and a measure of model complexity, $2\log|\bm{L}(\widehat{\bm\theta})|$.
 Thus we can consider maximum likelihood estimation of the parameters in
 a linear mixed model to be balancing fidelity to the data against model
 complexity.
@@ -1057,6 +1141,77 @@ solution to
   \left(\bm{M}\trans\bm{M}+\bm{I}\right)\tilde{\bm{u}}=
   \bm{M}\trans\left(\bm{y}-\bm{\mu}_{\bm{0}}(\bm{\beta})\right)
 \end{equation}
+
+\section{Generalized linear mixed models}
+\label{sec:GLMM}
+
+A generalized linear mixed model differs from a linear mixed model in
+the form of the conditional distribution of $\bm{y}$ given $\bm\beta$,
+$\bm{b}$ and, possibly, $\sigma^2$, which determines the discrepancy
+function $d(\bm\mu,\bm{y})$, and in the mapping from the linear
+predictor, $\bm\eta$, to the conditional mean, $\bm\mu$.  This
+mapping between $\bm\eta$ and $\bm\mu$ is assumed to be one-to-one and
+to enforce any constraints on the elements of $\bm\mu$, such as the
+mean of a Bernoulli or binomial random variable being in the range
+$0\le\left\{\bm\mu\right\}_k\le 1, k=1,\dots,n$ or the mean of a
+Poisson random variable being positive.  By convention, it is the mapping
+from $\bm\mu$ to $\bm\eta=\bm{g}\left(\bm\mu\right)$ that is called
+the \emph{link function}, so the inverse mapping,
+$\bm\mu=\bm{g}^{-1}\left(\bm\eta\right)$, is called
+the \emph{inverse link}.
+
+Although we have written the link and the inverse link as functions of
+vectors, they are defined in terms of scalar functions, so that
+\begin{equation}
+  \label{eq:vectorlink}
+  \begin{aligned}
+    \eta_k&=\left\{\bm\eta\right\}_k=
+    \left\{\bm{g}(\bm\eta)\right\}_k
+    =g\left(\left\{\bm\eta\right\}\right)=g(\mu_k)\quad k=1,\dots,n\\
+    \mu_k&=\left\{\bm\mu\right\}_k=
+    \left\{\bm{g}^{-1}(\bm\mu)\right\}_k
+    =g^{-1}\left(\left\{\bm\mu\right\}\right)\quad k=1,\dots,n .
+  \end{aligned}
+\end{equation}
+where $g(\mu)$ and $g^{-1}(\eta)$ are the scalar link and inverse link
+functions, respectively.  Furthermore, the elements of
+$\bm y$ are assumed to be conditionally independent, given $\bm\mu$,
+and for $k=1,\dots,n$ the distribution of $y_k$ depends only on
+$\mu_k$ and, possibly, $sigma^2$.  That is, the discrepancy function
+can be written
+\begin{equation}
+  \label{eq:devianceresid}
+  d(\bm\mu,\bm y)=\sum_{k=1}^n r_D^2(\mu_k,y_k)
+\end{equation}
+where $r_D$ is the \emph{deviance residual} function.  For many models
+the discrepancy defines
+
+\subsection{Examples of deviance residual and link functions}
+\label{sec:devianceresid}
+
+If the $y_k,k=1,\dots,n$ are binary responses (i.e. each $y_k$ is
+either $0$ or $1$) and they are conditionally independent given
+$\bm\mu$, then the conditional distribution of $\bm{y}$
+given $\bm\mu$ has probability mass function
+\begin{equation}
+  \label{eq:Bernoulli}
+  f_{\bm{y}|\bm\mu}(\bm{y},\bm\mu)=
+  \prod_{k=1}^n\mu_k^{y_k}\left(1-\mu_k\right)^{\left(1-y_k\right)}
+\end{equation}
+Because the distribution of $y_k$ is completely determined by $\mu_k$
+there is no need for a separate scale factor, $\sigma^2$, and
+expression (\ref{eq:conddens}) for the conditional density in terms of
+the discrepancy can be written
+\begin{equation}
+  \label{eq:condBernoulli}
+  f_{\bm{y}|\bm\mu}(\bm{y}|\bm\mu)=k e^{-d(\bm\mu,\bm y)/2} .
+\end{equation}
+Thus the discrepancy function must be
+\begin{equation}
+  \label{eq:discrBernoulli}
+  d(\bm\mu,\bm y)=
+\end{equation}
+
 
 \bibliography{lme4}
 \end{document}

@@ -1,3 +1,8 @@
+2007-06-11 19:02  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r4449] DESCRIPTION, inst/doc/Theory.Rnw, inst/doc/lme4.bib: Added
+	  Theory vignette, release 0.99875-1
+	
 2007-06-07 21:15  Douglas Bates <bates@stat.wisc.edu>
 
 	* [r4446] DESCRIPTION, NAMESPACE, R/AllClass.R, R/lmer.R,
