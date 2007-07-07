@@ -26,15 +26,14 @@ static void
 internal_mer_RZXinv(SEXP x)
 {
     SEXP RZXP = GET_SLOT(x, lme4_RZXSym);
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
-    cholmod_dense *RZX = M_as_cholmod_dense(RZXP), *tmp1;
-    int *dims = INTEGER(GET_SLOT(RZXP, lme4_DimSym)),
-	*Perm = (int *)(L->Perm);
+    int *dims = INTEGER(GET_SLOT(RZXP, lme4_DimSym));
     int i, j, p = dims[1], q = dims[0];
-    int *iperm = Calloc(q, int);
-    double *RZXinv = REAL(GET_SLOT(GET_SLOT(x, lme4_RZXinvSym), lme4_xSym)),
-	m1[2] = {-1, 0};
-
+    double m1[2] = {-1, 0},
+	*RZXinv = REAL(GET_SLOT(GET_SLOT(x, lme4_RZXinvSym), lme4_xSym));
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+    CHM_DN RZX = AS_CHM_DN(RZXP), tmp1;
+    int *Perm = (int *)(L->Perm), *iperm = alloca(q * sizeof(int));
+    R_CheckStack();
 				/* create the inverse permutation */
     for (j = 0; j < q; j++) iperm[Perm[j]] = j;
 				/* solve system in L' */
@@ -48,7 +47,6 @@ internal_mer_RZXinv(SEXP x)
     F77_CALL(dtrsm)("R", "U", "N", "N", &q, &p, m1,
 		    REAL(GET_SLOT(GET_SLOT(x, lme4_RXXSym), lme4_xSym)),
 		    &p, RZXinv, &q);
-    Free(iperm); Free(RZX); Free(L);
 }
 
 
@@ -64,11 +62,12 @@ internal_mer_bVar(SEXP x)
     SEXP bVar = GET_SLOT(x, lme4_bVarSym);
     int *Gp = INTEGER(GET_SLOT(x, lme4_GpSym)),
 	*nc = INTEGER(GET_SLOT(x, lme4_ncSym)),
-	q = LENGTH(GET_SLOT(x, lme4_rZySym));
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
-    cholmod_sparse *rhs, *sm1, *sm2;
-    cholmod_dense *dm1;
-    int *Perm = (int *)(L->Perm), *iperm = Calloc(q, int), i, nf = LENGTH(bVar);
+	q = LENGTH(GET_SLOT(x, lme4_rZySym)), i, nf = LENGTH(bVar);
+    CHM_SP rhs, sm1, sm2;
+    CHM_DN dm1;
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+    int *Perm = (int *)(L->Perm), *iperm = alloca(q * sizeof(int));
+    R_CheckStack();
 
     for (i = 0; i < q; i++) iperm[Perm[i]] = i; /* inverse permutation */
     for (i = 0; i < nf; i++) {
@@ -96,7 +95,6 @@ internal_mer_bVar(SEXP x)
 	    M_cholmod_free_dense(&dm1, &c);
 	}
     }
-    Free(L); Free(iperm);
 }
 
 /**
@@ -115,9 +113,10 @@ double lmm_deviance(SEXP x, double sigma, const double beta[])
     SEXP rXy = GET_SLOT(x, lme4_rXySym);
     int i, ione = 1, p = LENGTH(rXy);
     double *dcmp = REAL(GET_SLOT(x, lme4_devCompSym)),
-	*betacp = Memcpy(Calloc(p, double), beta, p),
+	*betacp = Memcpy((double*)alloca(p * sizeof(double)), beta, p),
 	*rXyp = REAL(rXy),
 	sprss; /* scaled penalized rss */
+    R_CheckStack();
 
     mer_factor(x);
     F77_CALL(dtrmv)("U", "N", "N", &p,
@@ -128,7 +127,6 @@ double lmm_deviance(SEXP x, double sigma, const double beta[])
 	double ri = (rXyp[i] - betacp[i])/sigma;
 	sprss += ri * ri;
     }
-    Free(betacp);
 
     return dcmp[4] - dcmp[5] + dcmp[0] * log(2.*PI*sigma*sigma) + sprss;
 }
@@ -147,12 +145,13 @@ double lmm_deviance(SEXP x, double sigma, const double beta[])
 static int
 internal_mer_isNested(int nf, const int nc[], const int Gp[], const int p[])
 {
-    int **cnz = Calloc(nf, int*), ans = 1, i, j, k, nct;
+    int **cnz = alloca(nf * sizeof(int*)), ans = 1, i, j, k, nct;
 
     for (i = 0, nct = 0; i < nf; i++) { /* total number of columns */
 	nct += nc[i];
-	cnz[i] = Calloc(nc[i], int);
+	cnz[i] = alloca(nc[i] * sizeof(int));
     }
+    R_CheckStack();
     for (i = 0; i < nf; i++) {	/* target number of nonzeros per column */
 	for (j = 0; j < nc[i]; j++) cnz[i][j] = nct - j;
 	nct -= nc[i];
@@ -166,8 +165,6 @@ internal_mer_isNested(int nf, const int nc[], const int Gp[], const int p[])
 	    }
 	}
     }
-    for (i = 0, nct = 0; i < nf; i++) Free(cnz[i]);
-    Free(cnz);
     return ans;
 }
 
@@ -269,22 +266,22 @@ internal_mer_update_ZXy(SEXP x, int *perm)
 	ZtZp = GET_SLOT(ZtZ, lme4_pSym), ZtZi = GET_SLOT(ZtZ, lme4_iSym);
     int *dims = INTEGER(getAttrib(Xp, R_DimSymbol)), i, ione = 1, j;
     int n = dims[0], nnz, p = dims[1], q = LENGTH(Ztyp);
-    cholmod_sparse *ts1, *ts2,
-	*Zt = M_as_cholmod_sparse(GET_SLOT(x, lme4_ZtSym));
-    cholmod_sparse *Ztcp = M_cholmod_copy_sparse(Zt, &c);
-    int *Zp = (int*)Ztcp->p;
+    CHM_SP ts1, ts2, Zt = AS_CHM_SP(GET_SLOT(x, lme4_ZtSym));
     double *XtX = REAL(GET_SLOT(GET_SLOT(x, lme4_XtXSym), lme4_xSym)),
 	*Xty = REAL(GET_SLOT(x, lme4_XtySym)),
 	*ZtX = REAL(GET_SLOT(GET_SLOT(x, lme4_ZtXSym), lme4_xSym)),
 	*Zty = REAL(Ztyp),
 	*wts = REAL(GET_SLOT(x, lme4_wtsSym)),
 	one[] = {1, 0}, zero[] = {0,0};
-    cholmod_dense *td1, *Xd = M_as_cholmod_dense(Xp),
-	*wkrd = M_as_cholmod_dense(GET_SLOT(x, lme4_wrkresSym));
-    cholmod_dense *Xcp = M_cholmod_copy_dense(Xd, &c),
-	*wkrcp = M_cholmod_copy_dense(wkrd, &c);
+    CHM_DN td1, Xd = AS_CHM_DN(Xp),
+	wkrd = AS_CHM_DN(GET_SLOT(x, lme4_wrkresSym));
+    CHM_DN Xcp = M_cholmod_copy_dense(Xd, &c),
+	wkrcp = M_cholmod_copy_dense(wkrd, &c);
+    CHM_SP Ztcp = M_cholmod_copy_sparse(Zt, &c);
+    int *Zp = (int*)Ztcp->p;
     double *X = (double*)(Xcp->x), *Ztx = (double*)(Ztcp->x),
 	*wtres = (double*)(wkrcp->x);
+    R_CheckStack();
 				/* Apply weights */
     for (i = 0; i < n; i++)
 	wtres[i] = ((double*)(wkrd->x))[i] * wts[i];
@@ -294,7 +291,6 @@ internal_mer_update_ZXy(SEXP x, int *perm)
     for (j = 0; j < n; j++)
 	for (i = Zp[j]; i < Zp[j + 1]; i++)
 	    Ztx[i] = ((double*)(Zt->x))[i] * wts[j];
-    Free(Zt); Free(Xd); Free(wkrd);
 
 				/* y'y */
     REAL(GET_SLOT(x, lme4_devCompSym))[2] =
@@ -508,7 +504,7 @@ SEXP mer_MCMCsamp(SEXP x, SEXP savebp, SEXP nsampp, SEXP transp,
 {
     SEXP ans, Omega = GET_SLOT(x, lme4_OmegaSym),
 	Omegacp = PROTECT(duplicate(Omega));
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
     int *Gp = INTEGER(GET_SLOT(x, lme4_GpSym)),
 	*nc = INTEGER(GET_SLOT(x, lme4_ncSym)),
 	REML = INTEGER(GET_SLOT(x, lme4_statusSym))[1],
@@ -525,12 +521,13 @@ SEXP mer_MCMCsamp(SEXP x, SEXP savebp, SEXP nsampp, SEXP transp,
 	*RZX = REAL(GET_SLOT(GET_SLOT(x, lme4_RZXSym), lme4_xSym)),
 	*bhat = REAL(GET_SLOT(x, lme4_ranefSym)),
 	*betahat = REAL(GET_SLOT(x, lme4_fixefSym)),
-	*bnew = Calloc(q, double), *betanew = Calloc(p, double),
 	*dcmp = REAL(GET_SLOT(x, lme4_devCompSym)),
 	*ansp, df = n - (REML ? p : 0);
     int nrbase = p + 1 + coef_length(nf, nc); /* rows always included */
     int nrtot = nrbase + deviance + (saveb ? q : 0);
-    cholmod_dense *chbnew = M_numeric_as_chm_dense(bnew, q);
+    double *bnew = alloca(q * sizeof(double)), *betanew = alloca(p * sizeof(double));
+/*     CHM_DN chbnew = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), bnew, q); */
+    R_CheckStack();
 
     if (nsamp <= 0) nsamp = 1;
     ans = PROTECT(allocMatrix(REALSXP, nrtot, nsamp));
@@ -563,12 +560,10 @@ SEXP mer_MCMCsamp(SEXP x, SEXP savebp, SEXP nsampp, SEXP transp,
 	if (verbose) Rprintf("%12.6g %14.8g\n", sigma, dev);
     }
     PutRNGstate();
-    Free(betanew); Free(bnew); Free(chbnew);
 				/* Restore original Omega */
     SET_SLOT(x, lme4_OmegaSym, Omegacp);
     internal_mer_refactor(x);
 
-    Free(L);
     UNPROTECT(2);
     return ans;
 }
@@ -592,7 +587,7 @@ SEXP mer_create(SEXP fl, SEXP ZZt, SEXP Xp, SEXP yp, SEXP REMLp,
 {
     SEXP Omega, bVar, gradComp, fnms = getAttrib(fl, R_NamesSymbol),
 	stat, val = PROTECT(NEW_OBJECT(MAKE_CLASS("mer"))), xnms;
-    cholmod_sparse *ts1, *ts2, *Zt;
+    CHM_SP ts1, ts2, Zt;
     cholmod_factor *F;
     int *nc = INTEGER(ncp), *Gp, *xdims, REML = asInteger(REMLp),
 	i, nested, nf = LENGTH(fl), nobs = LENGTH(yp), p, q;
@@ -626,7 +621,8 @@ SEXP mer_create(SEXP fl, SEXP ZZt, SEXP Xp, SEXP yp, SEXP REMLp,
 	error(_("ncp must be an integer vector of length %d"), nf);
     SET_SLOT(val, lme4_ncSym, duplicate(ncp));
     SET_SLOT(val, lme4_ZtSym, duplicate(ZZt));
-    Zt = M_as_cholmod_sparse(GET_SLOT(val, lme4_ZtSym));
+    Zt = AS_CHM_SP(GET_SLOT(val, lme4_ZtSym));
+    R_CheckStack();
     q = Zt->nrow;
 				/* allocate other slots */
     SET_SLOT(val, lme4_devianceSym, internal_make_named(REALSXP, devnms));
@@ -696,7 +692,6 @@ SEXP mer_create(SEXP fl, SEXP ZZt, SEXP Xp, SEXP yp, SEXP REMLp,
     y = REAL(GET_SLOT(val, lme4_ySym));
     for (i = 0; i < nobs; i++) {wts[i] = 1.; wrkres[i] = y[i];}
     internal_mer_update_ZXy(val, (int*)(F->Perm));
-    Free(Zt);
 				/* secondary slots */
     SET_SLOT(val, lme4_ranefSym, allocVector(REALSXP, q));
     SET_SLOT(val, lme4_fixefSym, allocVector(REALSXP, p));
@@ -781,18 +776,19 @@ SEXP mer_coefGets(SEXP x, SEXP coef, SEXP pType)
 SEXP mer_hat_trace(SEXP x)
 {
     SEXP Zt = GET_SLOT(x, lme4_ZtSym);
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
     int *Zti = INTEGER(GET_SLOT(Zt, lme4_iSym)),
 	*Ztp = INTEGER(GET_SLOT(Zt, lme4_pSym)), i, ione = 1, j,
 	n = INTEGER(GET_SLOT(Zt, lme4_DimSym))[1],
 	p = LENGTH(GET_SLOT(x, lme4_rXySym)),
 	q = LENGTH(GET_SLOT(x, lme4_rZySym));
-    double *Xcp = Calloc(n * p, double),
-	*RXX = REAL(GET_SLOT(GET_SLOT(x, lme4_RXXSym), lme4_xSym)),
+    double *RXX = REAL(GET_SLOT(GET_SLOT(x, lme4_RXXSym), lme4_xSym)),
 	*RZX = REAL(GET_SLOT(GET_SLOT(x, lme4_RZXSym), lme4_xSym)),
 	*Ztx = REAL(GET_SLOT(Zt, lme4_xSym)),
 	*wrk = Calloc(q, double), m1 = -1, one = 1, tr;
-    cholmod_dense *zrow = M_numeric_as_chm_dense(wrk, q);
+    double *Xcp = alloca((n * p) * sizeof(double));
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+    CHM_DN zrow = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), wrk, q);
+    R_CheckStack();
 
     mer_factor(x);
     Memcpy(Xcp, REAL(GET_SLOT(x, lme4_XSym)), n * p);
@@ -800,7 +796,7 @@ SEXP mer_hat_trace(SEXP x)
     /* Accumulate F-norm of L^{-1}Zt and downdate rows of Xcp */
 /* FIXME: Does this handle a non-trivial permutation properly? */
     for (j = 0, tr = 0; j < n; j++) { /* j'th column of Zt */
-	cholmod_dense *sol; double *sx;
+	CHM_DN sol; double *sx;
 	for (i = 0; i < q; i++) wrk[i] = 0;
 	for (i = Ztp[j]; i < Ztp[j + 1]; i++) wrk[Zti[i]] = Ztx[i];
 	sol = M_cholmod_solve(CHOLMOD_L, L, zrow, &c);
@@ -814,7 +810,6 @@ SEXP mer_hat_trace(SEXP x)
     F77_CALL(dtrsm)("R", "U", "N", "N", &n, &p, &one, RXX, &p, Xcp, &n);
     for (i = 0; i < n * p; i++) tr += Xcp[i] * Xcp[i];
 
-    Free(zrow); Free(Xcp);
     return ScalarReal(tr);
 }
 
@@ -830,15 +825,15 @@ SEXP mer_hat_trace2(SEXP x)
 {
     SEXP Omega = GET_SLOT(x, lme4_OmegaSym),
 	ncp = GET_SLOT(x, lme4_ncSym);
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
     int *Gp = INTEGER(GET_SLOT(x, lme4_GpSym)),
 	*nc = INTEGER(ncp),
 	nf = LENGTH(ncp), i, j, k,
 	p = LENGTH(GET_SLOT(x, lme4_rXySym)),
 	q = LENGTH(GET_SLOT(x, lme4_rZySym));
-    double
-	*RZXicp = Calloc(q * p, double),
-	one = 1, tr = p + q;
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+    double one = 1, tr = p + q,
+	*RZXicp = alloca((q * p) * sizeof(double));
+    R_CheckStack();
 				/* factor and evaluate RZXinv */
     mer_factor(x);
     internal_mer_RZXinv(x);
@@ -849,9 +844,9 @@ SEXP mer_hat_trace2(SEXP x)
 	int ncisqr = nci * nci, nlev = (Gp[i + 1] - Gp[i])/nci;
 	double *deli = REAL(GET_SLOT(M_dpoMatrix_chol(VECTOR_ELT(Omega, i)),
 				     lme4_xSym));
-	cholmod_sparse *sol, *Prhs,
-	    *rhs = M_cholmod_allocate_sparse(q, nci, ncisqr, TRUE, TRUE,
-					     0, CHOLMOD_REAL, &c);
+	CHM_SP sol, Prhs,
+	    rhs = M_cholmod_allocate_sparse(q, nci, ncisqr, TRUE, TRUE,
+					    0, CHOLMOD_REAL, &c);
 	int *rhi = (int *)(rhs->i), *rhp = (int *)(rhs->p);
 	double *rhx = (double *)(rhs->x);
 
@@ -884,7 +879,6 @@ SEXP mer_hat_trace2(SEXP x)
 	M_cholmod_free_sparse(&rhs, &c);
     }
     for (i = 0; i < q * p; i++) tr -= RZXicp[i] * RZXicp[i];
-    Free(RZXicp);
     return ScalarReal(tr);
 }
 
@@ -897,14 +891,14 @@ SEXP mer_hat_trace2(SEXP x)
  */
 SEXP mer_dtCMatrix(SEXP x)
 {
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym)), *Lcp;
-    cholmod_sparse *Lm;
     SEXP ans = PROTECT(NEW_OBJECT(MAKE_CLASS("dtCMatrix")));
-    int *dims = INTEGER(ALLOC_SLOT(ans, lme4_DimSym, INTSXP, 2)),
-	nz, q;
+    int *dims = INTEGER(ALLOC_SLOT(ans, lme4_DimSym, INTSXP, 2)), nz, q;
+    CHM_SP Lm;
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym)), Lcp;
+    R_CheckStack();
 
     dims[0] = dims[1] = q = (int)(L->n);
-    Lcp = M_cholmod_copy_factor(L, &c); Free(L); /* next call changes Lcp */
+    Lcp = M_cholmod_copy_factor(L, &c); /* next call changes Lcp */
     Lm = M_cholmod_factor_to_sparse(Lcp, &c); M_cholmod_free_factor(&Lcp, &c);
     SET_SLOT(ans, lme4_uploSym, mkString("L"));
     SET_SLOT(ans, lme4_diagSym, mkString("N"));
@@ -929,7 +923,7 @@ SEXP mer_dtCMatrix(SEXP x)
  */
 SEXP mer_dtCMatrix_inv(SEXP x)
 {
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
     cholmod_sparse
 	*b = M_cholmod_allocate_sparse(L->n, L->n, L->n, 1, 1,
 				       0, CHOLMOD_REAL, &c),
@@ -978,7 +972,6 @@ SEXP mer_factor(SEXP x)
 	SEXP rXyP = GET_SLOT(x, lme4_rXySym),
 	    rZyP = GET_SLOT(x, lme4_rZySym);
 	int i, info, ione = 1, p = LENGTH(rXyP), q = LENGTH(rZyP);
-	cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
 	double *RXX = REAL(GET_SLOT(GET_SLOT(x, lme4_RXXSym), lme4_xSym)),
 	    *RZX = REAL(GET_SLOT(GET_SLOT(x, lme4_RZXSym), lme4_xSym)),
 	    *rXy = REAL(rXyP), *rZy = REAL(rZyP),
@@ -986,6 +979,8 @@ SEXP mer_factor(SEXP x)
 	    *dev = REAL(GET_SLOT(x, lme4_devianceSym)),
 	    one[2] = {1, 0}, m1[2] = {-1, 0};
 	double nml = dcmp[0], nreml = dcmp[0] - dcmp[1];
+	CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+	R_CheckStack();
 
 	/* Inflate Z'Z to Z'Z+Omega and factor to form L. Form RZX and
 	 * rZy. Update stage flag, dcmp[4] and dcmp[5]. */
@@ -1009,7 +1004,6 @@ SEXP mer_factor(SEXP x)
 	dev[1] = dcmp[4] - dcmp[5] + dcmp[6] +
 	    nreml*(1.+dcmp[3]+log(2.*PI/nreml));
 	if (dcmp[7] >= 0) dcmp[7] = internal_mer_sigma(x, -1);
-	Free(L);
 	status[0] = 1;
     }
     return R_NilValue;
@@ -1082,7 +1076,6 @@ SEXP mer_gradComp(SEXP x)
 	    gradComp = GET_SLOT(x, lme4_gradCompSym),
 	    ranefP = GET_SLOT(x, lme4_ranefSym);
 	int q = LENGTH(ranefP), p = LENGTH(GET_SLOT(x, lme4_rXySym));
-	cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
 	int *Gp = INTEGER(GET_SLOT(x, lme4_GpSym)),
 	    *nc = INTEGER(GET_SLOT(x, lme4_ncSym)),
 	    i, j, k, nf = length(OmegaP);
@@ -1090,6 +1083,8 @@ SEXP mer_gradComp(SEXP x)
 	    *RZXinv = REAL(GET_SLOT(GET_SLOT(x, lme4_RZXinvSym),
 				    lme4_xSym)),
 	    alpha;
+/* 	CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym)); */
+	R_CheckStack();
 
 	mer_secondary(x);
 	alpha = 1./internal_mer_sigma(x, -1);
@@ -1144,7 +1139,6 @@ SEXP mer_gradComp(SEXP x)
 	    }
 	    Free(tmp);
 	}
-	Free(L);
 	status[0] = 3;
     }
     return R_NilValue;
@@ -1280,13 +1274,13 @@ SEXP mer_initial(SEXP x)
  */
 SEXP mer_isNested(SEXP x)
 {
-    cholmod_sparse *ZtZ = M_as_cholmod_sparse(GET_SLOT(x, lme4_ZtZSym));
-    cholmod_sparse *ZtZl = M_cholmod_transpose(ZtZ, (int) ZtZ->xtype, &c);
+    CHM_SP ZtZ = AS_CHM_SP(GET_SLOT(x, lme4_ZtZSym));
+    CHM_SP ZtZl = M_cholmod_transpose(ZtZ, (int) ZtZ->xtype, &c);
     SEXP ncp = GET_SLOT(x, lme4_ncSym);
     int ans = internal_mer_isNested(LENGTH(ncp), INTEGER(ncp),
 				    INTEGER(GET_SLOT(x, lme4_GpSym)),
 				    ZtZl->p);
-    Free(ZtZ); M_cholmod_free_sparse(&ZtZl, &c);
+    M_cholmod_free_sparse(&ZtZl, &c);
     return ScalarLogical(ans);
 }
 
@@ -1432,12 +1426,13 @@ SEXP mer_simulate(SEXP x, SEXP nsimP)
 	q = LENGTH(GET_SLOT(x, lme4_ZtySym));
     SEXP ans = PROTECT(allocMatrix(REALSXP, n, nsim)),
 	Omega = GET_SLOT(x, lme4_OmegaSym);
-    cholmod_dense *cha = M_as_cholmod_dense(ans),
-	*chb = M_cholmod_allocate_dense(q, nsim, q, CHOLMOD_REAL, &c);
     double *dcmp = REAL(GET_SLOT(x, lme4_devCompSym)),
 	one[] = {1,0}, zero[] = {0,0};
     double scale = (dcmp[7] < 0) ? -dcmp[7] : dcmp[7];
-    cholmod_sparse *Zt = M_as_cholmod_sparse(GET_SLOT(x, lme4_ZtSym));
+    CHM_DN cha = AS_CHM_DN(ans),
+	chb = M_cholmod_allocate_dense(q, nsim, q, CHOLMOD_REAL, &c);
+    CHM_SP Zt = AS_CHM_SP(GET_SLOT(x, lme4_ZtSym));
+    R_CheckStack();
 
     GetRNGstate();
     for (ii = 0; ii < nsim; ii++) {
@@ -1458,7 +1453,6 @@ SEXP mer_simulate(SEXP x, SEXP nsimP)
     if (!M_cholmod_sdmult(Zt, 1, one, zero, chb, cha, &c))
 	error(_("cholmod_sdmult failed"));
     M_cholmod_free_dense(&chb, &c);
-    Free(Zt); Free(cha);
     UNPROTECT(1);
     return ans;
 }
@@ -1491,13 +1485,14 @@ SEXP mer_update_y(SEXP x, SEXP ynew)
     SEXP y = GET_SLOT(x, lme4_ySym),
 	Xty = GET_SLOT(x, lme4_XtySym),
 	Zty = GET_SLOT(x, lme4_ZtySym);
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
-    int *perm = (int*)(L->Perm), i, ione = 1,
-	n = LENGTH(y), p = LENGTH(Xty), q = LENGTH(Zty);
-    cholmod_sparse *Zt = M_as_cholmod_sparse(GET_SLOT(x, lme4_ZtSym));
-    cholmod_dense *td1, *yd = M_as_cholmod_dense(GET_SLOT(x, lme4_ySym));
     double one[] = {1,0}, zero[] = {0,0};
+    int *perm, i, ione = 1, n = LENGTH(y), p = LENGTH(Xty), q = LENGTH(Zty);
+    CHM_SP Zt = AS_CHM_SP(GET_SLOT(x, lme4_ZtSym));
+    CHM_DN td1, yd = AS_CHM_DN(GET_SLOT(x, lme4_ySym));
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+    R_CheckStack();
 
+    perm = (int*)(L->Perm);
     if (!isReal(ynew) || LENGTH(ynew) != n)
 	error(_("ynew must be a numeric vector of length %d"), n);
     Memcpy(REAL(y), REAL(ynew), n);
@@ -1509,12 +1504,11 @@ SEXP mer_update_y(SEXP x, SEXP ynew)
     if (!M_cholmod_sdmult(Zt, 0, one, zero, yd, td1, &c))
 	error(_("cholmod_sdmult failed"));
     for (i = 0; i < q; i++) REAL(Zty)[i] = ((double *)(td1->x))[perm[i]];
-    M_cholmod_free_dense(&td1, &c); Free(yd); Free(Zt);
+    M_cholmod_free_dense(&td1, &c);
     				/* Xty */
     F77_CALL(dgemv)("T", &n, &p, one, REAL(GET_SLOT(x, lme4_XSym)),
 		    &n, REAL(y), &ione, zero, REAL(Xty), &ione);
     flag_not_factored(x);
-    Free(L);
     return R_NilValue;
 }
 
@@ -1606,13 +1600,16 @@ SEXP Ztl_sparse(SEXP fl, SEXP Ztl)
  */
 SEXP Zt_carryOver(SEXP fp, SEXP Zt, SEXP tvar, SEXP discount)
 {
-    cholmod_sparse *ans, *chsz = M_as_cholmod_sparse(Zt);
-    cholmod_triplet *ant, *chtz = M_cholmod_sparse_to_triplet(chsz, &c);
-    int *cct, *p = (int*)(chsz->p), *f = INTEGER(fp);
-    int cmax, j, jj, k, last, n = LENGTH(fp), nlev, nnz, ntot, q = p[1] - p[0];
+    int *cct, *f = INTEGER(fp), *p;
+    int cmax, j, jj, k, last, n = LENGTH(fp), nlev, nnz, ntot, q;
     int *ii, *ij, *oi, *oj, dl = LENGTH(discount), ip, op;
     double *ix, *ox, *disc, *tv;
+    CHM_SP ans, chsz = AS_CHM_SP(Zt);
+    CHM_TR ant, chtz = M_cholmod_sparse_to_triplet(chsz, &c);
+    R_CheckStack();
 
+    p = (int*)(chsz->p);
+    q = p[1] - p[0];
     if (!isReal(discount))
 	error(_("discount must be a numeric vector"));
     if (!isReal(tvar))
@@ -1621,10 +1618,10 @@ SEXP Zt_carryOver(SEXP fp, SEXP Zt, SEXP tvar, SEXP discount)
 	error(_("tvar must have length %d"), n);
     tv = REAL(tvar);
     disc = REAL(discount);
-    Free(chsz);
     if (!isFactor(fp)) error(_("f must be a factor"));
     nlev = LENGTH(getAttrib(fp, R_LevelsSymbol));
-    cct = Calloc(nlev, int);
+    cct = alloca(nlev * sizeof(int));
+    R_CheckStack();
 
     if (chtz->ncol != n) error(_("ncol(Zt) must match length(fp)"));
     for (j = 0; j < n; j++)	/* check consistency of p */
@@ -1666,7 +1663,6 @@ SEXP Zt_carryOver(SEXP fp, SEXP Zt, SEXP tvar, SEXP discount)
     ans = M_cholmod_triplet_to_sparse(ant, nnz, &c);
     M_cholmod_free_triplet(&chtz, &c);
     M_cholmod_free_triplet(&ant, &c);
-    Free(cct);
     return M_chm_sparse_to_SEXP(ans, 1, 0, 0, "", R_NilValue);
 }
 

@@ -182,12 +182,14 @@ internal_Gaussian_deviance(int p, int q, cholmod_factor *L,
 			   double bhat[], double beta[], double b[])
 {
     int i, ione = 1;
-    double *bb = Calloc(q, double), *betab = Calloc(p, double), ans = 0;
-    cholmod_sparse *Lm;
-    cholmod_dense *chb = M_numeric_as_chm_dense(bb, q),
-	*Ltb = M_cholmod_allocate_dense(q, 1, q, CHOLMOD_REAL, &c);
-    cholmod_factor *Lcp;
-    double one[] = {1,0}, zero[] = {0,0};
+    CHM_SP Lm;
+    CHM_FR Lcp;
+    double ans = 0, one[] = {1,0}, zero[] = {0,0};
+    double *bb = alloca(q * sizeof(double)),
+	*betab = alloca(p * sizeof(double));
+    CHM_DN Ltb = M_cholmod_allocate_dense(q, 1, q, CHOLMOD_REAL, &c),
+	chb = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), bb, q);
+    R_CheckStack();
 
     for (i = 0; i < p; i++) betab[i] = beta[i] - betahat[i];
     for (i = 0; i < q; i++) bb[i] = b[i] - bhat[i];
@@ -202,7 +204,6 @@ internal_Gaussian_deviance(int p, int q, cholmod_factor *L,
 
     F77_CALL(dtrmv)("U", "N", "N", &p, RXX, &p, betab, &ione);
     for (i = 0; i < p; i++) ans += betab[i] * betab[i];
-    Free(chb); Free(bb); Free(betab);
     return ans;
 }
 
@@ -391,13 +392,14 @@ static int
 internal_bhat(GlmerStruct GS, const double fixed[], const double varc[])
 {
     SEXP fixef = GET_SLOT(GS->mer, lme4_fixefSym);
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(GS->mer, lme4_LSym));
     int i;
-    double crit = GS->tol + 1, *etap = REAL(GS->eta);
+    double crit = GS->tol + 1, *etap = REAL(GS->eta), *ff = REAL(fixef);
+    CHM_FR L = AS_CHM_FR(GET_SLOT(GS->mer, lme4_LSym));
+    R_CheckStack();
 
     if (varc)	  /* skip this step if varc == (double*) NULL */
 	internal_mer_coefGets(GS->mer, varc, 2);
-    Memcpy(REAL(fixef), fixed, LENGTH(fixef));
+    if (ff != fixed) Memcpy(ff, fixed, LENGTH(fixef));
     internal_glmer_reweight(GS);
     internal_mer_Zfactor(GS->mer, L);
     internal_mer_ranef(GS->mer);
@@ -412,7 +414,6 @@ internal_bhat(GlmerStruct GS, const double fixed[], const double varc[])
 	crit = conv_crit(GS->etaold, etap, GS->n);
     }
     internal_mer_Xfactor(GS->mer);
-    Free(L);
     return (crit > GS->tol) ? 0 : i;
 }
 
@@ -637,7 +638,6 @@ glmer_MCMCsamp(SEXP GSpt, SEXP savebp, SEXP nsampp, SEXP transp, SEXP verbosep,
     SEXP ans, x = GS->mer;
     SEXP Omega = GET_SLOT(x, lme4_OmegaSym),
 	Omegacp = PROTECT(duplicate(Omega));
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
     int *Gp = INTEGER(GET_SLOT(x, lme4_GpSym)),
 	*nc = INTEGER(GET_SLOT(x, lme4_ncSym)),
 	i, j, nf = LENGTH(Omega), nsamp = asInteger(nsampp),
@@ -652,11 +652,16 @@ glmer_MCMCsamp(SEXP GSpt, SEXP savebp, SEXP nsampp, SEXP transp, SEXP verbosep,
 	*RZX = REAL(GET_SLOT(GET_SLOT(x, lme4_RZXSym), lme4_xSym)),
 	*bhat = REAL(GET_SLOT(x, lme4_ranefSym)),
 	*betahat = REAL(GET_SLOT(x, lme4_fixefSym)),
-	*bcur = Calloc(q, double), *betacur = Calloc(p, double), /* current */
-	*bnew = Calloc(q, double), *betanew = Calloc(p, double), /* proposed */
 	*ansp, MHratio;
     int nrbase = p + coef_length(nf, nc); /* rows always included */
     int nrtot = nrbase + deviance + (saveb ? q : 0);
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+    double
+	*bcur = alloca(q * sizeof(double)), /* current */
+	*betacur = alloca(p * sizeof(double)), 
+	*bnew = alloca(q * sizeof(double)), /* proposed */
+	*betanew = alloca(p * sizeof(double));
+    R_CheckStack();
 
     if (nsamp <= 0) nsamp = 1;
     ans = PROTECT(allocMatrix(REALSXP, nrtot, nsamp));
@@ -705,13 +710,11 @@ glmer_MCMCsamp(SEXP GSpt, SEXP savebp, SEXP nsampp, SEXP transp, SEXP verbosep,
 	    col[nrbase - 1] = glmm_deviance(GS, betacur, bcur); 
     }
     PutRNGstate();
-    Free(bcur); Free(betacur); Free(betanew); Free(bnew);
 				/* Restore original Omega */
     SET_SLOT(x, lme4_OmegaSym, Omegacp);
     internal_bhat(GS, betahat, (double *) NULL);
     internal_mer_refactor(x);
 
-    Free(L);
     UNPROTECT(2);
     return ans;
 }

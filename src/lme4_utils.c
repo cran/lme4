@@ -201,9 +201,10 @@ double attr_hidden
 	ranef = GET_SLOT(x, lme4_ranefSym);
     int ione = 1, n = LENGTH(GET_SLOT(x, lme4_ySym)), p = LENGTH(fixef);
     double *X = REAL(GET_SLOT(x, lme4_XSym)), one[] = {1,0};
-    cholmod_sparse *Zt = M_as_cholmod_sparse(GET_SLOT(x, lme4_ZtSym));
-    cholmod_dense *chv = M_numeric_as_chm_dense(val, n),
-	*chb = M_as_cholmod_dense(ranef);
+    CHM_SP Zt = AS_CHM_SP(GET_SLOT(x, lme4_ZtSym));
+    CHM_DN chb = AS_CHM_DN(ranef),
+	chv = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), val, n);
+    R_CheckStack();	
 
     mer_secondary(x);
     if (initial) Memcpy(val, initial, n);
@@ -211,7 +212,6 @@ double attr_hidden
     F77_CALL(dgemv)("N", &n, &p, one, X, &n, REAL(fixef), &ione, one, val, &ione);
     if (!M_cholmod_sdmult(Zt, 1, one, one, chb, chv, &c))
 	error(_("Error return from cholmod_sdmult"));
-    Free(chv); Free(chb); Free(Zt);
     return val;
 }
 
@@ -304,15 +304,13 @@ void attr_hidden internal_mer_Zfactor(SEXP x, cholmod_factor *L)
 	*nc = INTEGER(GET_SLOT(x, lme4_ncSym)),
 	nf = LENGTH(Omega), q = LENGTH(rZyP),
 	p = LENGTH(GET_SLOT(x, lme4_rXySym));
-    cholmod_sparse *A, *Omg,
-	*zz = M_as_cholmod_sparse(GET_SLOT(x, lme4_ZtZSym));
-    cholmod_dense *ZtX = M_as_cholmod_dense(GET_SLOT(x, lme4_ZtXSym)),
-	*Zty = M_as_cholmod_dense(GET_SLOT(x, lme4_ZtySym)),
-	*rZy, *RZX;
     int *omp, *nnz = Calloc(nf + 1, int), i,
 	*status = INTEGER(GET_SLOT(x, lme4_statusSym));
     double *dcmp = REAL(GET_SLOT(x, lme4_devCompSym)), one[] = {1, 0};
-
+    CHM_SP A, Omg, zz = AS_CHM_SP(GET_SLOT(x, lme4_ZtZSym));
+    CHM_DN ZtX = AS_CHM_DN(GET_SLOT(x, lme4_ZtXSym)),
+	Zty = AS_CHM_DN(GET_SLOT(x, lme4_ZtySym)), rZy, RZX;
+    R_CheckStack();
 
     dcmp[5] = Omega_log_det(Omega, nc, Gp); /* logDet(Omega) */
     for (nnz[0] = 0, i = 0; i < nf; i++)
@@ -342,15 +340,15 @@ void attr_hidden internal_mer_Zfactor(SEXP x, cholmod_factor *L)
     }
     Free(nnz);
     A = M_cholmod_add(zz, Omg, one, one, TRUE, TRUE, &c);
-    Free(zz); M_cholmod_free_sparse(&Omg, &c);
+    M_cholmod_free_sparse(&Omg, &c);
     if (!M_cholmod_factorize(A, L, &c))
 	error(_("rank_deficient Z'Z+Omega"));
     M_cholmod_free_sparse(&A, &c);
     dcmp[4] = 2 * chm_log_abs_det(L); /* 2 * logDet(L) */
 
 				/* calculate and store RZX and rZy */
-    RZX = M_cholmod_solve(CHOLMOD_L, L, ZtX, &c); Free(ZtX);
-    rZy = M_cholmod_solve(CHOLMOD_L, L, Zty, &c); Free(Zty);
+    RZX = M_cholmod_solve(CHOLMOD_L, L, ZtX, &c);
+    rZy = M_cholmod_solve(CHOLMOD_L, L, Zty, &c);
     Memcpy(REAL(GET_SLOT(GET_SLOT(x, lme4_RZXSym), lme4_xSym)),
 	   (double *) RZX->x, q * p);
     M_cholmod_free_dense(&RZX, &c);
@@ -406,7 +404,8 @@ internal_betab_update(int p, int q, double sigma, cholmod_factor *L,
 		      double RZX[], double RXX[], double betahat[],
 		      double bhat[], double betanew[], double bnew[])
 {
-    cholmod_dense *chb, *chbnew = M_numeric_as_chm_dense(bnew, q);
+    CHM_DN chb,
+	chbnew = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), bnew, q);
     int *perm = (int *)L->Perm;
     int j, ione = 1;
     double m1[] = {-1,0}, one[] = {1,0}, ans = 0;
@@ -435,7 +434,6 @@ internal_betab_update(int p, int q, double sigma, cholmod_factor *L,
 	bnew[j] = ((double*)(chb->x))[pj] + bhat[pj];
     }
     M_cholmod_free_dense(&chb, &c);
-    Free(chbnew);
     return ans;
 }
 
@@ -460,21 +458,21 @@ double attr_hidden *internal_mer_ranef(SEXP x)
     if (status[0] < 2) {
 	SEXP fixef = GET_SLOT(x, lme4_fixefSym);
 	int ione = 1, p = LENGTH(fixef), q = LENGTH(ranef);
-	cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
-	cholmod_dense *td1, *td2, *chranef = M_as_cholmod_dense(ranef);
 	double *RZX = REAL(GET_SLOT(GET_SLOT(x, lme4_RZXSym), lme4_xSym)),
 	    m1[] = {-1,0}, one[] = {1,0};
+	CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+	CHM_DN td1, td2, chranef = AS_CHM_DN(ranef);
+	R_CheckStack();
 
 	Memcpy(ans, REAL(GET_SLOT(x, lme4_rZySym)), q);
 	F77_CALL(dgemv)("N", &q, &p, m1, RZX, &q, REAL(fixef), &ione,
 			one, ans, &ione);
 	td1 = M_cholmod_solve(CHOLMOD_Lt, L, chranef, &c);
 	td2 = M_cholmod_solve(CHOLMOD_Pt, L, td1, &c);
-	Free(chranef); M_cholmod_free_dense(&td1, &c);
+	M_cholmod_free_dense(&td1, &c);
 	Memcpy(ans, (double *)(td2->x), q);
 	M_cholmod_free_dense(&td2, &c);
 	status[0] = 2;
-	Free(L);
     }
     return ans;
 }

@@ -1642,7 +1642,7 @@ setMethod("simulate", "lmer2",
           cholL <- lapply(vc, chol)
           n <- object@dims["n"]
           for (i in seq_len(nsim))
-              ans[, 1] <- crossprod(object@ZXyt,
+              ans[, i] <- crossprod(object@ZXyt,
                                     c(unlist(lapply(seq_along(re), function(k)
                                                     (t(cholL[[k]]) %*%
                                                      matrix(rnorm(sz[k]),

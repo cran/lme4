@@ -6,17 +6,12 @@
 \title{Summarize a data frame by group}
 \description{
   Provide a summary of the variables in a data frame by groups of rows.
-%  This is most useful with a \code{groupedData} object to examine the
-%  variables by group.
 }
 \usage{
 gsummary(object, FUN, form, level, groups, omitGroupingFactor = FALSE, invariantsOnly = FALSE, ...)
 }
-%- maybe also 'usage' for other objects documented here.
 \arguments{
-   \item{object}{an object to be summarized - usually a \code{data.frame}
-%   object or a \code{data.frame}.
- }
+  \item{object}{an object to be summarized - usually a \code{data.frame}}
  \item{FUN}{an optional summary function or a list of summary functions
    to be applied to each variable in the frame.  The function or
    functions are applied only to variables in \code{object} that vary
@@ -33,26 +28,22 @@ gsummary(object, FUN, form, level, groups, omitGroupingFactor = FALSE, invariant
    \code{factor} and \code{ordered}.  The \code{Mode} function, defined
    internally in \code{gsummary}, returns the modal or most popular
    value of the variable.  It is different from the \code{mode} function
-   that returns the S-language mode of the variable.
- }
+   that returns the S-language mode of the variable.}
  \item{omitGroupingFactor}{an optional logical value.  When \code{TRUE}
    the grouping factor itself will be omitted from the group-wise
    summary but the levels of the grouping factor will continue to be
    used as the row names for the data frame that is produced by the
-   summary. Defaults to \code{FALSE}.
- }
+   summary. Defaults to \code{FALSE}.}
  \item{form}{an optional one-sided formula that defines the groups.
    When this formula is given, the right-hand side is evaluated in
    \code{object}, converted to a factor if necessary, and the unique
    levels are used to define the groups.  Defaults to
-   \code{formula(object)}.
- } 
+   \code{formula(object)}.} 
  \item{level}{an optional positive integer giving the level of grouping
    to be used in an object with multiple nested grouping levels.
    Defaults to the highest or innermost level of grouping.}
  \item{groups}{an optional factor that will be used to split the 
-   rows into groups.  Defaults to \code{getGroups(object, form, level)}.
- }
+   rows into groups.  Defaults to \code{getGroups(object, form, level)}.}
  \item{invariantsOnly}{an optional logical value.  When \code{TRUE} only 
    those covariates that are invariant within each group will be
    summarized.  The summary value for the group is always the unique
@@ -61,8 +52,7 @@ gsummary(object, FUN, form, level, groups, omitGroupingFactor = FALSE, invariant
    \code{object}. By definition, the grouping factor itself must be an
    invariant.   When combined with \code{omitGroupingFactor = TRUE},
    this option can be used to discover is there are invariant covariates 
-   in the data frame.  Defaults to \code{FALSE}.
- }
+   in the data frame.  Defaults to \code{FALSE}.}
  \item{\dots}{optional additional arguments to the summary functions
    that are invoked on the variables by group.  Often it is helpful to
    specify \code{na.rm = TRUE}.
@@ -73,8 +63,7 @@ gsummary(object, FUN, form, level, groups, omitGroupingFactor = FALSE, invariant
   factor.  The number of columns is at most the number of columns in
   \code{object}.
 }
-\seealso{\code{\link{summary}}, \code{\link{groupedData}},
-  \code{\link{getGroups}}} 
+\seealso{\code{\link{summary}}}
 \examples{
 ChickWeight <- do.call("data.frame", ChickWeight)
 class(ChickWeight)

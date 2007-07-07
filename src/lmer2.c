@@ -295,11 +295,11 @@ SEXP glmer_eta(SEXP x)
     int ione = 1, n = dims[n_POS], nfe = LENGTH(fixef), q = dims[q_POS];
     /* For this model LENGTH(fixef) != dims[p_POS] == 0 */
     double *eta = REAL(GET_SLOT(x, lme4_etaSym)), one[] = {1,0};
-    cholmod_sparse
-	*ZXyt = M_as_cholmod_sparse(GET_SLOT(x, lme4_ZXytSym));
-    cholmod_dense *ceta = M_numeric_as_chm_dense(eta, n),
-	*re = M_cholmod_allocate_dense(ZXyt->nrow, 1, ZXyt->nrow,
+    CHM_SP ZXyt = AS_CHM_SP(GET_SLOT(x, lme4_ZXytSym));
+    CHM_DN ceta = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), eta, n),
+	re = M_cholmod_allocate_dense(ZXyt->nrow, 1, ZXyt->nrow,
 				       CHOLMOD_REAL, &c);
+    R_CheckStack();
 
     if (LENGTH(moff)) /* initialize eta to model offset */
 	Memcpy(eta, REAL(moff), n);
@@ -314,7 +314,6 @@ SEXP glmer_eta(SEXP x)
     if (!M_cholmod_sdmult(ZXyt, 1 /* trans */, one, one, re, ceta, &c))
 	error(_("cholmod_sdmult error returned"));
     M_cholmod_free_dense(&re, &c);
-    Free(ceta); Free(ZXyt);
     return R_NilValue;
 }
 
@@ -670,6 +669,7 @@ SEXP nlmer_update_Vt(SEXP x)
 				&(nc[k]), tmp, &ione);
 		for (i = 0; i < nc[k] && iv < vp[j + 1]; i++, iv++) {
 		    vx[iv] = tmp[i];
+		    if (iv == vp[j + 1] - 1) break;
 		    if (vi[iv + 1] != vi[iv] + 1) break;
 		}
 	    } else vx[iv++] = zx[iz++];
@@ -852,11 +852,9 @@ SEXP glmer_reweight(SEXP x)
 	*var = Calloc(n, double), *w = REAL(wts),
 	*y = REAL(GET_SLOT(x, lme4_ySym)), *z = REAL(off),
 	one[] = {1, 0};
-    cholmod_sparse
-	*ZXyt = M_as_cholmod_sparse(GET_SLOT(x, lme4_ZXytSym)),
-	*A = M_as_cholmod_sparse(GET_SLOT(x, lme4_ASym));
-
-      
+    CHM_SP A = AS_CHM_SP(GET_SLOT(x, lme4_ASym)),
+	ZXyt = AS_CHM_SP(GET_SLOT(x, lme4_ZXytSym));
+    R_CheckStack();      
 				/* initialize weights to prior wts */
     Memcpy(w, REAL(GET_SLOT(x, install("pwts"))), n); 
     glmer_linkinv(x);	      /* evaluate mu */
@@ -871,7 +869,7 @@ SEXP glmer_reweight(SEXP x)
     F77_CALL(dgemv)("N", &n, &nfe, one, REAL(GET_SLOT(x, lme4_XSym)),
 		    &n, REAL(fixef), &ione, one, z, &ione);
     internal_update_A(ZXyt, wts, off, A);
-    Free(ZXyt); Free(A); Free(dmu_deta); Free(var);
+    Free(dmu_deta); Free(var);
     return R_NilValue;
 }
 
@@ -956,10 +954,11 @@ internal_lmer2_setPars(const double *pars, SEXP ST)
  */
 SEXP lmer2_setPars(SEXP x, SEXP pars)
 {
-    cholmod_sparse *A = M_as_cholmod_sparse(GET_SLOT(x, lme4_ASym));
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
     SEXP ST = GET_SLOT(x, lme4_STSym);
     int npar = INTEGER(GET_SLOT(x, lme4_dimsSym))[np_POS];
+    CHM_SP A = AS_CHM_SP(GET_SLOT(x, lme4_ASym));
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+    R_CheckStack();
 
     if (!isReal(pars) || LENGTH(pars) != npar)
 	error(_("pars must be a real vector of length %d"), npar);
@@ -967,7 +966,6 @@ SEXP lmer2_setPars(SEXP x, SEXP pars)
     internal_update_L(REAL(GET_SLOT(x, lme4_devianceSym)),
 		      INTEGER(GET_SLOT(x, lme4_dimsSym)), 
 		      INTEGER(GET_SLOT(x, lme4_GpSym)), ST, A, L);
-    Free(A); Free(L);
     return x;
 }
 
@@ -997,12 +995,13 @@ SEXP lmer2_deviance(SEXP x, SEXP which)
  */
 SEXP lmer2_update_effects(SEXP x)
 {
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
     int *dims = INTEGER(GET_SLOT(x, lme4_dimsSym)), i;
     int q = dims[q_POS];
     double *b = REAL(GET_SLOT(x, lme4_ranefSym)), *bstbx,
 	*dev = REAL(GET_SLOT(x, lme4_devianceSym));
-    cholmod_dense *bstarb;
+    CHM_DN bstarb;
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+    R_CheckStack();
 
     bstarb = internal_lmer2_effects(L);
     bstbx = (double*)(bstarb->x);
@@ -1014,7 +1013,6 @@ SEXP lmer2_update_effects(SEXP x)
     M_cholmod_free_dense(&bstarb, &c);
     TS_mult(INTEGER(GET_SLOT(x, lme4_GpSym)),
 	    GET_SLOT(x, lme4_STSym), b);
-    Free(L);
     return R_NilValue;
 }
 
@@ -1067,18 +1065,19 @@ SEXP lmer2_vcov(SEXP x)
     SEXP ans = PROTECT(allocMatrix(REALSXP, p, p));
 
     if (p) {
-	cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
-	 /* need a copy because factor_to_sparse changes 1st arg */
-	cholmod_factor *Lcp = M_cholmod_copy_factor(L, &c);
-	cholmod_sparse *Lsp, *Lred; /* sparse and reduced-size sparse */
-	cholmod_dense *Ld;
+	CHM_SP Lsp, Lred; /* sparse and reduced-size sparse */
+	CHM_DN Ld;
+	CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym)), Lcp;
+	select = alloca(p * sizeof(int));
+	R_CheckStack();
 
+	 /* need a copy of L because factor_to_sparse changes 1st arg */
+	Lcp = M_cholmod_copy_factor(L, &c);
 	if (!(Lcp->is_ll))
 	    if (!M_cholmod_change_factor(Lcp->xtype, 1, 0, 1, 1, Lcp, &c))
 		error(_("cholmod_change_factor failed with status %d"), c.status);
 	Lsp = M_cholmod_factor_to_sparse(Lcp, &c);
 	M_cholmod_free_factor(&Lcp, &c);
-	select = Calloc(p, int);
 	for (i = 0; i < p; i++) select[i] = q + i;
 	Lred = M_cholmod_submatrix(Lsp, select, p, select, p,
 				 1 /* values */, 1 /* sorted */, &c);
@@ -1091,7 +1090,6 @@ SEXP lmer2_vcov(SEXP x)
 	F77_CALL(dtrtri)("L", "N", &p, REAL(ans), &p, &i);
 	if (i)
 	    error(_("Lapack routine dtrtri returned error code %d"), i);
-	Free(L); Free(select);
     }
     UNPROTECT(1);
     return ans;
@@ -1147,20 +1145,20 @@ SEXP lmer2_ranef(SEXP x)
  */
 SEXP lmer2_postVar(SEXP x)
 {
+    SEXP ST = GET_SLOT(x, lme4_STSym);
     double *deviance = REAL(GET_SLOT(x, lme4_devianceSym)), one = 1;
     int *Gp = INTEGER(GET_SLOT(x, lme4_GpSym)),
 	*dims = INTEGER(GET_SLOT(x, lme4_dimsSym));
     int i, j, nf = dims[nf_POS], p = dims[p_POS], q = dims[q_POS];
     int ppq = p + q;
+    SEXP ans = PROTECT(allocVector(VECSXP, nf));
     double sc = internal_lmer2_sigma(isREML(x), dims, deviance);
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym)),
-	*Lcp = (cholmod_factor*)NULL;
-    cholmod_sparse *rhs, *B, *Bt, *BtB;
-    cholmod_dense *BtBd;
-    int *Perm = (int*)(L->Perm), *iperm = Calloc(ppq, int),
-	*fset = Calloc(ppq, int);
-    SEXP ST = GET_SLOT(x, lme4_STSym),
-	ans = PROTECT(allocVector(VECSXP, nf));
+    CHM_SP rhs, B, Bt, BtB;
+    CHM_DN BtBd;
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym)), Lcp = (CHM_FR)NULL;
+    int *Perm = (int*)(L->Perm), *iperm = alloca(ppq * sizeof(int)),
+	*fset = alloca(ppq * sizeof(int));
+    R_CheckStack();
     
     for (j = 0; j < ppq; j++) {
 	iperm[Perm[j]] = j;
@@ -1168,7 +1166,6 @@ SEXP lmer2_postVar(SEXP x)
     }
     if (!L->is_ll) {
 	Lcp = M_cholmod_copy_factor(L, &c);
-	Free(L);
 	L = Lcp;
 	j = M_cholmod_change_factor(CHOLMOD_REAL, TRUE/*ll*/,
 				    FALSE/*super*/, TRUE/*packed*/,
@@ -1234,8 +1231,7 @@ SEXP lmer2_postVar(SEXP x)
 	M_cholmod_free_sparse(&rhs, &c);
 	Free(st);
     }
-    if (L == Lcp) M_cholmod_free_factor(&L, &c); else Free(L);
-    Free(iperm); Free(fset);
+    if (L == Lcp) M_cholmod_free_factor(&L, &c);
     UNPROTECT(1);
     return ans;
 }
@@ -1372,8 +1368,6 @@ SEXP lmer2_MCMCsamp(SEXP x, SEXP savebp, SEXP nsampp, SEXP transp,
 		  SEXP verbosep, SEXP deviancep)
 {
     SEXP ST = GET_SLOT(x, lme4_STSym), Pars = PROTECT(lmer2_getPars(x)), ans;
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
-    cholmod_sparse *A = M_as_cholmod_sparse(GET_SLOT(x, lme4_ASym));
     int *dims = INTEGER(GET_SLOT(x, lme4_dimsSym)),
 	*Gp = INTEGER(GET_SLOT(x, lme4_GpSym));
     int dPOS = dims[REML_POS] ? REML_POS : ML_POS, i, j,
@@ -1390,6 +1384,9 @@ SEXP lmer2_MCMCsamp(SEXP x, SEXP savebp, SEXP nsampp, SEXP transp,
     cholmod_dense *chhat,
 	*chnew = M_cholmod_allocate_dense(qpp1, 1, qpp1, CHOLMOD_REAL, &c);
     double *bstar = (double*) NULL, *nx = (double*)(chnew->x);
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+    CHM_SP A = AS_CHM_SP(GET_SLOT(x, lme4_ASym));
+    R_CheckStack();
 
     if (nsamp <= 0) nsamp = 1;
     ans = PROTECT(allocMatrix(REALSXP, nrtot, nsamp));
@@ -1426,7 +1423,6 @@ SEXP lmer2_MCMCsamp(SEXP x, SEXP savebp, SEXP nsampp, SEXP transp,
     }
     PutRNGstate();
     if (saveb) Free(bstar);
-    Free(L);
     M_cholmod_free_dense(&chnew, &c);
 				/* Restore pars, refactor, etc. */
     lmer2_setPars(x, Pars);
@@ -1444,11 +1440,12 @@ SEXP nlmer_validate(SEXP x)
 	flistP = GET_SLOT(x, lme4_flistSym),
 	ranefP = GET_SLOT(x, lme4_ranefSym),
 	weightsP = GET_SLOT(x, lme4_weightsSym) ;
-    cholmod_sparse *Xt = M_as_cholmod_sparse(GET_SLOT(x, install("Xt"))),
-	*Zt = M_as_cholmod_sparse(GET_SLOT(x, install("Zt")));
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
     int *Gp = INTEGER(GpP), *dd = INTEGER(dimsP);
     int nf = dd[nf_POS], n = dd[n_POS], p = dd[p_POS], q = dd[q_POS], s = dd[s_POS];
+    CHM_SP Xt = AS_CHM_SP(GET_SLOT(x, install("Xt"))),
+	Zt = AS_CHM_SP(GET_SLOT(x, install("Zt")));
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+    R_CheckStack();
 
     if (!LENGTH(devianceP))
 	return mkString(_("deviance slot must have positive length"));
@@ -1470,7 +1467,6 @@ SEXP nlmer_validate(SEXP x)
 	return mkString(_("Slot Xt must have dimensions p by n*s"));
     if (L->n != q || !L->is_ll || !L->is_monotonic)
 	return mkString(_("Slot L must be a monotonic LL' factorization of size q"));
-    Free(L); Free(Zt); Free(Xt);
     return ScalarLogical(1);
 }
 
@@ -1493,13 +1489,13 @@ SEXP lmer2_validate(SEXP x)
 	offsetP = GET_SLOT(x, lme4_offsetSym),
 	ranefP = GET_SLOT(x, lme4_ranefSym),
 	weightsP = GET_SLOT(x, lme4_weightsSym) ;
-    cholmod_sparse *A = M_as_cholmod_sparse(GET_SLOT(x, lme4_ASym)),
-	*ZXyt = M_as_cholmod_sparse(GET_SLOT(x, lme4_ZXytSym));
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
     int *Gp = INTEGER(GpP), *dd = INTEGER(dimsP);
     int nf = dd[nf_POS], n = dd[n_POS], p = dd[p_POS], q = dd[q_POS];
     int i, nq, ppq1 = p + q + 1;
-
+    CHM_SP A = AS_CHM_SP(GET_SLOT(x, lme4_ASym)),
+	ZXyt = AS_CHM_SP(GET_SLOT(x, lme4_ZXytSym));
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+    R_CheckStack();
 				/* check lengths */
     if (nf < 1 || LENGTH(flistP) != nf || LENGTH(ST) != nf)
 	return mkString(_("Slots ST, and flist must have length nf"));
@@ -1541,7 +1537,6 @@ SEXP lmer2_validate(SEXP x)
     if (q != nq)
 	return mkString(_("q is not sum of columns by levels"));
 
-    Free(A); Free(L); Free(ZXyt);
     return ScalarLogical(1);
 }
 
@@ -1611,22 +1606,22 @@ static void ZXyt_create(SEXP Ztl, SEXP Xp, SEXP yp, SEXP val)
     int hasY = LENGTH(yp), n = dims[n_POS],
 	nf = dims[nf_POS], p = dims[p_POS], q = dims[q_POS];
     double *dest, *src, *y = REAL(yp);
-    cholmod_sparse *A, *Zt, *ts1, *ts2, *ts3;
-    cholmod_dense *Xy;
-    cholmod_factor *L;
+    CHM_DN Xy;
+    CHM_FR L;
     SEXP ST = GET_SLOT(val, lme4_STSym);
+    CHM_SP A, Zt = AS_CHM_SP(VECTOR_ELT(Ztl, 0)), ts1, ts2, ts3;
+    R_CheckStack();
 
-    Zt = M_as_cholmod_sparse(VECTOR_ELT(Ztl, 0));
     if (Zt->ncol != n)
 	error(_("dimension mismatch: ncol(Ztl[[1]]) = %d != length(y) = %d"),
 	      Zt->ncol, n);
     if (Zt->nrow != Gp[1])
 	error(_("Expected nrow(Ztl[[1]]) to be %d, got %d"), Gp[1], Zt->nrow);
     ts1 = M_cholmod_copy_sparse(Zt, &c); /* use cholmod storage, not R */
-    Free(Zt);
     Zt = ts1;
     for (i = 1; i < nf; i++) {
-	ts1 = M_as_cholmod_sparse(VECTOR_ELT(Ztl, i));
+	ts1 = AS_CHM_SP(VECTOR_ELT(Ztl, i));
+	R_CheckStack();
 	if (ts1->ncol != n)
 	    error(_("dimension mismatch: ncol(Ztl[[%d]]) = %d != length(y) = %d"),
 		  i + 1, ts1->ncol, n);
@@ -1634,17 +1629,18 @@ static void ZXyt_create(SEXP Ztl, SEXP Xp, SEXP yp, SEXP val)
 	    error(_("Expected nrow(Ztl[[%d]]) to be %d, got %d"),
 		  i + 1, Gp[i + 1] - Gp[i], ts1->nrow);
 	ts2 = M_cholmod_vertcat(Zt, ts1, TRUE, &c);
-	Free(ts1); M_cholmod_free_sparse(&Zt, &c);
+	M_cholmod_free_sparse(&Zt, &c);
 	Zt = ts2;
     }
 				/* determine permutation */
-    Perm = Calloc(q + p + 1, int);
+    Perm = alloca((q + p + 1) * sizeof(int));
+    R_CheckStack();
     for (j = 0; j <= (p + q); j++) Perm[j] = j; /* initialize to identity */
     Zt_perm(Gp, Zt, ST, dims, Perm);
 				/* create [X;-y]' */
-    Xy = M_as_cholmod_dense(Xp);
+    Xy = AS_CHM_DN(Xp);
+    R_CheckStack();
     ts1 = M_cholmod_dense_to_sparse(Xy, 1 /* values */, &c);
-    Free(Xy);
     ts2 = M_cholmod_transpose(ts1, 1 /* values */, &c);
     M_cholmod_free_sparse(&ts1, &c);
     ts1 = ts2;
@@ -1682,7 +1678,8 @@ static void ZXyt_create(SEXP Ztl, SEXP Xp, SEXP yp, SEXP val)
 	     M_chm_sparse_to_SEXP(ts3, 0, 0, 0, "", R_NilValue));
     M_cholmod_free_sparse(&ts3, &c);
 				/* update A using weights and offset */
-    A = M_as_cholmod_sparse(GET_SLOT(val, lme4_ASym));
+    A = AS_CHM_SP(GET_SLOT(val, lme4_ASym));
+    R_CheckStack();
     internal_update_A(ts2, GET_SLOT(val, lme4_weightsSym),
 		      GET_SLOT(val, lme4_offsetSym), A);
     M_cholmod_free_sparse(&ts2, &c);
@@ -1702,9 +1699,6 @@ static void ZXyt_create(SEXP Ztl, SEXP Xp, SEXP yp, SEXP val)
     internal_update_L(REAL(GET_SLOT(val, lme4_devianceSym)),
 			  dims, Gp, ST, A, L);
     SET_SLOT(val, lme4_LSym, M_chm_factor_to_SEXP(L, 1));
-
-    Free(A);
-    Free(Perm);
 }
 
 /**
@@ -1897,11 +1891,12 @@ SEXP lmer2_create(SEXP fr, SEXP FL, SEXP Ztl, SEXP glmp,
  */
 SEXP lmer2_update_y(SEXP x, SEXP yp)
 {
-    cholmod_sparse *A = M_as_cholmod_sparse(GET_SLOT(x, lme4_ASym)),
-	*ZXyt = M_as_cholmod_sparse(GET_SLOT(x, lme4_ZXytSym));
+    CHM_SP A = AS_CHM_SP(GET_SLOT(x, lme4_ASym)),
+	ZXyt = AS_CHM_SP(GET_SLOT(x, lme4_ZXytSym));
     int *ip = (int*)(ZXyt->i), *pp = (int*)(ZXyt->p), j;
     int n = ZXyt->ncol, yrow = ZXyt->nrow - 1;
     double *xp = (double*)(ZXyt->x), *y = REAL(yp);
+    R_CheckStack();
 
     if (!isReal(yp) || LENGTH(yp) != n)
 	error(_("y must be a numeric vector of length %d"), n);
@@ -1913,7 +1908,6 @@ SEXP lmer2_update_y(SEXP x, SEXP yp)
     }
     internal_update_A(ZXyt, GET_SLOT(x, lme4_weightsSym),
 		      GET_SLOT(x, lme4_offsetSym), A);
-    Free(ZXyt); Free(A);
     return R_NilValue;
 }
 
@@ -1959,16 +1953,15 @@ static int internal_bhat(SEXP x)
     int *Gp = INTEGER(GET_SLOT(x, lme4_GpSym)),
 	*dims = INTEGER(GET_SLOT(x, lme4_dimsSym));
     int i, n = dims[n_POS];
-    cholmod_sparse
-	*A = M_as_cholmod_sparse(GET_SLOT(x, lme4_ASym));
-    cholmod_factor
-	*L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
     double *dev = REAL(GET_SLOT(x, lme4_devianceSym)),
 	*eta = REAL(GET_SLOT(x, lme4_etaSym)),
 	*etaold = Calloc(n, double), crit = IRLS_TOL + 1;
 #ifdef DEBUG_LMER2
-    double *dev_res = Calloc(n, double);
+    double *dev_res = alloca(n *sizeof(double));
 #endif
+    CHM_SP A = AS_CHM_SP(GET_SLOT(x, lme4_ASym));
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+    R_CheckStack();
 
     glmer_eta(x);
     glmer_reweight(x);
@@ -1989,10 +1982,6 @@ static int internal_bhat(SEXP x)
 #endif
 	crit = conv_crit(etaold, eta, n);
     }
-    Free(L); Free(A);
-#ifdef DEBUG_LMER2
-    Free(dev_res);
-#endif
     return (crit > IRLS_TOL) ? 0 : i;
 }
 
@@ -2065,8 +2054,7 @@ Vt_update_L(cholmod_sparse *Vt, const double *w,
  */
 static int internal_bhat2(SEXP x)
 {
-    cholmod_sparse
-	*Vt = M_as_cholmod_sparse(GET_SLOT(x, install("Vt")));
+    CHM_SP Vt = AS_CHM_SP(GET_SLOT(x, install("Vt")));
     SEXP fixef = GET_SLOT(x, lme4_fixefSym),
 	moff = GET_SLOT(x, install("moff")), /* this can revert to offset */
 	wts = GET_SLOT(x, lme4_weightsSym);
@@ -2081,14 +2069,13 @@ static int internal_bhat2(SEXP x)
 	*var = Calloc(n, double), *w = REAL(wts),
 	*y = REAL(GET_SLOT(x, lme4_ySym)), *z = Calloc(n, double),
 	*etaold = Calloc(n, double), crit = IRLS_TOL + 1, one[] = {1,0};
-    cholmod_dense *ceta = M_numeric_as_chm_dense(eta, n),
-	*cu = M_numeric_as_chm_dense(u, Vt->nrow);
-    cholmod_factor
-	*L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
+    CHM_DN ceta = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), eta, n),
+	cu = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), u, Vt->nrow);
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
 #ifdef DEBUG_LMER2
-    double *dev_res = Calloc(n, double);
+    double *dev_res = alloca(n * sizeof(double));
 #endif
-
+    R_CheckStack();
 				
     AZERO(Xbeta, n);		/* Evaluate offset = moff + X\beta */
     if (LENGTH(moff) == n) Memcpy(Xbeta, REAL(moff), n);
@@ -2118,11 +2105,9 @@ static int internal_bhat2(SEXP x)
 	crit = conv_crit(etaold, eta, n);
     }
     Free(Xbeta); Free(dmu_deta); Free(var); Free(etaold); Free(z);
-    Free(ceta); Free(cu); Free(L);
-#ifdef DEBUG_LMER2
-    Free(dev_res);
-#endif
-    M_cholmod_free_sparse(&Vt, &c);
+/* FIXME: Should this be freed with cholmod_free_sparse?  I don't
+   think it has been changed from the initial AS_CHM_SP allocation. */
+/*     M_cholmod_free_sparse(&Vt, &c); */
     return (crit > IRLS_TOL) ? 0 : i;
 
 }
@@ -2195,20 +2180,19 @@ internal_nlmer_eval_model(SEXP x, int uform)
     int i, n = dims[n_POS], s = dims[s_POS];
     double *y = REAL(GET_SLOT(x, lme4_ySym)), *mu,
 	one[] = {1, 0}, sumsq, zero[] = {0, 0};
-    cholmod_sparse *MM = M_as_cholmod_sparse(GET_SLOT(x, install("Xt")));
-    cholmod_dense
-	*eff = M_as_cholmod_dense(GET_SLOT(x, lme4_fixefSym)),
-	*Phi = M_cholmod_allocate_dense(n * s, 1, n * s, CHOLMOD_REAL, &c);
+    CHM_SP MM = AS_CHM_SP(GET_SLOT(x, install("Xt")));
+    CHM_DN eff = AS_CHM_DN(GET_SLOT(x, lme4_fixefSym)),
+	Phi = M_cholmod_allocate_dense(n * s, 1, n * s, CHOLMOD_REAL, &c);
+    R_CheckStack();
     
 				/* Evaluate Phi */
     if (!(i = M_cholmod_sdmult(MM, 1 /*trans*/, one, zero, eff, Phi, &c)))
 	error(_("cholmod_sdmult returned error code %d"), i);
-    Free(MM); Free(eff);
-    MM = M_as_cholmod_sparse(GET_SLOT(x, uform ? install("Vt") : lme4_ZtSym));
-    eff = M_as_cholmod_dense(GET_SLOT(x, uform ? install("uvec") : lme4_ranefSym));
+    MM = AS_CHM_SP(GET_SLOT(x, uform ? install("Vt") : lme4_ZtSym));
+    eff = AS_CHM_DN(GET_SLOT(x, uform ? install("uvec") : lme4_ranefSym));
+    R_CheckStack();
     if (!(i = M_cholmod_sdmult(MM, 1 /*trans*/, one, one, eff, Phi, &c)))
 	error(_("cholmod_sdmult returned error code %d"), i);
-    Free(MM); Free(eff);
 
     /* distribute the parameters in the environment */
     for (i = 0; i < dims[s_POS]; i++) {
@@ -2265,7 +2249,8 @@ SEXP nlmer_create_Vt(SEXP x)
 	*vi, *vp, *zi = INTEGER(GET_SLOT(Zt, lme4_iSym)),
 	*zp = INTEGER(GET_SLOT(Zt, lme4_pSym)),
 	i, j, nf = LENGTH(ST), nnz;
-    int *nc = Calloc(nf, int), *nz = Calloc(adims[0], int);
+    int *nc = alloca(nf * sizeof(int)), *nz = alloca(adims[0] * sizeof(int));
+    R_CheckStack();
     
     SET_SLOT(ans, lme4_DimSym, duplicate(Zdims));
     SET_SLOT(ans, lme4_DimNamesSym, allocVector(VECSXP, 2));
@@ -2291,7 +2276,7 @@ SEXP nlmer_create_Vt(SEXP x)
 	for (i = 0; i < adims[0]; i++) if (nz[i]) vi[pos++] = i;
     }
 
-    UNPROTECT(1); Free(nc); Free(nz);
+    UNPROTECT(1);
     return ans;
 }
 
@@ -2372,7 +2357,8 @@ SEXP nlmer_create(SEXP env, SEXP model, SEXP frame, SEXP pnames,
     internal_nlmer_initial(ST, Gpp, Zt); /* initialize ST */
     SET_SLOT(ans, install("Vt"), iT ? duplicate(Zt) : nlmer_create_Vt(ans));
     nlmer_update_Vt(ans);
-    cVt = M_as_cholmod_sparse(GET_SLOT(ans, install("Vt")));
+    cVt = AS_CHM_SP(GET_SLOT(ans, install("Vt")));
+    R_CheckStack();
     
     /* Create Mt beginning with s identity matrices concatenated horizontally */
     ts1 = M_cholmod_allocate_sparse((size_t) dims[n_POS],
@@ -2409,7 +2395,7 @@ SEXP nlmer_create(SEXP env, SEXP model, SEXP frame, SEXP pnames,
 
     M_cholmod_free_sparse(&ts1, &c);
     nlmer_update_Vt(ans);
-    UNPROTECT(1); Free(cVt);
+    UNPROTECT(1);
     return ans;
 }
 
@@ -2462,18 +2448,17 @@ static
 double *internal_nlmer_update_wrkres(SEXP x, double *wrkres)
 {
     int *dims = INTEGER(GET_SLOT(x, lme4_dimsSym)), i;
-    cholmod_sparse
-	*Mt = M_as_cholmod_sparse(GET_SLOT(x, install("Mt")));
-    cholmod_dense *cwrk = M_numeric_as_chm_dense(wrkres, dims[n_POS]),
-	*cu = M_as_cholmod_dense(GET_SLOT(x, install("uvec")));
     double *mu = REAL(GET_SLOT(x, lme4_muSym)),
 	*y = REAL(GET_SLOT(x, lme4_ySym)), one[] = {1,0};
+    CHM_SP Mt = AS_CHM_SP(GET_SLOT(x, install("Mt")));
+    CHM_DN cwrk = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), wrkres, dims[n_POS]),
+	cu = AS_CHM_DN(GET_SLOT(x, install("uvec")));
+    R_CheckStack();
 
     Memcpy(wrkres, y, dims[n_POS]);
     if (!(i = M_cholmod_sdmult(Mt, 1 /* trans */, one, one, cu, cwrk, &c)))
 	error(_("cholmod_sdmult returned error code %d"), i);
     for (i = 0; i < dims[n_POS]; i++) wrkres[i] -= mu[i];
-    Free(Mt); Free(cwrk); Free(cu);
     return wrkres;
 }
 
@@ -2506,12 +2491,13 @@ static int internal_nbhat(SEXP x)
     int n = dims[n_POS], q = dims[q_POS], zq[] = {0, dims[q_POS]};
     double *dev = REAL(GET_SLOT(x, lme4_devianceSym)),
 	*u = REAL(GET_SLOT(x, install("uvec"))),
-	*uold = Calloc(q, double), *z = Calloc(n, double),
+	*uold = alloca(q * sizeof(double)), *z = alloca(n * sizeof(double)),
 	crit = IRLS_TOL + 1, dn = (double)n, one[] = {1,0}, zero[] = {0,0};
-    cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
-    cholmod_dense *cz = M_numeric_as_chm_dense(z, n), *cu,
-	*cMtz = M_cholmod_allocate_dense(q, 1, q, CHOLMOD_REAL, &c);
-    cholmod_sparse *Mt = M_as_cholmod_sparse(GET_SLOT(x, install("Mt")));
+    CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+    CHM_DN cz = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), z, n), cu,
+	cMtz = M_cholmod_allocate_dense(q, 1, q, CHOLMOD_REAL, &c);
+    CHM_SP Mt = AS_CHM_SP(GET_SLOT(x, install("Mt")));
+    R_CheckStack();
 
     nlmer_update_Vt(x);
     Memcpy(uold, u, q);
@@ -2545,7 +2531,6 @@ static int internal_nbhat(SEXP x)
     dev[ML_POS] = dev[REML_POS] =
 	dev[ldZ_POS] + dn * (1. + dev[lr2_POS] + log(2. * PI / dn));
 
-    Free(z); Free(cz); Free(Mt); Free(L); Free(uold);
     M_cholmod_free_dense(&cMtz, &c);
     return (crit > IRLS_TOL) ? 0 : i;
 }
@@ -2578,11 +2563,12 @@ update_deviance(SEXP x, const double *xv, int nfe, int mtype)
     Memcpy(REAL(fixefp), xv + dims[np_POS], nfe);
     switch(mtype) {
     case 0: {			  /* linear mixed model */
-	cholmod_sparse *A = M_as_cholmod_sparse(GET_SLOT(x, lme4_ASym));
-	cholmod_factor *L = M_as_cholmod_factor(GET_SLOT(x, lme4_LSym));
+	CHM_SP A = AS_CHM_SP(GET_SLOT(x, lme4_ASym));
+	CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
+	R_CheckStack();
+
 	internal_update_L(dev, dims, INTEGER(GET_SLOT(x, lme4_GpSym)),
 			  ST, A, L);
-	Free(A); Free(L);
 	break;
     }
     case 1: {			  /* nonlinear mixed model */
@@ -2590,14 +2576,14 @@ update_deviance(SEXP x, const double *xv, int nfe, int mtype)
 	break;
     }
     case 2: {
-	double *dev_res = Calloc(n, double);
+	double *dev_res = alloca(n * sizeof(double));
+	R_CheckStack();
 
 	Memcpy(REAL(fixefp), xv + dims[np_POS], nfe);
 	if (!internal_bhat(x)) {
 	    warning(_("IRLS iterations for b-hat did not converge"));
 	}
 	dev[Sdr_POS] = glmer_dev_resids(x, dev_res);
-	Free(dev_res);
 	dev[ML_POS] = dev[bqd_POS] + dev[Sdr_POS] + dev[ldZ_POS];
 	break;
     }
