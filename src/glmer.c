@@ -185,10 +185,9 @@ internal_Gaussian_deviance(int p, int q, cholmod_factor *L,
     CHM_SP Lm;
     CHM_FR Lcp;
     double ans = 0, one[] = {1,0}, zero[] = {0,0};
-    double *bb = alloca(q * sizeof(double)),
-	*betab = alloca(p * sizeof(double));
+    double *bb = Alloca(q, double), *betab = Alloca(p, double);
     CHM_DN Ltb = M_cholmod_allocate_dense(q, 1, q, CHOLMOD_REAL, &c),
-	chb = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), bb, q);
+	chb = N_AS_CHM_DN(bb, q);
     R_CheckStack();
 
     for (i = 0; i < p; i++) betab[i] = beta[i] - betahat[i];
@@ -657,10 +656,10 @@ glmer_MCMCsamp(SEXP GSpt, SEXP savebp, SEXP nsampp, SEXP transp, SEXP verbosep,
     int nrtot = nrbase + deviance + (saveb ? q : 0);
     CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
     double
-	*bcur = alloca(q * sizeof(double)), /* current */
-	*betacur = alloca(p * sizeof(double)), 
-	*bnew = alloca(q * sizeof(double)), /* proposed */
-	*betanew = alloca(p * sizeof(double));
+	*bcur = Alloca(q, double), /* current */
+	*betacur = Alloca(p, double), 
+	*bnew = Alloca(q, double), /* proposed */
+	*betanew = Alloca(p, double);
     R_CheckStack();
 
     if (nsamp <= 0) nsamp = 1;

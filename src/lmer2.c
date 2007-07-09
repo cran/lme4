@@ -290,15 +290,14 @@ static double glmer_dev_resids(SEXP x, double *dev_res)
 SEXP glmer_eta(SEXP x)
 {
     SEXP moff = GET_SLOT(x, install("moff")),
-	fixef = GET_SLOT(x, lme4_fixefSym);
+	fixef = GET_SLOT(x, lme4_fixefSym),
+	etap = GET_SLOT(x, lme4_etaSym);
     int *dims = INTEGER(GET_SLOT(x, lme4_dimsSym));
     int ione = 1, n = dims[n_POS], nfe = LENGTH(fixef), q = dims[q_POS];
     /* For this model LENGTH(fixef) != dims[p_POS] == 0 */
-    double *eta = REAL(GET_SLOT(x, lme4_etaSym)), one[] = {1,0};
     CHM_SP ZXyt = AS_CHM_SP(GET_SLOT(x, lme4_ZXytSym));
-    CHM_DN ceta = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), eta, n),
-	re = M_cholmod_allocate_dense(ZXyt->nrow, 1, ZXyt->nrow,
-				       CHOLMOD_REAL, &c);
+    double *eta = REAL(etap), *re = Alloca(ZXyt->nrow, double), one[] = {1,0};
+    CHM_DN ceta = AS_CHM_DN(etap), cre = N_AS_CHM_DN(re, ZXyt->nrow);
     R_CheckStack();
 
     if (LENGTH(moff)) /* initialize eta to model offset */
@@ -309,11 +308,10 @@ SEXP glmer_eta(SEXP x)
     F77_CALL(dgemv)("N", &n, &nfe, one, REAL(GET_SLOT(x, lme4_XSym)), &n,
 		    REAL(fixef), &ione, one, eta, &ione);
     lmer2_update_effects(x);	/* evaluate b */
-    Memcpy((double*)(re->x), REAL(GET_SLOT(x, lme4_ranefSym)), q);
-    ((double*)(re->x))[q] = 0.;
-    if (!M_cholmod_sdmult(ZXyt, 1 /* trans */, one, one, re, ceta, &c))
+    Memcpy(re, REAL(GET_SLOT(x, lme4_ranefSym)), q);
+    re[q] = 0.;
+    if (!M_cholmod_sdmult(ZXyt, 1 /* trans */, one, one, cre, ceta, &c))
 	error(_("cholmod_sdmult error returned"));
-    M_cholmod_free_dense(&re, &c);
     return R_NilValue;
 }
 
@@ -1068,7 +1066,7 @@ SEXP lmer2_vcov(SEXP x)
 	CHM_SP Lsp, Lred; /* sparse and reduced-size sparse */
 	CHM_DN Ld;
 	CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym)), Lcp;
-	select = alloca(p * sizeof(int));
+	select = Alloca(p, int);
 	R_CheckStack();
 
 	 /* need a copy of L because factor_to_sparse changes 1st arg */
@@ -1156,8 +1154,8 @@ SEXP lmer2_postVar(SEXP x)
     CHM_SP rhs, B, Bt, BtB;
     CHM_DN BtBd;
     CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym)), Lcp = (CHM_FR)NULL;
-    int *Perm = (int*)(L->Perm), *iperm = alloca(ppq * sizeof(int)),
-	*fset = alloca(ppq * sizeof(int));
+    int *Perm = (int*)(L->Perm), *iperm = Alloca(ppq, int),
+	*fset = Alloca(ppq, int);
     R_CheckStack();
     
     for (j = 0; j < ppq; j++) {
@@ -1633,7 +1631,7 @@ static void ZXyt_create(SEXP Ztl, SEXP Xp, SEXP yp, SEXP val)
 	Zt = ts2;
     }
 				/* determine permutation */
-    Perm = alloca((q + p + 1) * sizeof(int));
+    Perm = Alloca(q + p + 1, int);
     R_CheckStack();
     for (j = 0; j <= (p + q); j++) Perm[j] = j; /* initialize to identity */
     Zt_perm(Gp, Zt, ST, dims, Perm);
@@ -1957,7 +1955,7 @@ static int internal_bhat(SEXP x)
 	*eta = REAL(GET_SLOT(x, lme4_etaSym)),
 	*etaold = Calloc(n, double), crit = IRLS_TOL + 1;
 #ifdef DEBUG_LMER2
-    double *dev_res = alloca(n *sizeof(double));
+    double *dev_res = Alloca(n, double);
 #endif
     CHM_SP A = AS_CHM_SP(GET_SLOT(x, lme4_ASym));
     CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
@@ -2055,25 +2053,26 @@ Vt_update_L(cholmod_sparse *Vt, const double *w,
 static int internal_bhat2(SEXP x)
 {
     CHM_SP Vt = AS_CHM_SP(GET_SLOT(x, install("Vt")));
-    SEXP fixef = GET_SLOT(x, lme4_fixefSym),
+    SEXP etap = GET_SLOT(x, lme4_etaSym),
+	fixef = GET_SLOT(x, lme4_fixefSym),
 	moff = GET_SLOT(x, install("moff")), /* this can revert to offset */
+	ranef = GET_SLOT(x, lme4_ranefSym),
 	wts = GET_SLOT(x, lme4_weightsSym);
     int i, ione = 1, n = Vt->ncol, p = LENGTH(fixef);
     double *Xbeta = Calloc(n, double),
 	*dev = REAL(GET_SLOT(x, lme4_devianceSym)),
 	*dmu_deta = Calloc(n, double),
-	*eta = REAL(GET_SLOT(x, lme4_etaSym)), 
+	*eta = REAL(etap), 
 	*mu = REAL(GET_SLOT(x, lme4_muSym)),
 	*pwts = REAL(GET_SLOT(x, install("pwts"))), /* can revert to weights */
-	*u = REAL(GET_SLOT(x, lme4_ranefSym)),
+	*u = REAL(ranef),
 	*var = Calloc(n, double), *w = REAL(wts),
 	*y = REAL(GET_SLOT(x, lme4_ySym)), *z = Calloc(n, double),
 	*etaold = Calloc(n, double), crit = IRLS_TOL + 1, one[] = {1,0};
-    CHM_DN ceta = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), eta, n),
-	cu = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), u, Vt->nrow);
+    CHM_DN ceta = AS_CHM_DN(etap), cu = AS_CHM_DN(ranef);
     CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
 #ifdef DEBUG_LMER2
-    double *dev_res = alloca(n * sizeof(double));
+    double *dev_res = Alloca(n, double);
 #endif
     R_CheckStack();
 				
@@ -2249,7 +2248,7 @@ SEXP nlmer_create_Vt(SEXP x)
 	*vi, *vp, *zi = INTEGER(GET_SLOT(Zt, lme4_iSym)),
 	*zp = INTEGER(GET_SLOT(Zt, lme4_pSym)),
 	i, j, nf = LENGTH(ST), nnz;
-    int *nc = alloca(nf * sizeof(int)), *nz = alloca(adims[0] * sizeof(int));
+    int *nc = Alloca(nf, int), *nz = Alloca(adims[0], int);
     R_CheckStack();
     
     SET_SLOT(ans, lme4_DimSym, duplicate(Zdims));
@@ -2451,7 +2450,7 @@ double *internal_nlmer_update_wrkres(SEXP x, double *wrkres)
     double *mu = REAL(GET_SLOT(x, lme4_muSym)),
 	*y = REAL(GET_SLOT(x, lme4_ySym)), one[] = {1,0};
     CHM_SP Mt = AS_CHM_SP(GET_SLOT(x, install("Mt")));
-    CHM_DN cwrk = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), wrkres, dims[n_POS]),
+    CHM_DN cwrk = N_AS_CHM_DN(wrkres, dims[n_POS]),
 	cu = AS_CHM_DN(GET_SLOT(x, install("uvec")));
     R_CheckStack();
 
@@ -2491,10 +2490,10 @@ static int internal_nbhat(SEXP x)
     int n = dims[n_POS], q = dims[q_POS], zq[] = {0, dims[q_POS]};
     double *dev = REAL(GET_SLOT(x, lme4_devianceSym)),
 	*u = REAL(GET_SLOT(x, install("uvec"))),
-	*uold = alloca(q * sizeof(double)), *z = alloca(n * sizeof(double)),
+	*uold = Alloca(q, double), *z = Alloca(n, double),
 	crit = IRLS_TOL + 1, dn = (double)n, one[] = {1,0}, zero[] = {0,0};
     CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
-    CHM_DN cz = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), z, n), cu,
+    CHM_DN cz = N_AS_CHM_DN(z, n), cu,
 	cMtz = M_cholmod_allocate_dense(q, 1, q, CHOLMOD_REAL, &c);
     CHM_SP Mt = AS_CHM_SP(GET_SLOT(x, install("Mt")));
     R_CheckStack();
@@ -2576,7 +2575,7 @@ update_deviance(SEXP x, const double *xv, int nfe, int mtype)
 	break;
     }
     case 2: {
-	double *dev_res = alloca(n * sizeof(double));
+	double *dev_res = Alloca(n, double);
 	R_CheckStack();
 
 	Memcpy(REAL(fixefp), xv + dims[np_POS], nfe);

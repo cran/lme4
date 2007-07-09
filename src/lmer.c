@@ -32,7 +32,7 @@ internal_mer_RZXinv(SEXP x)
 	*RZXinv = REAL(GET_SLOT(GET_SLOT(x, lme4_RZXinvSym), lme4_xSym));
     CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
     CHM_DN RZX = AS_CHM_DN(RZXP), tmp1;
-    int *Perm = (int *)(L->Perm), *iperm = alloca(q * sizeof(int));
+    int *Perm = (int *)(L->Perm), *iperm = Alloca(q, int);
     R_CheckStack();
 				/* create the inverse permutation */
     for (j = 0; j < q; j++) iperm[Perm[j]] = j;
@@ -66,7 +66,7 @@ internal_mer_bVar(SEXP x)
     CHM_SP rhs, sm1, sm2;
     CHM_DN dm1;
     CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
-    int *Perm = (int *)(L->Perm), *iperm = alloca(q * sizeof(int));
+    int *Perm = (int *)(L->Perm), *iperm = Alloca(q, int);
     R_CheckStack();
 
     for (i = 0; i < q; i++) iperm[Perm[i]] = i; /* inverse permutation */
@@ -145,11 +145,11 @@ double lmm_deviance(SEXP x, double sigma, const double beta[])
 static int
 internal_mer_isNested(int nf, const int nc[], const int Gp[], const int p[])
 {
-    int **cnz = alloca(nf * sizeof(int*)), ans = 1, i, j, k, nct;
+    int **cnz = Alloca(nf, int*), ans = 1, i, j, k, nct;
 
     for (i = 0, nct = 0; i < nf; i++) { /* total number of columns */
 	nct += nc[i];
-	cnz[i] = alloca(nc[i] * sizeof(int));
+	cnz[i] = Alloca(nc[i], int);
     }
     R_CheckStack();
     for (i = 0; i < nf; i++) {	/* target number of nonzeros per column */
@@ -525,8 +525,7 @@ SEXP mer_MCMCsamp(SEXP x, SEXP savebp, SEXP nsampp, SEXP transp,
 	*ansp, df = n - (REML ? p : 0);
     int nrbase = p + 1 + coef_length(nf, nc); /* rows always included */
     int nrtot = nrbase + deviance + (saveb ? q : 0);
-    double *bnew = alloca(q * sizeof(double)), *betanew = alloca(p * sizeof(double));
-/*     CHM_DN chbnew = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), bnew, q); */
+    double *bnew = Alloca(q, double), *betanew = Alloca(p, double);
     R_CheckStack();
 
     if (nsamp <= 0) nsamp = 1;
@@ -785,9 +784,9 @@ SEXP mer_hat_trace(SEXP x)
 	*RZX = REAL(GET_SLOT(GET_SLOT(x, lme4_RZXSym), lme4_xSym)),
 	*Ztx = REAL(GET_SLOT(Zt, lme4_xSym)),
 	*wrk = Calloc(q, double), m1 = -1, one = 1, tr;
-    double *Xcp = alloca((n * p) * sizeof(double));
+    double *Xcp = Alloca(n * p, double);
     CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
-    CHM_DN zrow = M_numeric_as_chm_dense(alloca(sizeof(cholmod_dense)), wrk, q);
+    CHM_DN zrow = N_AS_CHM_DN(wrk, q);
     R_CheckStack();
 
     mer_factor(x);
@@ -832,7 +831,7 @@ SEXP mer_hat_trace2(SEXP x)
 	q = LENGTH(GET_SLOT(x, lme4_rZySym));
     CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
     double one = 1, tr = p + q,
-	*RZXicp = alloca((q * p) * sizeof(double));
+	*RZXicp = Alloca(q * p, double);
     R_CheckStack();
 				/* factor and evaluate RZXinv */
     mer_factor(x);
@@ -1620,7 +1619,7 @@ SEXP Zt_carryOver(SEXP fp, SEXP Zt, SEXP tvar, SEXP discount)
     disc = REAL(discount);
     if (!isFactor(fp)) error(_("f must be a factor"));
     nlev = LENGTH(getAttrib(fp, R_LevelsSymbol));
-    cct = alloca(nlev * sizeof(int));
+    cct = Alloca(nlev, int);
     R_CheckStack();
 
     if (chtz->ncol != n) error(_("ncol(Zt) must match length(fp)"));

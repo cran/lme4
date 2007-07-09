@@ -1,3 +1,14 @@
+2007-07-09 18:24  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r4575] src/glmer.c, src/lme4_utils.c, src/lme4_utils.h, src/lmer.c,
+	  src/lmer2.c: Use macros N_AS_CHM_DN and Alloca more widely
+
+2007-07-09 11:27  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r4574] ChangeLog, DESCRIPTION, inst/doc/Theory.Rnw, src/glmer.c,
+	  src/lme4_utils.c, src/lmer.c, src/lmer2.c: Version of nongappy lmer
+	  compatible with changed API for the Matrix package
+
 2007-07-04 12:09  Douglas Bates <bates@stat.wisc.edu>
 
 	* [r4542] inst/doc/Theory.Rnw, inst/doc/lme4.bib: Consistency of

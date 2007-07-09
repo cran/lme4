@@ -27,6 +27,8 @@ extern
 
 extern cholmod_common c;
 
+#define Alloca(n, t)   (t *) alloca( (size_t) ( (n) * sizeof(t) ) )
+
 #define flag_not_factored(x) *INTEGER(GET_SLOT(x, lme4_statusSym)) = 0
 
 /* zero an array */
