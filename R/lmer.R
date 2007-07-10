@@ -1470,7 +1470,7 @@ setMethod("VarCorr", signature(x = "lmer2"),
 
 # Create the VarCorr object of variances and covariances
 setMethod("VarCorr", signature(x = "nlmer"),
-	  function(x, REML = NULL, ...)
+	  function(x, ...)
       {
 	  sc <- sqrt(sum(x@deviance[c("bqd", "Sdr")])/x@dims["n"])
 	  cnames <- x@cnames

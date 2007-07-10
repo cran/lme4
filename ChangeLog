@@ -1,7 +1,13 @@
-2007-07-09 18:24  Douglas Bates <bates@stat.wisc.edu>
+2007-07-10 12:05  Douglas Bates <bates@stat.wisc.edu>
 
-	* [r4575] src/glmer.c, src/lme4_utils.c, src/lme4_utils.h, src/lmer.c,
-	  src/lmer2.c: Use macros N_AS_CHM_DN and Alloca more widely
+	* [r4586] R/lmer.R: reconcile inconsistency of code and docs (Kurt Hornik)
+	* [r4587] DESCRIPTION: Version:, Date: Maintenance release 0.99875-6
+	
+2007-07-09 21:34  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r4575,4581] src/glmer.c, src/lme4_utils.c, src/lme4_utils.h,
+	  src/lmer.c, src/lmer2.c: Use macros N_AS_CHM_DN and Alloca more widely.
+	* [r4582] DESCRIPTION: Release 0.99875-5
 
 2007-07-09 11:27  Douglas Bates <bates@stat.wisc.edu>
 
