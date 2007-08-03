@@ -202,7 +202,7 @@ double attr_hidden
     int ione = 1, n = LENGTH(GET_SLOT(x, lme4_ySym)), p = LENGTH(fixef);
     double *X = REAL(GET_SLOT(x, lme4_XSym)), one[] = {1,0};
     CHM_SP Zt = AS_CHM_SP(GET_SLOT(x, lme4_ZtSym));
-    CHM_DN chb = AS_CHM_DN(ranef), chv = N_AS_CHM_DN(val, n);
+    CHM_DN chb = AS_CHM_DN(ranef), chv = N_AS_CHM_DN(val, n, 1);
     R_CheckStack();	
 
     mer_secondary(x);
@@ -403,7 +403,7 @@ internal_betab_update(int p, int q, double sigma, cholmod_factor *L,
 		      double RZX[], double RXX[], double betahat[],
 		      double bhat[], double betanew[], double bnew[])
 {
-    CHM_DN chb, chbnew = N_AS_CHM_DN(bnew, q);
+    CHM_DN chb, chbnew = N_AS_CHM_DN(bnew, q, 1);
     int *perm = (int *)L->Perm;
     int j, ione = 1;
     double m1[] = {-1,0}, one[] = {1,0}, ans = 0;

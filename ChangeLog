@@ -1,3 +1,19 @@
+2007-08-03 15:26  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r4702] R/lmer.R: simulate method for Poisson glmms (William Valdar)
+	* [r4703] src/lme4_utils.h: include R.h before other R header files
+	  (Brian Ripley)
+	
+2007-08-02 15:35  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r4695] src/glmer.c, src/lme4_utils.c, src/lmer.c, src/lmer2.c: Use
+	  new Matrix API, fix lmer2_postVar
+	* [r4696] DESCRIPTION: Version:, Date: Maintenance release 0.99875-7
+	
+2007-08-02 10:51  Martin Maechler <maechler@stat.math.ethz.ch>
+
+	* [r4694] R/lmer.R: use 'is()', not 'inherits()' for S4 classes !
+
 2007-07-10 12:05  Douglas Bates <bates@stat.wisc.edu>
 
 	* [r4586] R/lmer.R: reconcile inconsistency of code and docs (Kurt Hornik)

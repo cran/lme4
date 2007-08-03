@@ -1,12 +1,14 @@
 #ifndef LME4_UTILS_H
 #define LME4_UTILS_H
-#include <R_ext/Constants.h>
-#include <R_ext/Lapack.h>
-#include <R_ext/Random.h>
+
+#include <R.h>
 #include <Rdefines.h>
 #include <Rmath.h>
 #include <Rversion.h>
 #include <Rconfig.h>
+#include <R_ext/Constants.h>
+#include <R_ext/Lapack.h>
+#include <R_ext/Random.h>
 #include "Matrix.h"
 
 #ifdef HAVE_VISIBILITY_ATTRIBUTE

@@ -684,31 +684,42 @@ setMethod("mcmcsamp", signature(object = "glmer"),
       })
 
 setMethod("simulate", signature(object = "mer"),
-	  function(object, nsim = 1, seed = NULL, ...)
+          function(object, nsim = 1, seed = NULL, ...)
       {
-	  if(!exists(".Random.seed", envir = .GlobalEnv))
-	      runif(1)		     # initialize the RNG if necessary
-	  if(is.null(seed))
-	      RNGstate <- .Random.seed
-	  else {
-	      R.seed <- .Random.seed
-	      set.seed(seed)
-	      RNGstate <- structure(seed, kind = as.list(RNGkind()))
-	      on.exit(assign(".Random.seed", R.seed, envir = .GlobalEnv))
-	  }
-
-          stopifnot((nsim <- as.integer(nsim[1])) > 0,
-                    inherits(object, "lmer"))
-	  ## similate the linear predictors
-	  lpred <- .Call(mer_simulate, object, nsim)
-	  sc <- abs(object@devComp[8])
-
-	  ## add fixed-effects contribution and per-observation noise term
-	  lpred <- as.data.frame(lpred + drop(object@X %*% fixef(object)) +
-				 rnorm(prod(dim(lpred)), sd = sc))
-	  ## save the seed
-	  attr(lpred, "seed") <- RNGstate
-	  lpred
+          if(!exists(".Random.seed", envir = .GlobalEnv))
+              runif(1)                    # initialize the RNG if necessary
+          if(is.null(seed))
+              RNGstate <- .Random.seed
+          else {
+              R.seed <- .Random.seed
+              set.seed(seed)
+              RNGstate <- structure(seed, kind = as.list(RNGkind()))
+              on.exit(assign(".Random.seed", R.seed, envir = .GlobalEnv))
+          }
+          
+          stopifnot((nsim <- as.integer(nsim[1])) > 0, is(object, "lmer"))
+          ## similate the linear predictors
+          lpred <- .Call(lme4:::mer_simulate, object, nsim)
+          sc <- abs(object@devComp[8])
+          
+          ## add fixed-effects contribution
+          lpred <- lpred + drop(object@X %*% fixef(object))
+          n <- prod(dim(lpred))
+          
+          if (!is(object, "glmer")) {  # and per-observation noise term
+              response <- as.data.frame(lpred + rnorm(n, sd = sc))
+              attr(response, "seed") <- RNGstate
+              return(response)
+          }
+          fam <- attr(object, "family")
+          if ("poisson"==fam$family) {
+              response <- as.data.frame(matrix(byrow = FALSE, ncol=nsim,
+                                          rpois(n, fam$linkinv(lpred))))
+              attr(response, "seed") <- RNGstate
+              return(response)
+          }
+          stop("simulate() not yet implemented for", fam$family,
+               "glmms\n")
       })
 
 ### "FIXME": the following has too(?) much cut & paste from above
@@ -717,7 +728,7 @@ simulestimate <- function(x, FUN, nsim = 1, seed = NULL, control = list())
 {
     FUN <- match.fun(FUN)
     stopifnot((nsim <- as.integer(nsim[1])) > 0,
-	      inherits(x, "lmer"))
+              is(x, "lmer"))
     if (!is.null(seed)) set.seed(seed)
     ## simulate the linear predictors
     lpred <- .Call(mer_simulate, x, nsim)
@@ -1261,7 +1272,7 @@ lmer2 <- function(formula, data, family = gaussian,
                  method, mc, model)
     rm(fr, FL, Ztl, glmFit)
     if (!is.null(start)) mer <- setST(mer, start)
-    if (!inherits(mer, "glmer2")) {      # linear mixed model
+    if (!is(mer, "glmer2")) {      # linear mixed model
         .Call(lmer2_optimize, mer, cv$msVerbose)
         .Call(lmer2_update_effects, mer)
     }
@@ -1308,7 +1319,7 @@ printMer2 <- function(x, digits = max(3, getOption("digits") - 3),
     if (!is.null(x@call$subset))
         cat(" Subset:",
             deparse(asOneSidedFormula(x@call$subset)[[2]]),"\n")
-    if (inherits(x, "glmer2"))
+    if (is(x, "glmer2"))
         cat(" Family: ", so@family$family, "(",
             so@family$link, " link)\n", sep = "")
     print(so@AICtab, digits = digits)

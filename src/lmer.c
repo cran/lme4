@@ -786,7 +786,7 @@ SEXP mer_hat_trace(SEXP x)
 	*wrk = Calloc(q, double), m1 = -1, one = 1, tr;
     double *Xcp = Alloca(n * p, double);
     CHM_FR L = AS_CHM_FR(GET_SLOT(x, lme4_LSym));
-    CHM_DN zrow = N_AS_CHM_DN(wrk, q);
+    CHM_DN zrow = N_AS_CHM_DN(wrk, q, 1);
     R_CheckStack();
 
     mer_factor(x);
