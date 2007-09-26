@@ -769,7 +769,7 @@ formatVC <- function(varc, digits = max(3, getOption("digits") - 2))
 		   list(rep.int('', nr),
 			c("Groups", "Name", "Variance", "Std.Dev.")))
     reMat[1+cumsum(reLens)-reLens, 1] <- names(reLens)
-    reMat[,2] <- c(unlist(lapply(reStdDev, names)), "")
+    reMat[,2] <- c(unlist(lapply(varc, colnames)), "")
     reMat[,3] <- format(unlist(reStdDev)^2, digits = digits)
     reMat[,4] <- format(unlist(reStdDev), digits = digits)
     if (any(reLens > 1)) {
