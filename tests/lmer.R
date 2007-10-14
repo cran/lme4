@@ -137,5 +137,8 @@ try(f.oops <- lmer(y ~ 1 + (1|group), data = tstDF))
 ##SG> case and optionally return an error or drop the redundant group
 ##SG> with a warning.
 
+## Check for terms of the form (0|grp)  (Nathaniel Smith)
+
+try(lmer(A ~ B + (0 | C), data.frame(A=1:100, B=1:100, C=rep(1:10, 10))))
 
 cat('Time elapsed: ', proc.time(),'\n') # for ``statistical reasons''

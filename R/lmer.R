@@ -345,6 +345,8 @@ lmerFactorList <- function(formula, mf, fltype)
                   t(model.matrix(eval(substitute(~ expr,
                                                  list(expr = x[[2]]))),
                                  mf)))
+    if (!all(sapply(Ztl, nrow)))
+        stop("terms that reduce to (0|grp) are not allowed")
     list(fl = fl, Ztl = Ztl)
 }
 
