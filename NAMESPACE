@@ -1,58 +1,67 @@
 useDynLib(lme4, .registration=TRUE)
 
 import("Matrix")
+import("lattice")
 importFrom("graphics", plot)
-import("stats", "lattice")
-#importFrom("utils", head, tail)  ## already available in Matrix
+importFrom("stats",
+           anova,
+           coef,
+           confint,
+           deviance,
+           fitted,
+           formula,
+           logLik,
+           model.frame,
+           model.matrix,
+           resid,
+           residuals,
+           simulate,
+           terms,
+           vcov
+           )
 
-export(
-       "gsummary",
-       "hatTrace",
+export("glmer",
+       #"gsummary", "hatTrace",
+       "HPDinterval",
        "lmList",
        "lmer",
        "lmer2",
        "mcmcsamp",
        "nlmer",
-       "pedigree",
-       "pooledSD"
-       )
+       #"pooledSD",
+       "refit",
+       "VarCorr")
 
-exportClasses(
-              "coef.lmer",
-              "glmer",
-              "glmer2",
-              "lmList",
-              "lmer",
-              "lmer2",
-              "mer",
-              "nlmer",
-              "pedigree",
-              "ranef.lmer",
-              "summary.glmer",
-              "summary.lmer",
-              "summary.mer"
-              )
+exportClasses("lmList", "mer", "merMCMC", "summary.mer")
 
 exportMethods(
               "BIC",
+              "HPDinterval",
               "VarCorr",
               "anova",
+              "as.matrix",
+              "as.data.frame",
               "chol",
               "coef",
               "coerce",
               "confint",
+              "densityplot",
               "deviance",
+              "expand",
               "fitted",
               "fixef",
               "formula",
-              "gsummary",
+#              "gsummary",
               "head",
               "logLik",
               "mcmcsamp",
+              "model.frame",
+              "model.matrix",
               "plot",
               "print",
               "qqmath",
               "ranef",
+              "refit",
               "resid",
               "residuals",
               "show",
@@ -62,6 +71,12 @@ exportMethods(
               "terms",
               "update",
               "vcov",
-              "with"
+              "with",
+              "xyplot"
               )
 
+S3method(plot, coef.mer)
+S3method(print, coef.mer)
+S3method(plot, ranef.mer)
+S3method(print, ranef.mer)
+S3method(qqmath, ranef.mer)

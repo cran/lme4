@@ -45,11 +45,11 @@ Chapman and Hall/CRC.
 \examples{
 str(cake)
 print(fm1 <- lmer(angle ~ recipe * temperature + (1|recipe:replicate), cake,
-                  method = "ML"), corr = FALSE)
+                  REML = FALSE), corr = FALSE)
 print(fm2 <- lmer(angle ~ recipe + temperature + (1|recipe:replicate), cake,
-                  method = "ML"), corr = FALSE)
+                  REML = FALSE), corr = FALSE)
 print(fm3 <- lmer(angle ~ recipe + temp + (1|recipe:replicate), cake,
-                  method = "ML"), corr = FALSE)
+                  REML = FALSE), corr = FALSE)
 anova(fm3, fm2, fm1)
 }
 \keyword{datasets}

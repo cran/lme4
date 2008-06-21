@@ -1,0 +1,367 @@
+
+R version 2.7.0 (2008-04-22)
+Copyright (C) 2008 The R Foundation for Statistical Computing
+ISBN 3-900051-07-0
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(lme4)
+Loading required package: Matrix
+Loading required package: lattice
+
+Attaching package: 'Matrix'
+
+
+	The following object(s) are masked from package:stats :
+
+	 xtabs 
+
+> options(show.signif.stars = FALSE)
+> 
+> (fm1 <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy))
+Linear mixed model fit by REML 
+Formula: Reaction ~ Days + (Days | Subject) 
+   Data: sleepstudy 
+  AIC  BIC logLik deviance REMLdev
+ 1756 1775 -871.8     1752    1744
+Random effects:
+ Groups   Name        Variance Std.Dev. Corr  
+ Subject  (Intercept) 612.095  24.7405        
+          Days         35.071   5.9221  0.065 
+ Residual             654.944  25.5919        
+Number of obs: 180, groups: Subject, 18
+
+Fixed effects:
+            Estimate Std. Error t value
+(Intercept)  251.405      6.825   36.84
+Days          10.467      1.546    6.77
+
+Correlation of Fixed Effects:
+     (Intr)
+Days -0.138
+> (fm1a <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy, REML = FALSE))
+Linear mixed model fit by maximum likelihood 
+Formula: Reaction ~ Days + (Days | Subject) 
+   Data: sleepstudy 
+  AIC  BIC logLik deviance REMLdev
+ 1764 1783   -876     1752    1744
+Random effects:
+ Groups   Name        Variance Std.Dev. Corr  
+ Subject  (Intercept) 565.522  23.7807        
+          Days         32.682   5.7168  0.081 
+ Residual             654.944  25.5919        
+Number of obs: 180, groups: Subject, 18
+
+Fixed effects:
+            Estimate Std. Error t value
+(Intercept)  251.405      6.632   37.91
+Days          10.467      1.502    6.97
+
+Correlation of Fixed Effects:
+     (Intr)
+Days -0.138
+> (fm2 <- lmer(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy))
+Linear mixed model fit by REML 
+Formula: Reaction ~ Days + (1 | Subject) + (0 + Days | Subject) 
+   Data: sleepstudy 
+  AIC  BIC logLik deviance REMLdev
+ 1754 1770 -871.8     1752    1744
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ Subject  (Intercept) 627.577  25.0515 
+ Subject  Days         35.852   5.9876 
+ Residual             653.594  25.5655 
+Number of obs: 180, groups: Subject, 18
+
+Fixed effects:
+            Estimate Std. Error t value
+(Intercept)  251.405      6.885   36.51
+Days          10.467      1.559    6.71
+
+Correlation of Fixed Effects:
+     (Intr)
+Days -0.184
+> 
+> if (FALSE) {                            # Not sure what's happening here
++     ## transformed vars [failed in 0.995-1]
++     (fm2l <- lmer(log(Reaction) ~ log(Days+1) + (log(Days+1)|Subject),
++                   data = sleepstudy, REML = FALSE))
++ }
+> 
+> ## generalized linear mixed model
+> (m1 <- lmer(cbind(incidence, size - incidence) ~ period + (1 | herd),
++             family = binomial, data = cbpp))
+Generalized linear mixed model fit by the Laplace approximation 
+Formula: cbind(incidence, size - incidence) ~ period + (1 | herd) 
+   Data: cbpp 
+   AIC   BIC logLik deviance
+ 110.1 120.2 -50.05    100.1
+Random effects:
+ Groups Name        Variance Std.Dev.
+ herd   (Intercept) 0.4125   0.64226 
+Number of obs: 56, groups: herd, 15
+
+Fixed effects:
+            Estimate Std. Error z value Pr(>|z|)
+(Intercept)  -1.3985     0.2279  -6.137 8.42e-10
+period2      -0.9923     0.3054  -3.249 0.001156
+period3      -1.1287     0.3260  -3.462 0.000537
+period4      -1.5804     0.4288  -3.686 0.000228
+
+Correlation of Fixed Effects:
+        (Intr) perid2 perid3
+period2 -0.351              
+period3 -0.329  0.267       
+period4 -0.249  0.202  0.186
+> 
+> ## Simple example by Andrew Gelman (2006-01-10) ----
+> n.groups <- 10 ; n.reps <- 2
+> n <- length(group.id <- gl(n.groups, n.reps))
+> ## simulate the varying parameters and the data:
+> set.seed(0)
+> a.group <- rnorm(n.groups, 1, 2)
+> y <- rnorm (n, a.group[group.id], 1)
+> ## fit and summarize the model
+> fit.1 <- lmer (y ~ 1 + (1 | group.id))
+> coef (fit.1)# failed in Matrix 0.99-6
+$group.id
+   (Intercept)
+1    3.3759908
+2   -0.2384442
+3    3.1859481
+4    3.1121302
+5    1.4381134
+6   -1.7593347
+7   -0.2546053
+8    0.6978026
+9    1.2121830
+10   4.9433373
+
+> (sf1 <- summary(fit.1)) # show() is as without summary()
+Linear mixed model fit by REML 
+Formula: y ~ 1 + (1 | group.id) 
+  AIC   BIC logLik deviance REMLdev
+ 79.4 82.39  -36.7     74.5    73.4
+Random effects:
+ Groups   Name        Variance Std.Dev.
+ group.id (Intercept) 4.55767  2.13487 
+ Residual             0.66779  0.81718 
+Number of obs: 20, groups: group.id, 10
+
+Fixed effects:
+            Estimate Std. Error t value
+(Intercept)   1.5713     0.6994   2.247
+> ## ranef and coef
+> rr <- ranef(fm1)
+> stopifnot(is.list(rr), length(rr) == 1, class(rr[[1]]) == "data.frame")
+> if (FALSE) {  ## FIXME
++     print(plot(rr))
++ }
+> cc <- coef(fm1)
+> stopifnot(is.list(cc), length(cc) == 1, class(cc[[1]]) == "data.frame")
+> print(plot(cc))
+> rr <- ranef(fm2)
+> stopifnot(is.list(rr), length(rr) == 1, class(rr[[1]]) == "data.frame")
+> print(plot(rr))
+$Subject
+
+> cc <- coef(fm2)
+> stopifnot(is.list(cc), length(cc) == 1, class(cc[[1]]) == "data.frame")
+> print(plot(cc))
+> 
+> if (require('MASS', quietly = TRUE)) {
++     bacteria$wk2 <- bacteria$week > 2
++     contrasts(bacteria$trt) <-
++         structure(contr.sdif(3),
++                   dimnames = list(NULL, c("diag", "encourage")))
++     print(fm5 <- lmer(y ~ trt + wk2 + (1|ID), bacteria, binomial))
++     print(fm6 <- lmer(y ~ trt + wk2 + (1|ID), bacteria, binomial))
++ }
+Generalized linear mixed model fit by the Laplace approximation 
+Formula: y ~ trt + wk2 + (1 | ID) 
+   Data: bacteria 
+   AIC   BIC logLik deviance
+ 202.3 219.2 -96.13    192.3
+Random effects:
+ Groups Name        Variance Std.Dev.
+ ID     (Intercept) 1.5436   1.2424  
+Number of obs: 220, groups: ID, 50
+
+Fixed effects:
+             Estimate Std. Error z value Pr(>|z|)
+(Intercept)    2.8316     0.4466   6.341 2.29e-10
+trtdiag       -1.3667     0.6566  -2.082 0.037376
+trtencourage   0.5840     0.6734   0.867 0.385793
+wk2TRUE       -1.5986     0.4612  -3.466 0.000528
+
+Correlation of Fixed Effects:
+            (Intr) trtdig trtncr
+trtdiag     -0.044              
+trtencourag  0.064 -0.495       
+wk2TRUE     -0.794  0.063 -0.056
+Generalized linear mixed model fit by the Laplace approximation 
+Formula: y ~ trt + wk2 + (1 | ID) 
+   Data: bacteria 
+   AIC   BIC logLik deviance
+ 202.3 219.2 -96.13    192.3
+Random effects:
+ Groups Name        Variance Std.Dev.
+ ID     (Intercept) 1.5436   1.2424  
+Number of obs: 220, groups: ID, 50
+
+Fixed effects:
+             Estimate Std. Error z value Pr(>|z|)
+(Intercept)    2.8316     0.4466   6.341 2.29e-10
+trtdiag       -1.3667     0.6566  -2.082 0.037376
+trtencourage   0.5840     0.6734   0.867 0.385793
+wk2TRUE       -1.5986     0.4612  -3.466 0.000528
+
+Correlation of Fixed Effects:
+            (Intr) trtdig trtncr
+trtdiag     -0.044              
+trtencourag  0.064 -0.495       
+wk2TRUE     -0.794  0.063 -0.056
+> 
+> ## Invalid factor specification -- used to seg.fault:
+> set.seed(1)
+> dat <- data.frame(y = round(10*rnorm(100)), lagoon = factor(rep(1:4,each = 25)),
++                   habitat = factor(rep(1:20, each = 5)))
+> r1  <- lmer(y ~ habitat + (1|habitat:lagoon), data = dat) # ok
+> 
+> if (FALSE) {   # back to segfaulting again
++     try(
++         reg <- lmer(y ~ habitat + (1|habitat*lagoon), data = dat) # did seg.fault
++         ) # now gives error                 ^- should be ":"
++ }
+> 
+> ## Failure to specify a random effects term - used to give an obscure message
+> try(
++ m2 <- lmer(incidence / size ~ period, weights = size,
++             family = binomial, data = cbpp)
++ )
+Error in lmerFactorList(formula, fr$mf, 0L, 0L) : 
+  No random effects terms specified in formula
+> 
+> ### mcmcsamp() :
+> ## From: Andrew Gelman <gelman@stat.columbia.edu>
+> ## Date: Wed, 18 Jan 2006 22:00:53 -0500
+> 
+> if (FALSE) {  # mcmcsamp still needs work
++     has.coda <- require(coda)
++     if(!has.coda)
++         cat("'coda' package not available; some outputs will look suboptimal\n")
++     
++     ## Very simple example
++     y <- 1:10
++     group <- gl(2,5)
++     (M1 <- lmer (y ~ 1 + (1 | group))) # works fine
++     (r1 <- mcmcsamp (M1))              # dito
++     r2 <- mcmcsamp (M1, saveb = TRUE)  # gave error in 0.99-* and 0.995-[12]
++     (r10 <- mcmcsamp (M1, n = 10, saveb = TRUE))
++     
++     ## another one, still simple
++     y <- (1:20)*pi
++     x <- (1:20)^2
++     group <- gl(2,10)
++     M1 <- lmer (y ~ 1 | group)
++     mcmcsamp (M1, n = 2, saveb=TRUE) # fine
++     
++     M2 <- lmer (y ~ 1 + x + (1 + x | group)) # false convergence
++     ## should be identical (and is)
++     M2 <- lmer (y ~ x + ( x | group))#  false convergence -> simulation doesn't work:
++     if(FALSE) ## try(..) fails here (in R CMD check) [[why ??]]
++         mcmcsamp (M2, saveb=TRUE)
++     ## Error: inconsistent degrees of freedom and dimension ...
++     
++     ## mcmc for glmer:
++     rG1k <- mcmcsamp(m1, n = 1000)
++     summary(rG1k)
++     rG2 <- mcmcsamp(m1, n = 3, verbose = TRUE)
++ }
+> 
+> # convergence on boundary warnings
+> load(system.file("external/test3comp.rda", package = "Matrix"))
+> b3 <- lmer(Y3 ~ (1|Sample) + (1|Operator/Run), test3comp, verb = TRUE)
+  0:     500.38871: 0.579163 0.259010 0.259010
+  1:     175.78769: 0.524991 0.247138  1.25747
+  2:     128.76543:  0.00000  0.00000  1.69986
+  3:     106.39873:  0.00000  0.00000  2.44081
+  4:     100.06130:  0.00000 5.35237e-05  2.88758
+  5:     94.655192:  0.00000 0.00363215  3.57348
+  6:     93.154896:  0.00000 0.266386  4.27485
+  7:     89.925764:  0.00000  0.00000  5.22830
+  8:     89.368346: 0.0347320  0.00000  5.82392
+  9:     88.896913:  0.00000  0.00000  6.84812
+ 10:     88.820930:  0.00000  0.00000  7.83622
+ 11:     88.818056:  0.00000  0.00000  7.70168
+ 12:     88.818054: 2.87589e-08  0.00000  7.70151
+ 13:     88.818040:  0.00000  0.00000  7.69979
+ 14:     88.817931: 3.74205e-06 6.17072e-06  7.68342
+ 15:     88.817868:  0.00000 3.75710e-05  7.65676
+ 16:     88.817867: 1.06744e-05 8.28835e-05  7.65813
+ 17:     88.817863:  0.00000 0.000467480  7.66291
+ 18:     88.805702:  0.00000 0.0280225  7.97623
+ 19:     88.772924: 0.00125931 0.0555200  8.11884
+ 20:     88.753495: 0.000291737 0.0845057  8.11722
+ 21:     88.750774: 0.000612855 0.0795450  8.08860
+ 22:     88.736034: 0.00571716 0.0814807  7.65554
+ 23:     88.735229:  0.00000 0.0797290  7.66903
+ 24:     88.735219:  0.00000 0.0800425  7.67925
+ 25:     88.735218:  0.00000 0.0801328  7.67758
+ 26:     88.735218: 1.29102e-05 0.0801000  7.67689
+ 27:     88.735218:  0.00000 0.0801084  7.67708
+> if (isTRUE(try(data(Early, package = 'mlmRev')) == 'Early')) {
++     Early$tos <- Early$age - 0.5        # time on study
++     b1 <- lmer(cog ~ tos + trt:tos + (tos|id), Early, verb = TRUE)
++ }
+  0:     2396.0310: 0.942809 0.872872  0.00000
+  1:     2381.4911:  1.18380  0.00000 -0.409437
+  2:     2370.1931:  1.30943 8.69115e-06 -0.0419420
+  3:     2364.9484:  1.62367  0.00000 -0.268833
+  4:     2364.6257:  1.49445 0.0424823 -0.274377
+  5:     2364.5793:  1.47748 0.0659724 -0.234870
+  6:     2364.5042:  1.47692 0.0186133 -0.247410
+  7:     2364.5021:  1.48558 0.0137308 -0.250452
+  8:     2364.5019:  1.48297 0.00720443 -0.251643
+  9:     2364.5016:  1.48320 0.00381252 -0.250674
+ 10:     2364.5016:  1.48334 0.000281097 -0.250759
+ 11:     2364.5016:  1.48460 0.000348191 -0.251078
+ 12:     2364.5016:  1.48420 4.12281e-07 -0.250963
+ 13:     2364.5016:  1.48420 4.27876e-07 -0.250964
+> 
+> ## Spencer Graves' example (from a post to S-news, 2006-08-03): ----------------
+> ## FIXME?
+> tstDF <- data.frame(group = letters[1:5], y = 1:5)
+> var(tstDF$y) # == 2.5
+[1] 2.5
+> ## Now throws an error
+> try(f.oops <- lmer(y ~ 1 + (1|group), data = tstDF))
+Error : length(levels(dm$flist[[1]])) < length(Y) is not TRUE
+> ##  summary(f.oops) ## or print(Matrix:::formatVC(VarCorr(f.oops)), quote = FALSE)
+> ## ...
+> ##   Groups   Name        Variance Std.Dev.
+> ##   group    (Intercept) 1.81818  1.34840
+> ##   Residual             0.68182  0.82572
+> ## ...
+> 
+> ##SG>	 This is ... silly, because there are zero degrees of freedom
+> ##SG> to distinguish "group" from Residual.  It is comforting that the sum of
+> ##SG> the variances sum to the variance of "y", ......
+> ##SG>	 However, I would prefer to have the multilevel software catch this
+> ##SG> case and optionally return an error or drop the redundant group
+> ##SG> with a warning.
+> 
+> 
+> cat('Time elapsed: ', proc.time(),'\n') # for ``statistical reasons''
+Time elapsed:  7.512 0.11 7.613 0 0 
+> 

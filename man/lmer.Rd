@@ -1,19 +1,31 @@
 \name{lmer}
 \alias{lmer}
 \alias{lmer2}
+\alias{glmer}
+\alias{nlmer}
 \concept{GLMM}% << so it's found
-\title{Fit (Generalized) Linear Mixed-Effects Models}
+\concept{NLMM}% << so it's found
+\title{Fit Mixed-Effects Models}
 \description{
-  Fit a linear or generalized linear mixed-effects model with nested or
-  crossed grouping factors for the random effects.
+  Fit a linear mixed model or a generalized linear mixed model or a
+  nonlinear mixed model.
 }
 \usage{
-lmer(formula, data, family, method, control, start,
-     subset, weights, na.action, offset, contrasts,
-     model, \dots)
-lmer2(formula, data, family, method, control, start,
-      subset, weights, na.action, offset, contrasts,
-      model, \dots)
+lmer(formula, data, family = NULL, REML = TRUE,
+     control = list(), start = NULL, verbose = FALSE,
+     subset, weights, na.action, offset,
+     contrasts = NULL, model = TRUE, x = TRUE, \dots)
+lmer2(formula, data, family = NULL, REML = TRUE,
+      control = list(), start = NULL, verbose = FALSE,
+      subset, weights, na.action, offset,
+      contrasts = NULL, model = TRUE, x = TRUE, \dots)
+glmer(formula, data, family = gaussian, start = NULL,
+      verbose = FALSE, nAGQ = 1, subset, weights,
+      na.action, offset, contrasts = NULL, model = TRUE,
+      control = list(), \dots)
+nlmer(formula, data, start = NULL, verbose = FALSE, nAGQ = 1,
+      subset, weights, na.action, contrasts = NULL,
+      model = TRUE, control = list(), \dots)
 }
 \arguments{
   \item{formula}{a two-sided linear formula object describing the
@@ -25,57 +37,51 @@ lmer2(formula, data, family, method, control, start,
     \code{formula}.  By default the variables are taken from the
     environment from which \code{lmer} is called.}
   \item{family}{
-    a GLM family, see \code{\link[stats]{glm}}.  If \code{family} is
-    missing then a linear mixed model is fit; otherwise a generalized
-    linear mixed model is fit.}
-  \item{method}{a character string.  For a linear mixed model the
-    default is \code{"REML"} indicating that the model should be fit by
-    maximizing the restricted log-likelihood.  The alternative is
-    \code{"ML"} indicating that the log-likelihood should be
-    maximized.  (This method is sometimes called "full" maximum
-    likelihood.)  For a generalized linear mixed model the criterion
-    is always the log-likelihood but this criterion does not have a
-    closed form expression and must be approximated.  The default approximation is
-    \code{"PQL"} or penalized quasi-likelihood.  Alternatives are
-    \code{"Laplace"} or \code{"AGQ"} indicating the Laplacian and
-    adaptive Gaussian quadrature approximations respectively.  The
-    \code{"PQL"} method is fastest but least accurate.  The
-    \code{"Laplace"} method is intermediate in speed and accuracy.
-    The \code{"AGQ"} method is the most accurate but can be
-    considerably slower than the others.}
+    a GLM family, see \code{\link[stats]{glm}} and
+    \code{\link[stats]{family}}. If \code{family} is missing then a
+    linear mixed model is fit; otherwise a generalized linear mixed
+    model is fit.}
+  \item{REML}{logical argument to \code{lmer} only. Should the estimates
+    be chosen to optimize the REML criterion (as opposed to the
+    log-likelihood)?  Defaults to TRUE.}
+  \item{nAGQ}{a positive integer - the number of points per axis for
+    evaluating the adaptive Gauss-Hermite approximation to the
+    log-likelihood.  This defaults to 1, corresponding to the Laplacian
+    approximation.  Values greater than 1 produce greater accuracy in
+    the evaluation of the log-likelihood at the expense of speed.}
   \item{control}{a list of control parameters. See below for details.}
-  \item{start}{a list of relative precision matrices for the random
-    effects.  This has the same form as the slot \code{"Omega"} in a
-    fitted model.  Only the upper triangle of these symmetric matrices
-    should be stored.}
+  \item{start}{a named list of starting values for the parameters in the
+    model. If the list is of the same form as the \code{ST} slot, it is
+    becomes the starting values of the \code{ST} slot.  It the list
+    contains components named \code{fixef} and/or \code{ST}, these are
+    used as the starting values for those slots.  (Setting starting
+    values for \code{fixef} has no effect for a linear mixed model
+    because the fixed-effects parameters do not appear in the profiled
+    deviance.)  In \code{lmer} and \code{glmer} a numeric
+    \code{start} argument of the appropriate length is used as the
+    starting value of the parameter vector that determines the \code{ST}
+    slot. In \code{nlmer} a numeric \code{start} argument is used as the
+    starting values of the \code{fixef} slot.} 
   \item{subset, weights, na.action, offset, contrasts}{further model
     specification arguments as in \code{\link[stats]{lm}}; see there for
     details.}
-  \item{model}{logical indicating if the model component
-    should be returned (in slot \code{frame}).}
-  \item{\dots}{potentially further arguments for methods.  Currently
-    none are used.}
+  \item{model}{logical scalar.  If \code{FALSE} the model frame in
+    slot \code{frame} is truncated to zero rows.}
+  \item{x}{logical scalar.  If \code{FALSE} the model matrix in
+    slot \code{X} is truncated to zero rows.}
+  \item{verbose}{logical scalar.  If \code{TRUE} verbose output is
+    generated during the optimization of the parameter estimates.}
+  \item{\dots}{other potential arguments.  A \code{method} argument was
+    used in earlier versions of the package. It's functionality has been
+    replaced by the \code{REML} and \code{nAGQ} arguments.}
 }
 \details{
   This is a revised version of the \code{\link[nlme]{lme}} function from the
   \pkg{nlme} package.  This version uses a different method of
   specifying random-effects terms and allows for fitting generalized
-  linear mixed models as well as linear mixed models.
+  linear mixed models and nonlinear mixed models in addition to linear
+  mixed models.
 
-  The \code{lmer2} function is a development version of \code{lmer} that
-  uses a modified internal representation of the model.  Typically
-  \code{lmer2} is faster and more reliable than \code{lmer}.  At present
-  \code{lmer2} can only fit linear mixed-effects models (that is, the
-  \code{family} argument must be left unspecified) and not all the
-  methods for \code{"lmer"} objects are defined for \code{"lmer2"}
-  objects.  In particular, there is no \code{\link{mcmcsamp}} method for
-  \code{"lmer2"} objects.
-
-  When all the methods for the \code{"lmer"} objects and all the options
-  for the \code{lmer} function have been duplicated for the new
-  representation, the new representation will replace the old one and
-  the \code{"2"} will be dropped from the name.
-    
   Additional standard arguments to model-fitting functions can be passed
   to \code{lmer}.
   \describe{
@@ -85,71 +91,45 @@ lmer2(formula, data, family, method, control, start,
       to be included, or a  character  vector of the row names to be
       included.  All observations are included by default.}
     \item{na.action}{a function that indicates what should happen when the
-      data contain \code{NA}s.  The default action (\code{na.fail}) causes
-      \code{lme} to print an error message and terminate if there are any
-      incomplete observations.}
+      data contain \code{NA}s.  The default action (\code{na.fail}) prints
+      an error message and terminate if there are any incomplete
+      observations.}
     \item{control}{a named list of control parameters for the estimation
       algorithm, specifying only the ones to be changed from their
       default values.  Hence defaults to an empty list.\cr
       Possible control options and their default values are:
       \describe{
-	\item{\code{maxIter}:}{maximum number of iterations for the \code{lme}
-	  optimization algorithm.  Default is 50.}
-	\item{\code{tolerance}:}{relative convergence tolerance for the
-	  \code{lme} optimization algorithm.  Default is
-	  \code{sqrt(.Machine$double.eps)}.}
-	\item{\code{msMaxIter}:}{maximum number of iterations
-	  for the \code{nlminb} optimization step inside the \code{lme}
-	  optimization.  Default is 200.}
 	\item{\code{msVerbose}:}{a logical value passed as the
 	  \code{trace} argument to \code{nlminb} (see documentation on
 	  that function).  Default is \code{getOption("verbose")}.}
-	\item{\code{niterEM}:}{number of iterations for the EM algorithm
-	  used to refine the initial estimates of the random effects
-	  variance-covariance coefficients.  Default is 15.}
-	\item{\code{EMverbose}:}{a logical value indicating if verbose output
-	  should be produced during the EM iterations.  Default is
-	  \code{getOption("verbose")}.}
-
-	\item{\code{PQLmaxIt}:}{maximum number of iterations for the PQL
-	  algorithm when fitting generalized linear mixed models.
-	  Default is 30.}%% unused currently?
-	\item{\code{usePQL}:}{Should the PQL method be used before
-	  switching to general optimization when fitting generalized linear mixed
-	  models using \code{method = "Laplace"}?  Default is \code{FALSE}.}
-	\item{\code{gradient}:}{a logical value indicating if the
-	  analytic gradient of the objective should be used.  Use of an
-	  analytic gradient results in more stable convergence but can take
-	  longer.  For models with multiple grouping factors the
-	  difference in time can be substantial.
-	  Default is \code{TRUE}.}
-	\item{\code{Hessian}:}{a logical value indicating if the
-	  analytic Hessian of the objective should be calculated.  This
-	  is an experimental feature and at present the default is
-	  \code{FALSE}.  In the future we may use the analytic Hessian in
-	  the optimization.}
       }
     }
     \item{model, x}{logicals.  If \code{TRUE} the corresponding
       components of the fit (the model frame, the model matrices)
       are returned.}
   }
+
+  The \code{lmer2} name exists only for backwards compatibility.
+  Calling this function simply produces an equivalent call to \code{lmer}.
 }
 \value{
-  An object of class \code{"\linkS4class{lmer}"}.
-  There are many methods applicable to \code{"lmer"} objects, see the
-  above help page. %% Hmm.. or \code{\link{showMethods}(class = "lmer")}
+  An object of class \code{"\linkS4class{mer}"}, for which many methods
+  are available.  See there for details.
 }
-%\references{ ~put references to the literature/web site here ~ }
-%\author{}
-%\note{}
 \seealso{
-  The \code{\linkS4class{lmer}} class, \code{\link[stats]{lm}}
+  The \code{\linkS4class{mer}} class, \code{\link[stats]{lm}}
 }
 \examples{
+## linear mixed models
 (fm1 <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy))
 (fm2 <- lmer(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy))
 anova(fm1, fm2)
+## generalized linear mixed model
+(gm1 <- glmer(cbind(incidence, size - incidence) ~ period + (1 | herd),
+              family = binomial, data = cbpp))
+## nonlinear mixed models
+(nm1 <- nlmer(circumference ~ SSlogis(age, Asym, xmid, scal) ~ Asym|Tree,
+              Orange, start = c(Asym = 200, xmid = 725, scal = 350)))
 }
 \keyword{models}
 \keyword{methods}

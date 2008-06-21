@@ -41,11 +41,11 @@ setMethod("lmList", signature(formula = "formula", data = "data.frame"),
                         }, formula = mform$model)
           } else {
               val <- lapply(split(frm, eval(mform$groups, frm)),
-                            function(dat, formula)
+                            function(dat, formula, family)
                         {
                             ans <- try({
                                 data <- as.data.frame(dat)
-                                glm(formula, data, family)
+                                glm(formula, family, data)
                             })
                             if (inherits(ans, "try-error"))
                                 NULL
@@ -110,6 +110,26 @@ setMethod("coef", signature(object = "lmList"),
           coefs
       })
 
+pooledSD <- function(x, ...)
+{
+    stopifnot(is(x, "lmList"))
+    sumsqr <- apply(sapply(x,
+                           function(el) {
+                               if (is.null(el)) {
+                                   c(0,0)
+                               } else {
+                                   res <- resid(el)
+                                   c(sum(res^2), length(res) - length(coef(el)))
+                               }
+                           }), 1, sum)
+    if (sumsqr[2] == 0) {
+        stop("No degrees of freedom for estimating std. dev.")
+    }
+    val <- sqrt(sumsqr[1]/sumsqr[2])
+    attr(val, "df") <- sumsqr[2]
+    val
+}
+
 setMethod("show", signature(object = "lmList"),
           function(object)
       {
@@ -129,26 +149,6 @@ setMethod("show", signature(object = "lmList"),
           }
       })
 
-setMethod("pooledSD", signature(object = "lmList"),
-          function(object)
-      {
-          sumsqr <- apply(sapply(object,
-                                 function(el) {
-                                     if (is.null(el)) {
-                                         c(0,0)
-                                     } else {
-                                         res <- resid(el)
-                                         c(sum(res^2), length(res) - length(coef(el)))
-                                  }
-                              }), 1, sum)
-          if (sumsqr[2] == 0) {
-              stop("No degrees of freedom for estimating std. dev.")
-          }
-          val <- sqrt(sumsqr[1]/sumsqr[2])
-          attr(val, "df") <- sumsqr[2]
-          val
-      })
-
 setMethod("confint", signature(object = "lmList"),
           function(object, parm, level = 0.95, ...)
       {
@@ -166,14 +166,14 @@ setMethod("confint", signature(object = "lmList"),
               a <- (1 - level)/2
               fac <- sd * qt(c(a, 1 - a)/2, attr(sd, "df"))
               parm <- dimnames(template)[[1]]
-              for (i in seq(along = object))
+              for (i in seq_along(object))
                   val[ , , i] <-
                       coef(object[[i]])[parm] +
                           sqrt(diag(summary(object[[i]],
                                             corr = FALSE)$cov.unscaled
                                     )[parm]) %o% fac
           } else {
-              for (i in seq(along = object)) {
+              for (i in seq_along(object)) {
                   mCall$object <- object[[i]]
                   val[ , , i] <- eval(mCall)
               }

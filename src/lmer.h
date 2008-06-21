@@ -1,34 +1,32 @@
 #ifndef LME4_LMER_H
 #define LME4_LMER_H
 
-#include "lme4_utils.h"
-#include "Wishart.h"
+#include <R.h>
+/* Rdefines.h includes Rinternals.h (for SEXP, REAL, etc.) and defines
+ * GET_SLOT, MAKE_CLASS, NEW_OBJECT, SET_SLOT, etc. */
+#include <Rdefines.h>
 
-SEXP mer_ECMEsteps(SEXP x, SEXP nsteps, SEXP Verbp);
-SEXP mer_MCMCsamp(SEXP x, SEXP savebp, SEXP nsampp, SEXP transp,
-		  SEXP verbose, SEXP deviance);
-SEXP mer_coef(SEXP x, SEXP pType);
-SEXP mer_coefGets(SEXP x, SEXP coef, SEXP pType);
-SEXP mer_create(SEXP fl, SEXP Zt, SEXP Xp, SEXP yp, SEXP REMLp,
-		SEXP nc, SEXP cnames);
-SEXP mer_dtCMatrix(SEXP x);
-SEXP mer_dtCMatrix_inv(SEXP x);
-SEXP mer_fitted(SEXP x);
-SEXP mer_fixef(SEXP x);
-SEXP mer_gradient(SEXP x, SEXP pType);
-SEXP mer_hat_trace(SEXP x);
-SEXP mer_hat_trace2(SEXP x);
-SEXP mer_initial(SEXP x);
-SEXP mer_isNested(SEXP x);
+/* SEXP lme4_rWishart(SEXP ns, SEXP dfp, SEXP scal); */
+
+SEXP mer_MCMCsamp(SEXP x, SEXP fm);
+SEXP mer_ST_chol(SEXP x);
+SEXP mer_ST_getPars(SEXP x);
+SEXP mer_ST_initialize(SEXP ST, SEXP Gp, SEXP Zt);
+SEXP mer_ST_setPars(SEXP x, SEXP pars);
+SEXP mer_create_L(SEXP CmP);
+SEXP mer_optimize(SEXP x, SEXP verb);
 SEXP mer_postVar(SEXP x);
-SEXP mer_ranef(SEXP x);
-SEXP mer_sigma(SEXP x, SEXP REML);
-SEXP mer_simulate(SEXP x, SEXP nsimP);
-SEXP mer_update_ZXy(SEXP x);
-SEXP mer_update_y(SEXP x, SEXP ynew);
+SEXP mer_update_L(SEXP x);
+SEXP mer_update_RX(SEXP x);
+SEXP mer_update_dev(SEXP x);
+SEXP mer_update_ranef(SEXP x);
+SEXP mer_update_mu(SEXP x);
+SEXP mer_update_u(SEXP x, SEXP verbP);
 SEXP mer_validate(SEXP x);
+SEXP merMCMC_validate(SEXP x);
+SEXP merMCMC_VarCorr(SEXP x, SEXP typ);
 
-SEXP Ztl_sparse(SEXP fl, SEXP Ztl);
-SEXP Zt_carryOver(SEXP f, SEXP Zt, SEXP tvar, SEXP discount);
+SEXP spR_optimize(SEXP x, SEXP verbP);
+SEXP spR_update_mu(SEXP x);
 
 #endif /* LME4_LMER_H */

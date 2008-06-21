@@ -37,14 +37,15 @@ lmList(formula, data, family, subset, weights,
    function.}
 }
 \description{
-  \code{Data} is partitioned according to the levels of the grouping
+  The \code{data} argument is split according to the levels of the grouping
   factor \code{g} and individual \code{lm} or \code{glm} fits are
   obtained for each \code{data} partition, using the model defined in
   \code{object}.
 }
 \value{
-  an object of class lmList which is a list of \code{lm} objects with as
-  many components as the number of groups defined by the grouping factor.
+  an object of class \code{"\linkS4class{lmList}"}, which is a list of
+  \code{lm} objects with as many components as the number of groups
+  defined by the grouping factor.
 }
 \seealso{
 \code{\link[base:lm]{lm}}

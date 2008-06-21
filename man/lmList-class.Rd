@@ -5,14 +5,14 @@
 \alias{formula,lmList-method}
 \alias{confint,lmList-method}
 \alias{plot,lmList-method}
-\alias{pooledSD,lmList-method}
 \alias{show,lmList-method}
 \alias{update,lmList-method}
 \alias{plot,lmList.confint-method}
 \title{Class "lmList"}
 \description{A list of objects of class \code{lm} with a common model.}
 \section{Objects from the Class}{
-  Objects can be created by calls of the form \code{new("lmList", ...)}.
+  Objects can be created by calls of the form \code{new("lmList", ...)
+    or, more commonly, by a call to \code{\link{lmList}}}.
 }
 \section{Slots}{
   \describe{
@@ -37,8 +37,6 @@ Class \code{"vector"}, by class "list".
       used when creating the lmList object.}
     \item{confint}{\code{signature(object = "lmList")}: confidence
       intervals for the fitted linear models.}
-    \item{pooledSD}{\code{signature(object = "lmList")}: the pooled
-      standard deviation estimate from the fitted linear models.}
     \item{\link[methods:show]{show}}{\code{signature(object =
 	"lmList")}: show the object.}
     \item{\link[base:update]{update}}{\code{signature(object =

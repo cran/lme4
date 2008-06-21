@@ -3,22 +3,15 @@ setGeneric("lmList",
                     na.action, offset, pool, ...)
            standardGeneric("lmList"))
 
-setGeneric("pooledSD", function(object) standardGeneric("pooledSD"))
-
+if (FALSE) {
 setGeneric("gsummary",
            function (object, FUN, form, level, groups,
                      omitGroupingFactor = FALSE, 
                      invariantsOnly = FALSE, ...)
            standardGeneric("gsummary"))
-
-setGeneric("isNested", function(x, ...) standardGeneric("isNested"))
-
-setGeneric("LMEoptimize<-", function(x, ..., value)
-           standardGeneric("LMEoptimize<-"))
+}
 
 setGeneric("fixef", function(object, ...) standardGeneric("fixef"))
-
-setGeneric("denomDF", function(x, ...) standardGeneric("denomDF"))
 
 fixed.effects <- function(object, ...) {
     ## fixed.effects was an alternative name for fixef
@@ -45,17 +38,19 @@ setMethod("BIC", "logLik",
           -2 * (c(object) - attr(object, "df") * log(attr(object, "nobs"))/2)
           )
 
-setGeneric("VarCorr", function(x, ...) standardGeneric("VarCorr"))
+setGeneric("HPDinterval",
+           function(object, prob = 0.95, ...) standardGeneric("HPDinterval"))
 
-setGeneric("postVar", function(object, ...) standardGeneric("postVar"))
-
-setGeneric("gradient", function(x, ...) standardGeneric("gradient"))
-
-setGeneric("getFixDF", function(object, ...) standardGeneric("getFixDF"))
-
-setGeneric("mcmcsamp", function(object, n = 1, verbose = FALSE, ...)
+setGeneric("mcmcsamp",
+           function(object, n = 1, verbose = FALSE, ...)
            standardGeneric("mcmcsamp"))
 
-setGeneric("simulate", function(object, nsim = 1, seed = NULL, ...)
-           standardGeneric("simulate"))
+#setGeneric("pooledSD", function(x, ...) standardGeneric("pooledSD"))
 
+setGeneric("sigma", function(object, ...) standardGeneric("sigma"))
+
+setGeneric("VarCorr", function(x, ...) standardGeneric("VarCorr"))
+
+setGeneric("traceplot", function(x, ...) standardGeneric("traceplot"))
+
+setGeneric("refit", function(object, newresp, ...) standardGeneric("refit"))

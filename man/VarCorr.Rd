@@ -1,37 +1,41 @@
 \name{VarCorr}
 \docType{genericFunction}
+% Generic
 \alias{VarCorr}
+% Methods
 \alias{VarCorr,mer-method}
-\alias{VarCorr,lmer2-method}
-\alias{VarCorr,nlmer-method}
+\alias{VarCorr,merMCMC-method}
 \title{Extract variance and correlation components}
 \usage{
-\S4method{VarCorr}{mer}(x, REML = x@status["REML"], \dots)
-\S4method{VarCorr}{lmer2}(x, REML = NULL, \dots)
-\S4method{VarCorr}{nlmer}(x, \dots)
+\S4method{VarCorr}{mer}(x, \dots)
+\S4method{VarCorr}{merMCMC}(x, type = c("raw", "varcov", "sdcorr", "logs"), \dots)
 }
 \arguments{
   \item{x}{a fitted model object, usually an object inheriting from
-    class \code{\linkS4class{lmer}} (or, temporarily, class
-    \code{\linkS4class{lmer2}}).
+    class \code{\linkS4class{mer}}.
   }
-  \item{REML}{logical indicating if REML should be used.}
+  \item{type}{character string indicating the type of result to be
+    returned, either \code{"raw"}, the raw representation as in the
+    \code{ST} slot of the \code{\linkS4class{mer}} class, or
+    \code{"varcov"}, variances and covariances, or \code{"sdcorr"},
+    standard deviations and correlations, or \code{"logs"}, logs of the
+    standard deviations and Fisher's z transformation of the correlations.}
   \item{\dots}{Additional, optional arguments for some methods.  At
     present none are used.}
 }
 \description{
-  Extract the estimated variances, standard
-  deviations, and correlations of the random-effects terms in a
-  linear mixed-effects model, of class \code{lme}, or a generalized
-  linear mixed-effects model.  When appropriate,
-  the within-group error variance and standard deviation are also
-  calculated.
+  Extract the estimated variances, standard deviations, and correlations
+  of the random-effects terms in a mixed-effects model, of class
+  \code{mer}.
+
+  When appropriate, the within-group error variance and standard
+  deviation are also calculated.
 }
 \value{
   an object of class \code{VarCorr}.
 }
 \seealso{
-  the \code{\link{lmer}} function and \code{\linkS4class{lmer}} class;
+  the \code{\link{lmer}} function and \code{\linkS4class{mer}} class;
   the result class \code{\linkS4class{VarCorr}}.
 }
 \examples{

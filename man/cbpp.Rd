@@ -1,7 +1,7 @@
 \name{cbpp}
 \alias{cbpp}
 \docType{data}
-\title{Serological Incidence of Contagious Bovine Pleuropneumonia in Ethiopia}
+\title{Contagious bovine pleuropneumonia}
 \description{
   Contagious bovine pleuropneumonia (CBPP) is a major disease of cattle
   in Africa, caused by a mycoplasma.  This dataset describes the
@@ -39,12 +39,11 @@
 }
 \examples{
 ## response as a matrix
-(m1 <- lmer(cbind(incidence, size - incidence) ~ period + (1 | herd),
-            family = binomial, data = cbpp))
-
+(m1 <- glmer(cbind(incidence, size - incidence) ~ period + (1 | herd),
+            cbpp, binomial, verbose = TRUE))
 ## response as a vector of probabilities and usage of argument "weights"
-m2 <- lmer(incidence / size ~ period + (1 | herd), weights = size,
-           family = binomial, data = cbpp)
+m2 <- glmer(incidence / size ~ period + (1 | herd), weights = size,
+           cbpp, binomial, verbose = TRUE)
 
 ## Confirm that these are equivalent:
 stopifnot(all.equal(coef(m1), coef(m2)),
