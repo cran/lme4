@@ -1234,6 +1234,23 @@ setMethod("refit", signature(object = "mer", newresp = "numeric"),
           mer_finalize(object, FALSE) # non-verbose fit
       })
 
+BlockDiagonal <- function(lst)
+{
+    stopifnot(is(lst, "list"))
+    lst <- lapply(lapply(lst, as, Class = "generalMatrix"),
+                  as, Class = "TsparseMatrix")
+    isSquare <- function(x) nrow(x) == ncol(x)
+    stopifnot(all(sapply(lst, isSquare)),
+              all(sapply(lst, is, class2 = "dMatrix")))
+    if ((nl <- length(lst)) == 1) return(lst[[1]])
+    
+    offsets <- c(0L, cumsum(sapply(lst, ncol)))
+    new("dgTMatrix", Dim = rep.int(offsets[nl + 1], 2),
+        i = unlist(lapply(1:nl, function(i) lst[[i]]@i + offsets[i])),
+        j = unlist(lapply(1:nl, function(i) lst[[i]]@j + offsets[i])),
+        x = unlist(lapply(lst, slot, "x")))
+}
+
 setMethod("expand", signature(x = "mer"),
           function(x, sparse = TRUE, ...)
       {
@@ -1249,7 +1266,34 @@ setMethod("expand", signature(x = "mer"),
                   names(ans) <- names(fl)
               return(lapply(ans, elexpand))
           }
-          .NotYetImplemented
+
+          ind <- seq_along(ST <- x@ST)
+          nc <- sapply(ST, ncol)
+          nlev <- diff(x@Gp) %/% nc
+
+          Sblock <- function(i) rep(diag(ST[[i]]), each = nlev[i])
+          Smat <- Diagonal(x = unname(unlist(lapply(ind, Sblock))))
+          Tblock <- function(i)
+          {
+              if (nc[i] == 1) return(t(as(Diagonal(nlev[i]), "triangularMatrix")))
+              STi <- ST[[i]]
+              nci <- nc[i]
+              lt <- lower.tri(STi)
+              offsets <- (1:nlev[i]) - 1L
+              ij <- nlev[i] * (as.matrix(expand.grid(1:nci, 1:nci)[lt, ]) - 1)
+              new("dtTMatrix", Dim = rep.int(nlev[i] * nci, 2), uplo = "L", diag = "U",
+                  x = rep(STi[lt], each = nlev[i]),
+                  i = as.integer(outer(offsets, ij[1], "+")),
+                  j = as.integer(outer(offsets, ij[2], "+")))
+          }
+          if (max(nc) == 1) {
+              Tmat <- t(as(as(Diagonal(ncol(Smat)), "generalMatrix"), "triangularMatrix"))
+          } else {
+              Tmat <- as(as(BlockDiagonal(lapply(ind, Tblock)), "triangularMatrix"),
+                         "CsparseMatrix")
+          }
+          list(sigma = sigma(x), P = as(x@L@perm + 1L, "pMatrix"), T = Tmat,
+               S = Diagonal(x = unname(unlist(lapply(ind, Sblock)))))
       })
 
 #### Methods for secondary, derived classes

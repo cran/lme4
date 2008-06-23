@@ -250,13 +250,19 @@
 	deviance} (i.e. negative twice the REML criterion), according to
       the REML argument.  See the arguments section above for a description
       of the REML argument.}
-    \item{expand}{\code{signature(object = "mer")}: returns a list.  If
-      \code{sparse} is \code{FALSE}, the default, the elements of the list
-      are expansions of the elements of the \code{ST} slot into a list
-      of \code{S}, the diagonal matrix, and \code{T}, the unit lower
-      triangular matrix.  If \code{sparse} is \code{TRUE} the value is a
-      list of two \eqn{q} by \eqn{q} matrices: \code{S}, a diagonal
-      matrix and \code{T}, a unit lower triangular matrix.}
+    \item{expand}{\code{signature(object = "mer")}: returns a list of
+      terms in the expansion of the \code{ST} slot.  If
+      \code{sparse} is \code{TRUE}, the default, the elements of the
+      list are the numeric scalar \code{"sigma"}, the REML or ML
+      estimate of the standard deviation in the model, and three sparse
+      matrices: \code{"P"}, the permutation 
+      matrix, \code{"S"}, the diagonal scale matrix and \code{"T"}, the
+      lower triangular matrix determining correlations
+      attribute of the list is the estimate of the residual standard
+      deviation.  When \code{sparse} is \code{FALSE} each element of the list
+      is the expansions of the corresponding elements of the \code{ST}
+      slot into a list of \code{S}, the diagonal matrix, and \code{T},
+      the unit lower triangular matrix.}
     \item{fitted}{\code{signature(object = "mer")}: returns the fitted
       conditional means of the responses. See \code{\link{fitted}}.  The
       \code{\link{napredict}} function is called to align with the
@@ -329,6 +335,12 @@ terms(fm2)
 str(model.matrix(fm2))
 str(model.frame(fm2))
 str(resid(fm2))
+
+VarCorr(fm2)
+ee <- expand(fm2)
+op <- options(digits = 3)
+tcrossprod(ee$sigma * ee$P \%*\% ee$T \%*\% ee$S)
+options(op)
 
 \dontrun{
 ## Simulate 'Reaction' according to the fitted model:

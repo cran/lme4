@@ -1,6 +1,6 @@
 Package: lme4
-Version: 0.999375-16
-Date: 2008-06-21
+Version: 0.999375-17
+Date: 2008-06-23
 Title: Linear mixed-effects models using S4 classes
 Author: Douglas Bates <bates@stat.wisc.edu>,
         Martin Maechler <maechler@R-project.org>, and
@@ -15,4 +15,4 @@ LazyLoad: yes
 LazyData: yes
 License: GPL (>=2)
 URL: http://lme4.r-forge.r-project.org/
-Packaged: Sun Jun 22 04:43:48 2008; theussl
+Packaged: Mon Jun 23 04:53:54 2008; theussl
