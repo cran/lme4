@@ -1,3 +1,20 @@
+2008-06-24  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r174] DESCRIPTION: New version
+	* [r173] inst/doc/Implementation.pdf, inst/doc/PLSvGLS.Rnw,
+	  inst/doc/PLSvGLS.pdf, inst/doc/Theory.pdf: Updates, add PDF files to
+	  SVN archive.
+	* [r172] inst/doc/Implementation.Rnw, inst/doc/Notes.Rnw,
+	  inst/doc/PLSvGLS.Rnw: Use a less vague name
+	* [r171] inst/doc/Notes.Rnw: Clean up text
+
+2008-06-23  Martin Maechler  <maechler@stat.math.ethz.ch>
+
+	* [r170] NAMESPACE: comments (about "resid") only
+	* [r169] tests/lmer.Rout.save: update (oops)
+	* [r168] tests/lmer-conv.R, tests/lmer.R, tests/lmer.Rout.save: lmer
+	  tests: move convergence part to new separate lmer-conv.R
+
 2008-06-22  Douglas Bates <bates@stat.wisc.edu>
 
 	* [r166] DESCRIPTION: New release

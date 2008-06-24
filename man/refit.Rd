@@ -3,10 +3,13 @@
 \alias{refit,mer,numeric-method}
 \title{Re-fit a model to a new response vector}
 \description{
-  This generic function fits a model to a new response vector.  It is
-  typically used as part of a simulation.  For models fit by
+
+  This generic function fits a model to a new response vector.  It
+  typically is used as part of a simulation.  For models fit by
   \code{\link{lmer}} or \code{\link{nlmer}} it is much faster to use
-  this function to re-fit the model than to begin from the model formula.
+  this function to re-fit the model than to begin from the model
+  formula.
+
 }
 \usage{
 refit(object, newresp, \dots)
@@ -20,7 +23,7 @@ refit(object, newresp, \dots)
 \details{
   For many model-fitting functions in R a large part of the execution
   time is taken up with converting a formula representation and the data
-  argument to the numerical structures used to determine the parameter
+  argument into the numerical structures used to evaluate the parameter
   estimates.  It is common in a simulation to use the same model
   specification and covariate data on many simulated responses.  That
   is, the only thing that changes between model fits is the response
@@ -38,13 +41,10 @@ refit(object, newresp, \dots)
 \examples{
 fm1 <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy)
 set.seed(54321)
-system.time(simfe <- data.frame(t(apply(simulate(fm1, nsim = 100),
-                                        2,
-                                        function(y)
-                                        fixef(refit(fm1, y))
-                                        )
-                                  ), check.names = FALSE)
-            )
+system.time(simfe <-
+        data.frame(t(apply(simulate(fm1, nsim = 100),
+                           2, function(y) fixef(refit(fm1, y)))),
+                   check.names = FALSE))
 qqmath(~ `(Intercept)` + Days, simfe, outer = TRUE,
        ylab = NULL, scales = list(y = list(relation = "free")),
        layout = c(1,2), aspect = 1, type = c("g", "p"))

@@ -136,7 +136,7 @@ elements and certain elements close to the diagonal.
 The maximum likelihood estimates for parameters in model (\ref{eq:1})
 fit to the \code{Rail} data are obtained as
 <<RailfitML>>=
-Rm1ML <- lmer(travel ~ 1 + (1|Rail), Rail, method = "ML", verbose = TRUE)
+Rm1ML <- lmer(travel ~ 1 + (1|Rail), Rail, REML = FALSE, verbose = TRUE)
 @
 In this fit we have set \code{verbose = TRUE}
 indicating that information on the progress of the iterations should

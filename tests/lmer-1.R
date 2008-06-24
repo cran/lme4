@@ -5,15 +5,22 @@ options(show.signif.stars = FALSE)
 (fm1a <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy, REML = FALSE))
 (fm2 <- lmer(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy))
 
-if (FALSE) {                            # Not sure what's happening here
-    ## transformed vars [failed in 0.995-1]
-    (fm2l <- lmer(log(Reaction) ~ log(Days+1) + (log(Days+1)|Subject),
-                  data = sleepstudy, REML = FALSE))
-}
+## transformed vars should work[even if non-sensical as here;failed in 0.995-1]
+fm2l <- lmer(log(Reaction) ~ log(Days+1) + (log(Days+1)|Subject),
+             data = sleepstudy, REML = FALSE)
+xfm2 <- expand(fm2l)
+stopifnot(is(fm1, "mer"), is(fm2l, "mer"),
+          is(xfm2$P, "sparseMatrix"))
 
 ## generalized linear mixed model
 (m1 <- lmer(cbind(incidence, size - incidence) ~ period + (1 | herd),
             family = binomial, data = cbpp))
+stopifnot(is(m1,"mer"), is((cm1 <- coef(m1)), "coef.mer"),
+	  dim(cm1$herd) == c(15,4),
+	  all.equal(fixef(m1),
+		    c(-1.39853504914, -0.992334711,
+		      -1.12867541477, -1.58037390498), check.attr=FALSE)
+	  )
 
 ## Simple example by Andrew Gelman (2006-01-10) ----
 n.groups <- 10 ; n.reps <- 2
@@ -26,12 +33,12 @@ y <- rnorm (n, a.group[group.id], 1)
 fit.1 <- lmer (y ~ 1 + (1 | group.id))
 coef (fit.1)# failed in Matrix 0.99-6
 (sf1 <- summary(fit.1)) # show() is as without summary()
+
+
 ## ranef and coef
 rr <- ranef(fm1)
 stopifnot(is.list(rr), length(rr) == 1, class(rr[[1]]) == "data.frame")
-if (FALSE) {  ## FIXME
-    print(plot(rr))
-}
+print(plot(rr))
 cc <- coef(fm1)
 stopifnot(is.list(cc), length(cc) == 1, class(cc[[1]]) == "data.frame")
 print(plot(cc))
@@ -57,7 +64,7 @@ dat <- data.frame(y = round(10*rnorm(100)), lagoon = factor(rep(1:4,each = 25)),
                   habitat = factor(rep(1:20, each = 5)))
 r1  <- lmer(y ~ habitat + (1|habitat:lagoon), data = dat) # ok
 
-if (FALSE) {   # back to segfaulting again
+if (FALSE) {   # back to segfaulting again  ----- FIXME !!!!
     try(
         reg <- lmer(y ~ habitat + (1|habitat*lagoon), data = dat) # did seg.fault
         ) # now gives error                 ^- should be ":"
@@ -77,7 +84,7 @@ if (FALSE) {  # mcmcsamp still needs work
     has.coda <- require(coda)
     if(!has.coda)
         cat("'coda' package not available; some outputs will look suboptimal\n")
-    
+
     ## Very simple example
     y <- 1:10
     group <- gl(2,5)
@@ -85,33 +92,25 @@ if (FALSE) {  # mcmcsamp still needs work
     (r1 <- mcmcsamp (M1))              # dito
     r2 <- mcmcsamp (M1, saveb = TRUE)  # gave error in 0.99-* and 0.995-[12]
     (r10 <- mcmcsamp (M1, n = 10, saveb = TRUE))
-    
+
     ## another one, still simple
     y <- (1:20)*pi
     x <- (1:20)^2
     group <- gl(2,10)
     M1 <- lmer (y ~ 1 | group)
     mcmcsamp (M1, n = 2, saveb=TRUE) # fine
-    
+
     M2 <- lmer (y ~ 1 + x + (1 + x | group)) # false convergence
     ## should be identical (and is)
     M2 <- lmer (y ~ x + ( x | group))#  false convergence -> simulation doesn't work:
     if(FALSE) ## try(..) fails here (in R CMD check) [[why ??]]
         mcmcsamp (M2, saveb=TRUE)
     ## Error: inconsistent degrees of freedom and dimension ...
-    
+
     ## mcmc for glmer:
     rG1k <- mcmcsamp(m1, n = 1000)
     summary(rG1k)
     rG2 <- mcmcsamp(m1, n = 3, verbose = TRUE)
-}
-
-# convergence on boundary warnings
-load(system.file("external/test3comp.rda", package = "Matrix"))
-b3 <- lmer(Y3 ~ (1|Sample) + (1|Operator/Run), test3comp, verb = TRUE)
-if (isTRUE(try(data(Early, package = 'mlmRev')) == 'Early')) {
-    Early$tos <- Early$age - 0.5        # time on study
-    b1 <- lmer(cog ~ tos + trt:tos + (tos|id), Early, verb = TRUE)
 }
 
 ## Spencer Graves' example (from a post to S-news, 2006-08-03): ----------------
@@ -126,7 +125,7 @@ try(f.oops <- lmer(y ~ 1 + (1|group), data = tstDF))
 ##   group    (Intercept) 1.81818  1.34840
 ##   Residual             0.68182  0.82572
 ## ...
-
+##
 ##SG>	 This is ... silly, because there are zero degrees of freedom
 ##SG> to distinguish "group" from Residual.  It is comforting that the sum of
 ##SG> the variances sum to the variance of "y", ......

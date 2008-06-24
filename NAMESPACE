@@ -1,8 +1,9 @@
 useDynLib(lme4, .registration=TRUE)
 
-import("Matrix")
+import("Matrix")# including update()
 import("lattice")
 importFrom("graphics", plot)
+## Mostly generics, for which we define new methods:
 importFrom("stats",
            anova,
            coef,
@@ -13,10 +14,10 @@ importFrom("stats",
            logLik,
            model.frame,
            model.matrix,
-           resid,
-           residuals,
+           residuals, resid, # 'resid' needed too, unfortunately..
            simulate,
            terms,
+           ## update, -- already from 'Matrix'
            vcov
            )
 
@@ -62,8 +63,7 @@ exportMethods(
               "qqmath",
               "ranef",
               "refit",
-              "resid",
-              "residuals",
+              "resid", "residuals",
               "show",
               "simulate",
               "summary",

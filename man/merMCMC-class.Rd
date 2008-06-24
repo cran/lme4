@@ -12,8 +12,13 @@
 \alias{as.data.frame,merMCMC-method}
 \alias{coerce,merMCMC,data.frame-method} 
 \title{Mixed-model Markov chain Monte Carlo results}
-\description{Objects of class \code{"merMCMC"} are Markov chain Monte
-  Carlo samples from a fitted mixed-effects model.}
+\description{
+
+  Objects of class \code{"merMCMC"} are Markov chain Monte Carlo samples
+  from the distribution of the parameters of a fitted mixed-effects
+  model.
+
+} 
 \section{Objects from the Class}{
   Objects can be created by calls of the form \code{new("merMCMC", ...)}
   or, more commonly, via the \code{mer} method for the generic

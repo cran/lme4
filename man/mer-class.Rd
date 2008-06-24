@@ -200,7 +200,7 @@
   }% summary slots
 }
 \usage{
-## Methods with \sQuote{surprising} arguments
+## Methods with "surprising" arguments
 \S4method{deviance}{mer}(object, REML = NULL, \dots)
 \S4method{expand}{mer}(x, sparse = TRUE, \dots)
 \S4method{logLik}{mer}(object, REML = NULL, \dots)
@@ -250,35 +250,54 @@
 	deviance} (i.e. negative twice the REML criterion), according to
       the REML argument.  See the arguments section above for a description
       of the REML argument.}
-    \item{expand}{\code{signature(object = "mer")}: returns a list of
-      terms in the expansion of the \code{ST} slot.  If
-      \code{sparse} is \code{TRUE}, the default, the elements of the
+    \item{expand}{\code{signature(object = "mer")}:
+
+      returns a list of terms in the expansion of the \code{ST} slot.
+      If \code{sparse} is \code{TRUE}, the default, the elements of the
       list are the numeric scalar \code{"sigma"}, the REML or ML
       estimate of the standard deviation in the model, and three sparse
-      matrices: \code{"P"}, the permutation 
-      matrix, \code{"S"}, the diagonal scale matrix and \code{"T"}, the
-      lower triangular matrix determining correlations
-      attribute of the list is the estimate of the residual standard
-      deviation.  When \code{sparse} is \code{FALSE} each element of the list
-      is the expansions of the corresponding elements of the \code{ST}
-      slot into a list of \code{S}, the diagonal matrix, and \code{T},
-      the unit lower triangular matrix.}
-    \item{fitted}{\code{signature(object = "mer")}: returns the fitted
-      conditional means of the responses. See \code{\link{fitted}}.  The
-      \code{\link{napredict}} function is called to align with the
-      original data if the model was fit with \code{na.action = na.exclude}.}
-    \item{fixef}{\code{signature(object = "mer")}: returns the estimates
-      of the fixed-effects parameters.  See \code{\link{fixef}}.}
-    \item{formula}{\code{signature(x = "mer")}: returns the model
-      formula.  See \code{\link{formula}}. }
+      matrices: \code{"P"}, the permutation matrix, \code{"S"}, the
+      diagonal scale matrix and \code{"T"}, the lower triangular matrix
+      determining correlations.  When \code{sparse} is \code{FALSE} each
+      element of the list is the expansions of the corresponding element
+      of the \code{ST} slot into a list of \code{S}, the diagonal
+      matrix, and \code{T}, the (dense) unit lower triangular matrix.
+
+    }
+    \item{fitted}{\code{signature(object = "mer")}:
+
+      returns the fitted conditional means of the responses. See
+      \code{\link{fitted}}.  The \code{\link{napredict}} function is
+      called to align the result with the original data if the model was
+      fit with \code{na.action = na.exclude}.
+
+    }
+    \item{fixef}{\code{signature(object = "mer")}:
+
+      returns the estimates of the fixed-effects parameters.  See
+      \code{\link{fixef}}.
+    
+    }
+    \item{formula}{\code{signature(x = "mer")}:
+
+      returns the model formula.  See \code{\link{formula}}.
+
+    }
 %%% some of the following are also in \usage{..} because they have extra args:
-    \item{logLik}{\code{signature(object = "mer")}: returns the
-      log-likelihood or the REML criterion, according to the optional
-      \code{REML} argument (see the arguments section above), of the
-      fitted model.  See also \code{\link{logLik}}.}
-    \item{mcmcsamp}{\code{signature(object = "mer")}: Create a Markov
-      chain Monte Carlo sample from a posterior distribution of the
-      model's parameters.  See \code{\link{mcmcsamp}} for details.}
+    \item{logLik}{\code{signature(object = "mer")}:
+
+      returns the log-likelihood or the REML criterion, according to the
+      optional \code{REML} argument (see the arguments section above),
+      of the fitted model.  See also \code{\link{logLik}}.
+
+    }
+    \item{mcmcsamp}{\code{signature(object = "mer")}:
+
+      Create a Markov chain Monte Carlo sample from a posterior
+      distribution of the model's parameters.  See
+      \code{\link{mcmcsamp}} for details.
+
+    }
     \item{model.frame}{\code{signature(formula = "mer")}: returns the
       model frame (the \code{frame} slot).}
     \item{model.matrix}{\code{signature(object = "mer")}: returns the
