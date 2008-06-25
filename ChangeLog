@@ -1,3 +1,27 @@
+2008-06-25  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r180] pkg/DESCRIPTION, pkg/R/lmer.R, pkg/src/init.c, pkg/src/lmer.c,
+	  pkg/src/lmer.h: Fix single-argument anova method; new version
+
+2008-06-25  Martin Maechler  <maechler@stat.math.ethz.ch>
+
+	* [r179] pkg/R/lmer.R: expand(<mer>, .) fix {in Tblock()}; using
+	  Matrix:::.diag2tT() for now
+	* [r178] pkg/tests/nlmer-conv.R, pkg/tests/nlmer.R,
+	  pkg/tests/nlmer.Rout.save: split convergence monitoring from "normal"
+	  nlmer tests
+
+2008-06-24  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r177] pkg/man/mer-class.Rd, pkg/man/merMCMC-class.Rd,
+	  pkg/man/refit.Rd: Updates and corrections
+
+2008-06-24  Martin Maechler  <maechler@stat.math.ethz.ch>
+
+	* [r176] pkg/tests/lmer-1.R, pkg/tests/lmer-1.Rout.save,
+	  pkg/tests/lmer.R, pkg/tests/lmer.Rout.save: rename tests/lmer.R
+	  (easier to distinguish from R/lmer.R)
+	
 2008-06-24  Douglas Bates <bates@stat.wisc.edu>
 
 	* [r174] DESCRIPTION: New version

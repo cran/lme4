@@ -602,81 +602,58 @@ static void Tt_Zt(CHM_SP A, int *Gp, int *nc, int *nlev, double **st, int nf)
 /* Level-1 utilties that call at least one of the stand-alone utilities */
 
 /**
- * Determine the conditional estimates of the fixed effects
- * and the conditional mode of u for a linear mixed model
+ * Update the projections of the response vector onto the column
+ * spaces of the random effects and the fixed effects.  This function
+ * is needed separately for the one-argument form of the anova function.
  *
  * @param x an mer object
+ * @param pb position to store the random-effects projection
+ * @param pbeta position to store the fixed-effects projection
  */
-static double lmm_update_fixef_u(SEXP x)
+static void lmm_update_projection(SEXP x, double *pb, double *pbeta)
 {
-    double ans = NA_REAL;
-    if (!V_SLOT(x) && !MUETA_SLOT(x)) { /* linear mixed model */
-	int *dims = DIMS_SLOT(x), i1 = 1;
-	int n = dims[n_POS], p = dims[p_POS], q = dims[q_POS];
-	double *WX = (double*) NULL, *X = X_SLOT(x),
-	    *d = DEV_SLOT(x), *fixef = FIXEF_SLOT(x),
-	    *RZX = RZX_SLOT(x), *RX = RX_SLOT(x),
-	    *sXwt = SXWT_SLOT(x), *srwt = SRWT_SLOT(x),
-	    *u = U_SLOT(x), *wy = (double*)NULL, *y = Y_SLOT(x),
-	    dn = (double) n, dnmp = (double) (n - p),
-	    mone[] = {-1,0}, one[] = {1,0}, zero[] = {0,0};
-	CHM_SP A = A_SLOT(x);
-	CHM_FR L = L_SLOT(x);
-	CHM_DN cu = N_AS_CHM_DN(u, q, 1), sol;
-	R_CheckStack();
+    int *dims = DIMS_SLOT(x), i1 = 1;
+    int n = dims[n_POS], p = dims[p_POS], q = dims[q_POS];
+    double *WX = (double*) NULL, *X = X_SLOT(x),
+	*d = DEV_SLOT(x), *RZX = RZX_SLOT(x), *RX = RX_SLOT(x),
+	*sXwt = SXWT_SLOT(x),
+	*wy = (double*)NULL, *y = Y_SLOT(x),
+	mone[] = {-1,0}, one[] = {1,0}, zero[] = {0,0};
+    CHM_SP A = A_SLOT(x);
+    CHM_FR L = L_SLOT(x);
+    CHM_DN cpb = N_AS_CHM_DN(pb, q, 1), sol;
+    R_CheckStack();
 	
-	if (sXwt) {		/* Replace X and y by weighted X and y */
-	    WX = Calloc(n * p, double);
-	    wy = Calloc(n, double);
-	    
-	    AZERO(WX, n * p);
-	    for (int i = 0; i < n; i++) {
-		wy[i] = sXwt[i] * y[i];
-		for (int j = 0; j < p; j++)
-		    WX[i + j * n] += sXwt[i] * X[i + j * n];
-	    }
-	    X = WX;
-	    y = wy;
+    if (sXwt) {		     /* Replace X and y by weighted X and y */
+	WX = Calloc(n * p, double);
+	wy = Calloc(n, double);
+	
+	AZERO(WX, n * p);
+	for (int i = 0; i < n; i++) {
+	    wy[i] = sXwt[i] * y[i];
+	    for (int j = 0; j < p; j++)
+		WX[i + j * n] += sXwt[i] * X[i + j * n];
 	}
-				/* solve L del1 = PAy */
-	P_sdmult(u, (int*)L->Perm, A, y, 1);
-	sol = M_cholmod_solve(CHOLMOD_L, L, cu, &c);
-	Memcpy(u, (double*)sol->x, q);
-	M_cholmod_free_dense(&sol, &c);
-				/* solve RX' del2 = X'y - RZX'del1 */
-	F77_CALL(dgemv)("T", &n, &p, one, X, &n,
-			y, &i1, zero, fixef, &i1);
-	F77_CALL(dgemv)("T", &q, &p, mone, RZX, &q,
-			u, &i1, one, fixef, &i1);
-	F77_CALL(dtrsv)("U", "T", "N", &p, RX, &p, fixef, &i1);
-	d[pwrss_POS] = sqr_length(y, n)
-	    - (sqr_length(fixef, p) + sqr_length(u, q));
-	if (d[pwrss_POS] < 0)
-	    error(_("Calculated PWRSS for a LMM is negative"));
-				/* solve RX beta-hat = del2 */
-	F77_CALL(dtrsv)("U", "N", "N", &p, RX_SLOT(x), &p, fixef, &i1);
-	F77_CALL(dgemv)("N", &q, &p, mone, RZX_SLOT(x), &q,
-			fixef, &i1, one, u, &i1);
-	if (!(sol = M_cholmod_solve(CHOLMOD_Lt, L, cu, &c)))
-	    error(_("cholmod_solve (CHOLMOD_Lt) failed:"));
-	Memcpy(u, (double*)(sol->x), q);
-	M_cholmod_free_dense(&sol, &c);
-
-	d[usqr_POS] = sqr_length(u, q);
-	d[wrss_POS] = d[disc_POS] = d[pwrss_POS] - d[usqr_POS];
-	d[ML_POS] = d[ldL2_POS] +
-	    dn * (1 + log(d[pwrss_POS]) + log(2 * PI / dn));
-	d[REML_POS] = d[ldL2_POS] + d[ldRX2_POS] +
-	    dnmp * (1. + log(d[pwrss_POS]) + log(2. * PI / dnmp));
-	d[sigmaML_POS] = sqrt(d[pwrss_POS]/
-			      (srwt ? sqr_length(srwt, n) : dn));
-	d[sigmaREML_POS] = d[sigmaML_POS] * sqrt(dn/dnmp);
-
-	if (wy) Free(wy);
-	if (WX) Free(WX);
-	ans = d[dims[isREML_POS] ? REML_POS : ML_POS];
+	X = WX;
+	y = wy;
     }
-    return ans;
+				/* solve L del1 = PAy */
+    P_sdmult(pb, (int*)L->Perm, A, y, 1);
+    sol = M_cholmod_solve(CHOLMOD_L, L, cpb, &c);
+    Memcpy(pb, (double*)sol->x, q);
+    M_cholmod_free_dense(&sol, &c);
+				/* solve RX' del2 = X'y - RZX'del1 */
+    F77_CALL(dgemv)("T", &n, &p, one, X, &n,
+		    y, &i1, zero, pbeta, &i1);
+    F77_CALL(dgemv)("T", &q, &p, mone, RZX, &q,
+		    pb, &i1, one, pbeta, &i1);
+    F77_CALL(dtrsv)("U", "T", "N", &p, RX, &p, pbeta, &i1);
+    d[pwrss_POS] = sqr_length(y, n)
+	- (sqr_length(pbeta, p) + sqr_length(pb, q));
+    if (d[pwrss_POS] < 0)
+	error(_("Calculated PWRSS for a LMM is negative"));
+    if (wy) Free(wy);
+    if (WX) Free(WX);
 }
 
 /**
@@ -990,6 +967,51 @@ static double update_RX(SEXP x)
 }
 
 /* Level-2 utilities that call at least one of the level-1 utilities */
+
+/**
+ * Determine the conditional estimates of the fixed effects
+ * and the conditional mode of u for a linear mixed model
+ *
+ * @param x an mer object
+ */
+static double lmm_update_fixef_u(SEXP x)
+{
+    double ans = NA_REAL;
+    if (!V_SLOT(x) && !MUETA_SLOT(x)) { /* linear mixed model */
+	int *dims = DIMS_SLOT(x), i1 = 1;
+	int n = dims[n_POS], p = dims[p_POS], q = dims[q_POS];
+	double *d = DEV_SLOT(x), *fixef = FIXEF_SLOT(x),
+	    *srwt = SRWT_SLOT(x), *u = U_SLOT(x),
+	    dn = (double)n, dnmp = (double)(n-p),
+	    mone[] = {-1,0}, one[] = {1,0};
+	CHM_FR L = L_SLOT(x);
+	CHM_DN cu = N_AS_CHM_DN(u, q, 1), sol;
+	R_CheckStack();
+
+	lmm_update_projection(x, u, fixef);
+				/* solve RX beta-hat = del2 */
+	F77_CALL(dtrsv)("U", "N", "N", &p, RX_SLOT(x), &p, fixef, &i1);
+	F77_CALL(dgemv)("N", &q, &p, mone, RZX_SLOT(x), &q, fixef,
+			&i1, one, u, &i1);
+	if (!(sol = M_cholmod_solve(CHOLMOD_Lt, L, cu, &c)))
+	    error(_("cholmod_solve (CHOLMOD_Lt) failed:"));
+	Memcpy(u, (double*)(sol->x), q);
+	M_cholmod_free_dense(&sol, &c);
+
+	d[usqr_POS] = sqr_length(u, q);
+	d[wrss_POS] = d[disc_POS] = d[pwrss_POS] - d[usqr_POS];
+	d[ML_POS] = d[ldL2_POS] +
+	    dn * (1 + log(d[pwrss_POS]) + log(2 * PI / dn));
+	d[REML_POS] = d[ldL2_POS] + d[ldRX2_POS] +
+	    dnmp * (1. + log(d[pwrss_POS]) + log(2. * PI / dnmp));
+	d[sigmaML_POS] = sqrt(d[pwrss_POS]/
+			      (srwt ? sqr_length(srwt, n) : dn));
+	d[sigmaREML_POS] = d[sigmaML_POS] * sqrt(dn/dnmp);
+
+	ans = d[dims[isREML_POS] ? REML_POS : ML_POS];
+    }
+    return ans;
+}
 
 /**
  * Update the ST and A slots of an mer object.
@@ -1646,6 +1668,29 @@ SEXP mer_update_mu(SEXP x)
 SEXP mer_update_u(SEXP x, SEXP verbP)
 {
     return ScalarInteger(update_u(x, asInteger(verbP)));
+}
+
+/**
+ * Externally callable lmm_update_projection.
+ * Create the projections onto the column spaces of the random effects
+ * and the fixed effects.
+ *
+ * @param x an mer object
+ *
+ * @return a list with two elements, both REAL vectors
+ */
+SEXP mer_update_projection(SEXP x)
+{
+    SEXP ans = PROTECT(allocVector(VECSXP, 2));
+    int *dims = DIMS_SLOT(x);
+
+    SET_VECTOR_ELT(ans, 0, allocVector(REALSXP, dims[q_POS]));
+    SET_VECTOR_ELT(ans, 1, allocVector(REALSXP, dims[p_POS]));
+    lmm_update_projection(x, REAL(VECTOR_ELT(ans, 0)),
+			  REAL(VECTOR_ELT(ans, 1)));
+
+    UNPROTECT(1);
+    return ans;
 }
 
 /**

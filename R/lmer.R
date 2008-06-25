@@ -893,7 +893,7 @@ setMethod("anova", signature(object = "mer"),
 	  }
 	  else { ## ------ single model ---------------------
               p <- object@dims["p"]
-	      ss <- (object@RX[seq_len(p), p + 1L, drop = TRUE])^2
+              ss <- (.Call(mer_update_projection, object)[[2]])^2
 	      names(ss) <- names(object@fixef)
 	      asgn <- attr(object@X, "assign")
 	      terms <- terms(object)
@@ -1243,7 +1243,7 @@ BlockDiagonal <- function(lst)
     stopifnot(all(sapply(lst, isSquare)),
               all(sapply(lst, is, class2 = "dMatrix")))
     if ((nl <- length(lst)) == 1) return(lst[[1]])
-    
+
     offsets <- c(0L, cumsum(sapply(lst, ncol)))
     new("dgTMatrix", Dim = rep.int(offsets[nl + 1], 2),
         i = unlist(lapply(1:nl, function(i) lst[[i]]@i + offsets[i])),
@@ -1254,46 +1254,49 @@ BlockDiagonal <- function(lst)
 setMethod("expand", signature(x = "mer"),
           function(x, sparse = TRUE, ...)
       {
-          elexpand <- function(mat)
-              list(T = new("dtrMatrix", uplo = "L", diag = "U",
-                   x = as.vector(mat),
-                   Dim = dim(mat), Dimnames = dimnames(mat)),
-                   S = Diagonal(x = diag(mat)))
+          ind <- seq_along(ST <- x@ST)
+
           if (!sparse) {
-              ans <- x@ST
+              elexpand <- function(mat)
+                  list(T = new("dtrMatrix", uplo = "L", diag = "U",
+                       x = as.vector(mat),
+                       Dim = dim(mat), Dimnames = dimnames(mat)),
+                       S = Diagonal(x = diag(mat)))
               fl <- x@flist
-              if (all(attr(fl, "assign") == seq_along(ans)))
-                  names(ans) <- names(fl)
-              return(lapply(ans, elexpand))
+              if (all(attr(fl, "assign") == ind))
+                  names(ST) <- names(fl)
+              return(lapply(ST, elexpand))
           }
 
-          ind <- seq_along(ST <- x@ST)
+          ## 'Sparse' case :
+
           nc <- sapply(ST, ncol)
+          if(!all(nc >= 1)) stop("some ST entries lack  ncol(.) >= 1")
           nlev <- diff(x@Gp) %/% nc
 
           Sblock <- function(i) rep(diag(ST[[i]]), each = nlev[i])
           Smat <- Diagonal(x = unname(unlist(lapply(ind, Sblock))))
-          Tblock <- function(i)
-          {
-              if (nc[i] == 1) return(t(as(Diagonal(nlev[i]), "triangularMatrix")))
-              STi <- ST[[i]]
-              nci <- nc[i]
-              lt <- lower.tri(STi)
-              offsets <- (1:nlev[i]) - 1L
-              ij <- nlev[i] * (as.matrix(expand.grid(1:nci, 1:nci)[lt, ]) - 1)
-              new("dtTMatrix", Dim = rep.int(nlev[i] * nci, 2), uplo = "L", diag = "U",
-                  x = rep(STi[lt], each = nlev[i]),
-                  i = as.integer(outer(offsets, ij[1], "+")),
-                  j = as.integer(outer(offsets, ij[2], "+")))
-          }
           if (max(nc) == 1) {
-              Tmat <- t(as(as(Diagonal(ncol(Smat)), "generalMatrix"), "triangularMatrix"))
+              Tmat <- Matrix:::.diag2tT(Diagonal(ncol(Smat)), uplo="L")
           } else {
+              Tblock <- function(i)
+              {
+                  if (nc[i] == 1) return(Matrix:::.diag2tT(Diagonal(nlev[i]), uplo="L"))
+                  STi <- ST[[i]]
+                  nci <- nc[i]
+                  lt <- lower.tri(STi)
+                  offsets <- (1:nlev[i]) - 1L
+                  ij <- nlev[i] * (which(lt, arr.ind=TRUE) - 1)
+                  new("dtTMatrix", Dim = rep.int(nlev[i] * nci, 2), uplo = "L", diag = "U",
+                      x = rep(STi[lt], each = nlev[i]),
+                      i = as.integer(outer(offsets, ij[, 1], "+")),
+                      j = as.integer(outer(offsets, ij[, 2], "+")))
+              }
               Tmat <- as(as(BlockDiagonal(lapply(ind, Tblock)), "triangularMatrix"),
                          "CsparseMatrix")
           }
-          list(sigma = sigma(x), P = as(x@L@perm + 1L, "pMatrix"), T = Tmat,
-               S = Diagonal(x = unname(unlist(lapply(ind, Sblock)))))
+          list(sigma = sigma(x), P = as(x@L@perm + 1L, "pMatrix"),
+               T = as(Tmat, "CsparseMatrix"), S = Smat)
       })
 
 #### Methods for secondary, derived classes

@@ -19,6 +19,7 @@ SEXP mer_postVar(SEXP x);
 SEXP mer_update_L(SEXP x);
 SEXP mer_update_RX(SEXP x);
 SEXP mer_update_dev(SEXP x);
+SEXP mer_update_projection(SEXP x);
 SEXP mer_update_ranef(SEXP x);
 SEXP mer_update_mu(SEXP x);
 SEXP mer_update_u(SEXP x, SEXP verbP);

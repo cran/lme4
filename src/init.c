@@ -17,6 +17,7 @@ static R_CallMethodDef CallEntries[] = {
     {"mer_update_L", (DL_FUNC) &mer_update_L, 1},
     {"mer_update_RX", (DL_FUNC) &mer_update_RX, 1},
     {"mer_update_dev", (DL_FUNC) &mer_update_dev, 1},
+    {"mer_update_projection", (DL_FUNC) &mer_update_projection, 1},
     {"mer_update_ranef", (DL_FUNC) &mer_update_ranef, 1},
     {"mer_update_mu", (DL_FUNC) &mer_update_mu, 1},
     {"mer_update_u", (DL_FUNC) &mer_update_u, 2},
