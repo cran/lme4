@@ -2,6 +2,7 @@
 \usepackage{Sweave,amsmath,amsfonts,bm}
 \usepackage[authoryear,round]{natbib}
 \bibliographystyle{plainnat}
+\DeclareMathOperator \tr {tr}
 \DefineVerbatimEnvironment{Sinput}{Verbatim}
 {formatcom={\vspace{-1ex}},fontshape=sl,
   fontfamily=courier,fontseries=b, fontsize=\footnotesize}
@@ -408,4 +409,24 @@ For example, the variance-covariance of the estimator $\widehat{\bm
     =&\sigma^2\left(\bm R_{\bm X}\trans\bm R_{\bm X}\right)^{-1} .
   \end{aligned}
 \end{equation}
+
+\section{Trace of the ``hat'' matrix}
+\label{sec:hatTrace}
+
+Another calculation that is of interest to some is the 
+the trace of the ``hat'' matrix, which can be written as
+\begin{multline}
+  \label{eq:hatTrace}
+  \tr\left(\begin{bmatrix}\bm A\trans&\bm X\end{bmatrix}
+    \left(\begin{bmatrix}\bm A\trans&\bm X\\\bm I&\bm0\end{bmatrix}\trans
+      \begin{bmatrix}\bm A\trans&\bm X\\\bm I&\bm0\end{bmatrix}\right)^{-1}
+    \begin{bmatrix}\bm A\\\bm X\trans\end{bmatrix}\right)\\
+  = \tr\left(\begin{bmatrix}\bm A\trans&\bm X\end{bmatrix}
+    \left(\begin{bmatrix}\bm L&\bm0\\
+        \bm R_{\bm{ZX}}\trans&\bm R_{\bm X}\trans\end{bmatrix}
+      \begin{bmatrix}\bm L\trans&\bm R_{\bm{ZX}}\\
+        \bm0&\bm R_{\bm X}\end{bmatrix}\right)^{-1}
+    \begin{bmatrix}\bm A\\\bm X\trans\end{bmatrix}\right)
+\end{multline}
+
 \end{document}

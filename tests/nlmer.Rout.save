@@ -1,5 +1,5 @@
 
-R version 2.7.1 Patched (2008-06-25 r45988)
+R version 2.7.0 (2008-04-22)
 Copyright (C) 2008 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
@@ -24,14 +24,9 @@ Attaching package: 'Matrix'
 
 	The following object(s) are masked from package:stats :
 
-	 xtabs
+	 xtabs 
 
-
-	The following object(s) are masked from package:base :
-
-	 rcond
-
->
+> 
 > showProc.time <- function() { ## CPU elapsed __since last called__
 +     .ot <- .pc
 +     .pc <<- proc.time()
@@ -40,154 +35,155 @@ Attaching package: 'Matrix'
 > allEQ <- function(x,y, tolerance = 4e-4, ...)
 +     all.equal.numeric(x,y, tolerance=tolerance, ...)
 > .pc <- proc.time()
->
+> 
 > ## 'Theoph' Data modeling
->
+> 
 > Th.start <- c(lKe = -2.5, lKa = 0.5, lCl = -3)
 > (nm2 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
 +               (lKe+lKa+lCl|Subject),
 +               Theoph, start = Th.start))
-Nonlinear mixed model fit by the Laplace approximation
-Formula: conc ~ SSfol(Dose, Time, lKe, lKa, lCl) ~ (lKe + lKa + lCl |      Subject)
-   Data: Theoph
-    AIC    BIC logLik deviance
- -117.8 -88.96   68.9   -137.8
+Nonlinear mixed model fit by the Laplace approximation 
+Formula: conc ~ SSfol(Dose, Time, lKe, lKa, lCl) ~ (lKe + lKa + lCl |      Subject) 
+   Data: Theoph 
+ AIC   BIC logLik deviance
+ 374 402.8   -177      354
 Random effects:
- Groups   Name Variance   Std.Dev.   Corr
- Subject  lKe  8.4500e-16 2.9069e-08
-          lKa  2.2736e-01 4.7682e-01  0.000
-          lCl  1.5722e-02 1.2539e-01  0.000 -0.012
- Residual      5.9171e-01 7.6923e-01
+ Groups   Name Variance Std.Dev. Corr          
+ Subject  lKe  0.000000 0.00000                
+          lKa  0.430872 0.65641     NaN        
+          lCl  0.028050 0.16748     NaN -0.007 
+ Residual      0.500940 0.70777                
 Number of obs: 132, groups: Subject, 12
 
 Fixed effects:
     Estimate Std. Error t value
-lKe -2.47518    0.05641  -43.88
-lKa  0.47414    0.15288    3.10
-lCl -3.23551    0.05235  -61.80
+lKe -2.46560    0.05187  -47.53
+lKa  0.48217    0.19985    2.41
+lCl -3.23039    0.05952  -54.27
 
 Correlation of Fixed Effects:
-    lKe    lKa
-lKa -0.264
-lCl  0.671 -0.141
+    lKe    lKa   
+lKa -0.189       
+lCl  0.541 -0.082
 > showProc.time() # ~ 5.7s {dual-opteron 2814, on 64b, no optim.}
-Time elapsed:  5.698 0.004 5.72
->
+Time elapsed:  5.65 0.008 5.657 
+> 
 > (nm3 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
 +               (lKe|Subject) + (lKa|Subject) + (lCl|Subject),
 +               Theoph, start = Th.start))
-Nonlinear mixed model fit by the Laplace approximation
-Formula: conc ~ SSfol(Dose, Time, lKe, lKa, lCl) ~ (lKe | Subject) + (lKa |      Subject) + (lCl | Subject)
-   Data: Theoph
-    AIC    BIC logLik deviance
- -123.8 -103.6   68.9   -137.8
+Nonlinear mixed model fit by the Laplace approximation 
+Formula: conc ~ SSfol(Dose, Time, lKe, lKa, lCl) ~ (lKe | Subject) + (lKa |      Subject) + (lCl | Subject) 
+   Data: Theoph 
+ AIC   BIC logLik deviance
+ 368 388.2   -177      354
 Random effects:
- Groups   Name Variance Std.Dev.
- Subject  lKe  0.000000 0.00000
- Subject  lKa  0.227492 0.47696
- Subject  lCl  0.015738 0.12545
- Residual      0.591691 0.76921
+ Groups   Name Variance   Std.Dev.  
+ Subject  lKe  3.4329e-14 1.8528e-07
+ Subject  lKa  4.3090e-01 6.5643e-01
+ Subject  lCl  2.8060e-02 1.6751e-01
+ Residual      5.0094e-01 7.0777e-01
 Number of obs: 132, groups: Subject, 12
 
 Fixed effects:
     Estimate Std. Error t value
-lKe -2.47500    0.05641  -43.88
-lKa  0.47409    0.15291    3.10
-lCl -3.23539    0.05236  -61.79
+lKe -2.46553    0.05187  -47.53
+lKa  0.48213    0.19986    2.41
+lCl -3.23037    0.05953  -54.26
 
 Correlation of Fixed Effects:
-    lKe    lKa
-lKa -0.264
-lCl  0.671 -0.133
+    lKe    lKa   
+lKa -0.189       
+lCl  0.541 -0.076
 > showProc.time() # ~ 3.2s
-Time elapsed:  3.47 0.001 3.477
->
+Time elapsed:  4.956 0.002 4.958 
+> 
 > ## dropping   lKe  from random effects:
 > (nm4 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
 +               (lKa+lCl|Subject),
 +               Theoph, start = Th.start))
-Nonlinear mixed model fit by the Laplace approximation
-Formula: conc ~ SSfol(Dose, Time, lKe, lKa, lCl) ~ (lKa + lCl | Subject)
-   Data: Theoph
-    AIC    BIC logLik deviance
- -123.8 -103.6   68.9   -137.8
+Nonlinear mixed model fit by the Laplace approximation 
+Formula: conc ~ SSfol(Dose, Time, lKe, lKa, lCl) ~ (lKa + lCl | Subject) 
+   Data: Theoph 
+ AIC   BIC logLik deviance
+ 368 388.2   -177      354
 Random effects:
- Groups   Name Variance Std.Dev. Corr
- Subject  lKa  0.227362 0.47682
-          lCl  0.015722 0.12539  -0.012
- Residual      0.591715 0.76923
+ Groups   Name Variance Std.Dev. Corr   
+ Subject  lKa  0.430871 0.65641         
+          lCl  0.028050 0.16748  -0.007 
+ Residual      0.500939 0.70777         
 Number of obs: 132, groups: Subject, 12
 
 Fixed effects:
     Estimate Std. Error t value
-lKe -2.47518    0.05641  -43.88
-lKa  0.47415    0.15288    3.10
-lCl -3.23552    0.05235  -61.80
+lKe -2.46559    0.05187  -47.53
+lKa  0.48217    0.19985    2.41
+lCl -3.23041    0.05952  -54.27
 
 Correlation of Fixed Effects:
-    lKe    lKa
-lKa -0.264
-lCl  0.671 -0.141
+    lKe    lKa   
+lKa -0.189       
+lCl  0.541 -0.082
 > showProc.time()
-Time elapsed:  2.587 0.001 2.594
->
+Time elapsed:  4.431 0.003 4.435 
+> 
 > (nm5 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
 +               (lKa|Subject) + (lCl|Subject),
 +               Theoph, start = Th.start))
-Nonlinear mixed model fit by the Laplace approximation
-Formula: conc ~ SSfol(Dose, Time, lKe, lKa, lCl) ~ (lKa | Subject) + (lCl |      Subject)
-   Data: Theoph
-    AIC    BIC logLik deviance
- -125.8 -108.5   68.9   -137.8
+Nonlinear mixed model fit by the Laplace approximation 
+Formula: conc ~ SSfol(Dose, Time, lKe, lKa, lCl) ~ (lKa | Subject) + (lCl |      Subject) 
+   Data: Theoph 
+ AIC   BIC logLik deviance
+ 366 383.3   -177      354
 Random effects:
  Groups   Name Variance Std.Dev.
- Subject  lKa  0.227496 0.47697
- Subject  lCl  0.015739 0.12545
- Residual      0.591688 0.76921
+ Subject  lKa  0.43090  0.65643 
+ Subject  lCl  0.02806  0.16751 
+ Residual      0.50094  0.70777 
 Number of obs: 132, groups: Subject, 12
 
 Fixed effects:
     Estimate Std. Error t value
-lKe -2.47500    0.05641  -43.88
-lKa  0.47408    0.15291    3.10
-lCl -3.23537    0.05236  -61.79
+lKe -2.46552    0.05187  -47.53
+lKa  0.48214    0.19986    2.41
+lCl -3.23036    0.05953  -54.26
 
 Correlation of Fixed Effects:
-    lKe    lKa
-lKa -0.264
-lCl  0.671 -0.133
+    lKe    lKa   
+lKa -0.189       
+lCl  0.541 -0.076
 > showProc.time()
-Time elapsed:  2.224 0 2.23
->
+Time elapsed:  2.602 0.002 2.606 
+> 
 > e3 <- expand(nm3)
 > stopifnot(identical(sapply(e3, class),
 +                     c(sigma = "numeric", P = "pMatrix",
 +                       T = "dtCMatrix", S = "ddiMatrix"))
-+           , allEQ(e3$sigma, c(sigmaML = 0.76921295))
++           , allEQ(e3$sigma, c(sigmaML = 0.70777))
 +           , all(e3$P@perm == outer(12*(0:2), 1:12, "+"))
 +           , identical(as(e3$T, "diagonalMatrix"), Diagonal(3*12))
-+           , allEQ(e3$S@x, rep(c(0, 0.620071, 0.163092), each=12))
++           , allEQ(e3$S@x, rep(c(0, 0.92746, 0.23667), each=12))
 +           )
->
+> 
 > e2 <- expand(nm2) # -> gave error!
 > stopifnot(identical(sapply(e2, class),
 +                     c(sigma = "numeric", P = "pMatrix",
 +                       T = "dtCMatrix", S = "ddiMatrix"))
-+           , allEQ(e2$sigma, c(sigmaML = 0.7692315))
++           , allEQ(e2$sigma, c(sigmaML = 0.70777))
 +           , all(e2$P@perm == outer(12*(0:2), 1:12, "+"))
-+           , diag(e2$T == 1), nnzero(e2$T) == 36 + 24 + 12
++           , all(diag(e2$T == 1))
++           , nnzero(e2$T) == 36 + 24 + 12
 +           , allEQ(unique(e2$T@x),
-+                   c(1, 0.001, 0.0564, -0.00328), tol = .009)
-+           , allEQ(e2$S@x, rep(c(1e-6, 0.6198669, 0.1629919), each=12))
++                   c(1, 0.0310, 0.0909, -0.00187), tol = .009)
++           , allEQ(e2$S@x, rep(c(0.0000000, 0.9274296, 0.2366269), each=12))
 +           )
 Warning message:
 Ambiguous method selection for "==", target "dtCMatrix#numeric" (the first of the signatures shown will be used)
     dMatrix#numeric
     sparseMatrix#numeric
-
->
+ 
+> 
 > showProc.time()
-Time elapsed:  0.09 0 0.09
->
->
->
+Time elapsed:  0.099 0 0.099 
+> 
+> 
+> 

@@ -1,4 +1,24 @@
+2008-07-10  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r190] inst/doc/Implementation.pdf, inst/doc/PLSvGLS.Rnw,
+	  inst/doc/PLSvGLS.pdf, inst/doc/Theory.pdf: Add a section on the
+	  hatMatrix to PLSvGLS. Update PDFs
+	* [r189] DESCRIPTION, R/lmer.R, man/lmer.Rd: incorporate doFit argument
+	  in lmer and friends. Create glmer_finalize function. New release
+	* [r188] tests/nlmer.R, tests/nlmer.Rout.save: nlmer tests and results
+	  updated to new methods
+	* [r187] src/lmer.c: Correction, from Bin Dai, to calculation of
+	  deviance for NLMMs
+
+2008-06-28  Martin Maechler  <maechler@stat.math.ethz.ch>
+
+	* [r183] DESCRIPTION: aargh! forgot to commit the Matrix(>= 0.999375-10)
+	  dependency
+
 2008-06-26  Martin Maechler  <maechler@stat.math.ethz.ch>
+
+	* [r182] ChangeLog, DESCRIPTION, tests/nlmer.R, tests/nlmer.Rout.save:
+	  higher tolerance in nlmer tests; Version .999375-20
 
 	* DESCRIPTION (Version): 0.999375-20 ready for CRAN
 

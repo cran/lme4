@@ -441,7 +441,7 @@ mer_finalize <- function(ans, verbose)
 ## Modifications to lmer often involve modifying model matrices before
 ## creating and optimizing the mer object.  Everything past the model
 ## matrices is encapsulated in this function
-lmer_finalize <- function(mc, fr, FL, start, REML, verbose)
+lmer_finalize <- function(fr, FL, start, REML, verbose)
 {
     Y <- as.double(fr$Y)
     if (is.list(start) && all(sort(names(start)) == sort(names(FL))))
@@ -465,7 +465,7 @@ lmer_finalize <- function(mc, fr, FL, start, REML, verbose)
                env = new.env(),
                nlmodel = (~I(x))[[2]],
                frame = fr$mf,
-               call = mc,
+               call = match.call(),
                flist = dm$flist,
                X = fr$X,
                Zt = dm$Zt,
@@ -501,73 +501,8 @@ lmer_finalize <- function(mc, fr, FL, start, REML, verbose)
     mer_finalize(ans, verbose)
 }
 
-### The main event
-lmer <-
-    function(formula, data, family = NULL, REML = TRUE,
-             control = list(), start = NULL, verbose = FALSE,
-             subset, weights, na.action, offset, contrasts = NULL,
-             model = TRUE, x = TRUE, ...)
-### Linear Mixed-Effects in R
+glmer_finalize <- function(fr, FL, glmFit, start, nAGQ, verbose)
 {
-    mc <- match.call()
-    if (!is.null(family)) {             # call glmer
-        mc[[1]] <- as.name("glmer")
-        return(eval(mc))
-    }
-    stopifnot(length(formula <- as.formula(formula)) == 3)
-
-    fr <- lmerFrames(mc, formula, contrasts) # model frame, X, etc.
-    FL <- lmerFactorList(formula, fr$mf, 0L, 0L) # flist, Zt
-    if (!is.null(method <- list(...)$method)) {
-        warning(paste("Argument", sQuote("methood"),
-                      "is deprecated.  Use", sQuote("REML"),
-                      "instead"))
-        REML <- match.arg(method, c("REML", "ML")) == "REML"
-    }
-    lmer_finalize(mc, fr, FL, start, REML, verbose)
-}
-
-## for backward compatibility
-lmer2 <-
-    function(formula, data, family = NULL, REML = TRUE,
-             control = list(), start = NULL, verbose = FALSE,
-             subset, weights, na.action, offset, contrasts = NULL,
-             model = TRUE, x = TRUE, ...)
-{
-    .Deprecated("lmer")
-    mc <- match.call()
-    mc[[1]] <- as.name("lmer")
-    eval.parent(mc)
-}
-
-glmer <-
-function(formula, data, family = gaussian, start = NULL,
-         verbose = FALSE, nAGQ = 1, subset, weights,
-         na.action, offset, contrasts = NULL, model = TRUE,
-         control = list(), ...)
-### Fit a generalized linear mixed model
-{
-    mc <- match.call()
-                                        # Evaluate and check the family
-    if(is.character(family))
-        family <- get(family, mode = "function", envir = parent.frame(2))
-    if(is.function(family)) family <- family()
-    if(is.null(family$family)) stop("'family' not recognized")
-    if(family$family == "gaussian" && family$link == "identity") {
-        mc[[1]] <- as.name("lmer")      # use lmer not glmer
-        mc$family <- NULL
-        return(eval.parent(mc))
-    }
-    stopifnot(length(formula <- as.formula(formula)) == 3)
-
-    fr <- lmerFrames(mc, formula, contrasts) # model frame, X, etc.
-    offset <- wts <- NULL
-    if (length(fr$wts)) wts <- fr$wts
-    if (length(fr$off)) offset <- fr$off
-    glmFit <- glm.fit(fr$X, fr$Y, weights = wts, # glm on fixed effects
-                      offset = offset, family = family,
-                      intercept = attr(attr(fr$mf, "terms"), "intercept") > 0)
-    FL <- lmerFactorList(formula, fr$mf, 0L, 0L) # flist, Zt
     if (is.list(start) && all(sort(names(start)) == sort(names(FL))))
         start <- list(ST = start)
     if (is.numeric(start)) start <- list(STpars = start)
@@ -576,14 +511,6 @@ function(formula, data, family = gaussian, start = NULL,
     dm$dd[names(ft)] <- ft
     dm$dd["useSc"] <- as.integer(!(famNms[dm$dd["fTyp"] ] %in%
 				   c("binomial", "poisson")))
-    if (!is.null(method <- list(...)$method)) {
-        msg <- paste("Argument", sQuote("method"),
-                     "is deprecated.\nUse", sQuote("nAGQ"),
-                     "to choose AGQ.  PQL is not available.")
-        if (match.arg(method, c("Laplace", "AGQ")) == "Laplace") {
-            warning(msg)
-        } else stop(msg)
-    }
     if ((nAGQ <- as.integer(nAGQ)) < 1) nAGQ <- 1L
     dm$dd["nAGQ"] <- nAGQ
     y <- unname(as.double(glmFit$y))
@@ -597,8 +524,9 @@ function(formula, data, family = gaussian, start = NULL,
     ans <- new(Class = "mer",
                env = new.env(),
                nlmodel = (~I(x))[[2]],
-               frame = if (model) fr$mf else fr$mf[0,],
-               call = mc, flist = dm$flist,
+               frame = fr$mf,
+               call = match.call(),
+               flist = dm$flist,
                Zt = dm$Zt, X = fr$X, y = y,
                pWt = unname(glmFit$prior.weights),
                offset = unname(fr$off),
@@ -623,14 +551,108 @@ function(formula, data, family = gaussian, start = NULL,
         if (length(STp) == length(stp))
             .Call(mer_ST_setPars, ans, stp)
     }
-    cv <- do.call("lmerControl", control)
-    if (missing(verbose)) verbose <- cv$msVerbose
     mer_finalize(ans, verbose)
     ans
 }
 
+### The main event
+lmer <-
+    function(formula, data, family = NULL, REML = TRUE,
+             control = list(), start = NULL, verbose = FALSE, doFit = TRUE,
+             subset, weights, na.action, offset, contrasts = NULL,
+             model = TRUE, x = TRUE, ...)
+### Linear Mixed-Effects in R
+{
+    mc <- match.call()
+    if (!is.null(family)) {             # call glmer
+        mc[[1]] <- as.name("glmer")
+        return(eval.parent(mc))
+    }
+    stopifnot(length(formula <- as.formula(formula)) == 3)
+
+    fr <- lmerFrames(mc, formula, contrasts) # model frame, X, etc.
+    FL <- lmerFactorList(formula, fr$mf, 0L, 0L) # flist, Zt
+    if (!is.null(method <- list(...)$method)) {
+        warning(paste("Argument", sQuote("method"),
+                      "is deprecated.  Use", sQuote("REML"),
+                      "instead"))
+        REML <- match.arg(method, c("REML", "ML")) == "REML"
+    }
+    ans <- list(fr = fr, FL = FL, start = start, REML = REML, verbose = verbose)
+    if (doFit) {
+        ans <- do.call(lmer_finalize, ans)
+        ans@call <- mc
+    }
+    ans
+}
+
+## for backward compatibility
+lmer2 <-
+    function(formula, data, family = NULL, REML = TRUE,
+             control = list(), start = NULL, verbose = FALSE,
+             subset, weights, na.action, offset, contrasts = NULL,
+             model = TRUE, x = TRUE, ...)
+{
+    .Deprecated("lmer")
+    mc <- match.call()
+    mc[[1]] <- as.name("lmer")
+    eval.parent(mc)
+}
+
+glmer <-
+function(formula, data, family = gaussian, start = NULL,
+         verbose = FALSE, nAGQ = 1, doFit = TRUE, subset, weights,
+         na.action, offset, contrasts = NULL, model = TRUE,
+         control = list(), ...)
+### Fit a generalized linear mixed model
+{
+    mc <- match.call()
+                                        # Evaluate and check the family
+    if(is.character(family))
+        family <- get(family, mode = "function", envir = parent.frame(2))
+    if(is.function(family)) family <- family()
+    if(is.null(family$family)) stop("'family' not recognized")
+    if(family$family == "gaussian" && family$link == "identity") {
+        mc[[1]] <- as.name("lmer")      # use lmer not glmer
+        mc$family <- NULL
+        return(eval.parent(mc))
+    }
+    stopifnot(length(formula <- as.formula(formula)) == 3)
+
+    ## Check for method argument which is no longer used
+    if (!is.null(method <- list(...)$method)) {
+        msg <- paste("Argument", sQuote("method"),
+                     "is deprecated.\nUse", sQuote("nAGQ"),
+                     "to choose AGQ.  PQL is not available.")
+        if (match.arg(method, c("Laplace", "AGQ")) == "Laplace") {
+            warning(msg)
+        } else stop(msg)
+    }
+
+    fr <- lmerFrames(mc, formula, contrasts) # model frame, X, etc.
+    offset <- wts <- NULL
+    if (length(fr$wts)) wts <- fr$wts
+    if (length(fr$off)) offset <- fr$off
+    glmFit <- glm.fit(fr$X, fr$Y, weights = wts, # glm on fixed effects
+                      offset = offset, family = family,
+                      intercept = attr(attr(fr$mf, "terms"), "intercept") > 0)
+    FL <- lmerFactorList(formula, fr$mf, 0L, 0L) # flist, Zt
+### FIXME: issue a warning if the control argument has an msVerbose component
+    cv <- do.call(lmerControl, control)
+    if (missing(verbose)) verbose <- cv$msVerbose
+### FIXME: issue a warning if the model argument is FALSE.  It is ignored.    
+
+    ans <- list(fr = fr, FL = FL, glmFit = glmFit, start = start,
+                nAGQ = nAGQ, verbose = verbose)
+    if (doFit) {
+        ans <- do.call(glmer_finalize, ans)
+        ans@call <- mc
+    }
+    ans
+}
+
 nlmer <- function(formula, data, start = NULL, verbose = FALSE,
-                  nAGQ = 1, subset, weights, na.action,
+                  nAGQ = 1, doFit = TRUE, subset, weights, na.action,
                   contrasts = NULL, model = TRUE, control = list(), ...)
 ### Fit a nonlinear mixed-effects model
 {

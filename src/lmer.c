@@ -1617,8 +1617,7 @@ SEXP mer_update_dev(SEXP x)
 	if (dims[nAGQ_POS] > 1) {
 	    error("Code not yet written");
 	}
-	d[ML_POS] = dn * (1 + log(2 * PI/dn)) +
-	    d[wrss_POS] + d[ldL2_POS] + d[usqr_POS];
+	d[ML_POS] = dn*(1 + log(d[pwrss_POS]) + log(2*PI/dn)) + d[ldL2_POS];
     }
     return R_NilValue;
 }

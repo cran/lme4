@@ -13,19 +13,19 @@
 \usage{
 lmer(formula, data, family = NULL, REML = TRUE,
      control = list(), start = NULL, verbose = FALSE,
-     subset, weights, na.action, offset,
+     doFit = TRUE, subset, weights, na.action, offset,
      contrasts = NULL, model = TRUE, x = TRUE, \dots)
 lmer2(formula, data, family = NULL, REML = TRUE,
       control = list(), start = NULL, verbose = FALSE,
       subset, weights, na.action, offset,
       contrasts = NULL, model = TRUE, x = TRUE, \dots)
 glmer(formula, data, family = gaussian, start = NULL,
-      verbose = FALSE, nAGQ = 1, subset, weights,
+      verbose = FALSE, nAGQ = 1, doFit = TRUE, subset, weights,
       na.action, offset, contrasts = NULL, model = TRUE,
       control = list(), \dots)
 nlmer(formula, data, start = NULL, verbose = FALSE, nAGQ = 1,
-      subset, weights, na.action, contrasts = NULL,
-      model = TRUE, control = list(), \dots)
+      doFit = TRUE, subset, weights, na.action,
+      contrasts = NULL, model = TRUE, control = list(), \dots)
 }
 \arguments{
   \item{formula}{a two-sided linear formula object describing the
@@ -61,7 +61,12 @@ nlmer(formula, data, start = NULL, verbose = FALSE, nAGQ = 1,
     \code{start} argument of the appropriate length is used as the
     starting value of the parameter vector that determines the \code{ST}
     slot. In \code{nlmer} a numeric \code{start} argument is used as the
-    starting values of the \code{fixef} slot.} 
+    starting values of the \code{fixef} slot.}
+  \item{doFit}{logical scalar. When \code{doFit = FALSE} the model is
+    not fit but instead a structure with the model matrices for the
+    random-effects terms is returned, so they can be modified for
+    special model forms. When \code{doFit = TRUE}, the default, the
+    model is fit immediately.}
   \item{subset, weights, na.action, offset, contrasts}{further model
     specification arguments as in \code{\link[stats]{lm}}; see there for
     details.}
