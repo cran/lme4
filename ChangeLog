@@ -1,3 +1,26 @@
+2008-07-25  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r202] DESCRIPTION, src/lmer.c: Implement cloglog inverse link
+	  function, new release
+	* [r201] DESCRIPTION, R/jml.R, data/VerbAgg.rda, man/VerbAgg.Rd: Add
+	  VerbAgg data set and documentation. Prepare for release
+
+2008-07-17  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r197] R/lmer.R: Use dummy call in new("mer", ...) not huge call that
+	  is later overwritten
+	* [r196] src/init.c: Switch to CALLDEF macro
+
+2008-07-12  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r193] inst/doc/Implementation.pdf, inst/doc/PLSvGLS.pdf,
+	  inst/doc/Theory.pdf: Updates of vignettes
+
+2008-07-11  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r192] DESCRIPTION, R/lmer.R: Remove mc from list with doFit = FALSE
+	  and in arguments to lmer_finalize and glmer_finalize. New version
+
 2008-07-10  Douglas Bates <bates@stat.wisc.edu>
 
 	* [r190] inst/doc/Implementation.pdf, inst/doc/PLSvGLS.Rnw,

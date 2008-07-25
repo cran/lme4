@@ -3,34 +3,34 @@
 #include "Matrix.h"
 #include "Syms.h" 
 
+#define CALLDEF(name, n)  {#name, (DL_FUNC) &name, n}
+
 static R_CallMethodDef CallEntries[] = {
-/*     {"lme4_rWishart", (DL_FUNC) &lme4_rWishart, 3}, */
+  
+  CALLDEF(mer_MCMCsamp, 2),
+  CALLDEF(mer_ST_chol, 1),
+  CALLDEF(mer_ST_getPars, 1),
+  CALLDEF(mer_ST_initialize, 3),
+  CALLDEF(mer_ST_setPars, 2),
+  CALLDEF(mer_create_L, 1),
+  CALLDEF(mer_optimize, 2),
+  CALLDEF(mer_postVar, 1),
+  CALLDEF(mer_update_L, 1),
+  CALLDEF(mer_update_RX, 1),
+  CALLDEF(mer_update_dev, 1),
+  CALLDEF(mer_update_projection, 1),
+  CALLDEF(mer_update_ranef, 1),
+  CALLDEF(mer_update_mu, 1),
+  CALLDEF(mer_update_u, 2),
+  CALLDEF(mer_validate, 1),
 
-    {"mer_MCMCsamp", (DL_FUNC) &mer_MCMCsamp, 2},
-    {"mer_ST_chol", (DL_FUNC) &mer_ST_chol, 1},
-    {"mer_ST_getPars", (DL_FUNC) &mer_ST_getPars, 1},
-    {"mer_ST_initialize", (DL_FUNC) &mer_ST_initialize, 3},
-    {"mer_ST_setPars", (DL_FUNC) &mer_ST_setPars, 2},
-    {"mer_create_L", (DL_FUNC) &mer_create_L, 1},
-    {"mer_optimize", (DL_FUNC) &mer_optimize, 2},
-    {"mer_postVar", (DL_FUNC) &mer_postVar, 1},
-    {"mer_update_L", (DL_FUNC) &mer_update_L, 1},
-    {"mer_update_RX", (DL_FUNC) &mer_update_RX, 1},
-    {"mer_update_dev", (DL_FUNC) &mer_update_dev, 1},
-    {"mer_update_projection", (DL_FUNC) &mer_update_projection, 1},
-    {"mer_update_ranef", (DL_FUNC) &mer_update_ranef, 1},
-    {"mer_update_mu", (DL_FUNC) &mer_update_mu, 1},
-    {"mer_update_u", (DL_FUNC) &mer_update_u, 2},
-    {"mer_validate", (DL_FUNC) &mer_validate, 1},
+  CALLDEF(merMCMC_validate, 1),
+  CALLDEF(merMCMC_VarCorr, 2),
 
-    {"merMCMC_validate", (DL_FUNC) &merMCMC_validate, 1},
-    {"merMCMC_VarCorr", (DL_FUNC) &merMCMC_VarCorr, 2},
+  CALLDEF(spR_optimize, 2),
+  CALLDEF(spR_update_mu, 1),
 
-    {"spR_optimize", (DL_FUNC) &spR_optimize, 2},
-    {"spR_update_mu", (DL_FUNC) &spR_update_mu, 1},
-/*     {"Zt_carryOver", (DL_FUNC) &Zt_carryOver, 4}, */
-
-    {NULL, NULL, 0}
+  {NULL, NULL, 0}
 };
 
 /** cholmod_common struct local to the package */

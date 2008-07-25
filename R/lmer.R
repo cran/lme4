@@ -465,7 +465,7 @@ lmer_finalize <- function(fr, FL, start, REML, verbose)
                env = new.env(),
                nlmodel = (~I(x))[[2]],
                frame = fr$mf,
-               call = match.call(),
+               call = call("foo"),      # later overwritten
                flist = dm$flist,
                X = fr$X,
                Zt = dm$Zt,
@@ -525,7 +525,7 @@ glmer_finalize <- function(fr, FL, glmFit, start, nAGQ, verbose)
                env = new.env(),
                nlmodel = (~I(x))[[2]],
                frame = fr$mf,
-               call = match.call(),
+               call = call("foo"),      # later overwritten
                flist = dm$flist,
                Zt = dm$Zt, X = fr$X, y = y,
                pWt = unname(glmFit$prior.weights),

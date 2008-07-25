@@ -374,11 +374,11 @@ static void
 lme4_muEta(double* mu, double* muEta, const double* eta, int n, int lTyp)
 {
     for (int i = 0; i < n; i++) { /* apply the generalized linear part */
-	double etai = eta[i], tmp;
+	double etai = eta[i], tmp, t2;
 	switch(lTyp) {
 	case 1:		/* logit */
-	    tmp = (etai < MLTHRESH) ? DOUBLE_EPS :
-	    ((etai > LTHRESH) ? INVEPS : exp(etai));
+	    tmp = (etai < MLTHRESH) ? DOUBLE_EPS : ((etai > LTHRESH) ?
+						    INVEPS : exp(etai));
 	    mu[i] = tmp/(1 + tmp);
 	    muEta[i] = mu[i] * (1 - mu[i]);
 	    break;
@@ -397,14 +397,18 @@ lme4_muEta(double* mu, double* muEta, const double* eta, int n, int lTyp)
 	    error(_("cauchit link not yet coded"));
 	    break;
 	case 4:		/* cloglog */
-	    error(_("cloglog link not yet coded"));
+	    tmp = (etai < MLTHRESH) ? DOUBLE_EPS : ((etai > LTHRESH) ?
+						    INVEPS : exp(etai));
+	    t2 = -expm1(-tmp);
+	    mu[i] = (t2 < DOUBLE_EPS) ? DOUBLE_EPS : t2;
+	    muEta[i] = tmp * exp(-tmp);
 	    break;
 	case 5:		/* identity */
-	    mu[i] = eta[i];
+	    mu[i] = etai;
 	    muEta[i] = 1.;
 	    break;
 	case 6:		/* log */
-	    tmp = exp(eta[i]);
+	    tmp = exp(etai);
 	    muEta[i] = mu[i] =
 		(tmp < DOUBLE_EPS) ? DOUBLE_EPS : tmp;
 	    break;
