@@ -59,7 +59,7 @@ ranef(object, \dots)
 }
 \note{
   To produce a \dQuote{caterpillar plot} of the random effects apply
-  \code{\link[lattice]{qqmath}} to the result of a call to \code{ranef}
+  \code{\link[lattice]{dotplot}} to the result of a call to \code{ranef}
   with \code{postVar = TRUE}.
 }
 \examples{
@@ -68,7 +68,7 @@ fm2 <- lmer(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy)
 fm3 <- lmer(diameter ~ (1|plate) + (1|sample), Penicillin)
 ranef(fm1)
 str(rr1 <- ranef(fm1, postVar = TRUE))
-qqmath(rr1)
+dotplot(rr1,scales = list(x = list(relation = 'free')))[["Subject"]]
 str(ranef(fm2, postVar = TRUE))
 op <- options(digits = 4)
 ranef(fm3, drop = TRUE)

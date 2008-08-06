@@ -7,6 +7,7 @@
 #include <Rdefines.h>
 
 /* SEXP lme4_rWishart(SEXP ns, SEXP dfp, SEXP scal); */
+SEXP lme4_ghq(SEXP np);
 
 SEXP mer_MCMCsamp(SEXP x, SEXP fm);
 SEXP mer_ST_chol(SEXP x);
