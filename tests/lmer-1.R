@@ -133,5 +133,18 @@ try(f.oops <- lmer(y ~ 1 + (1|group), data = tstDF))
 ##SG> case and optionally return an error or drop the redundant group
 ##SG> with a warning.
 
+## Wrong formula gave a seg.fault at times:
+D <-  data.frame(y= rnorm(20,10), ff = gl(4,5),
+                 x1=rnorm(20,3), x2=rnorm(20,7))
+m0 <- lmer(y ~ (x1 + x2)|ff, data = D)
+m1 <- lmer(y ~ x1 + x2|ff  , data = D)
+m2 <- lmer(y ~ x1 + (x2|ff), data = D)
+m3 <- lmer(y ~ (x2|ff) + x1, data = D)
+stopifnot(identical(ranef(m0), ranef(m1)),
+          identical(ranef(m2), ranef(m3)),
+          inherits(tryCatch(lmer(y ~ x2|ff + x1, data = D), error = function(e)e),
+                   "error"))
+
+
 
 cat('Time elapsed: ', proc.time(),'\n') # for ``statistical reasons''

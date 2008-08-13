@@ -11,7 +11,8 @@
 {formatcom={\vspace{-2.5ex}},fontfamily=courier,fontseries=b,%
   fontsize=\scriptsize}
 %%\VignetteIndexEntry{Implementation Details}
-%%\VignetteDepends{lme4}
+%%\VignetteDepends{lme4, MEMSS, mlmRev}
+%%
 \newcommand{\trans}{\ensuremath{^\mathsf{T}}}
 \newcommand{\invtrans}{\ensuremath{^\mathsf{-T}}}
 \title{Linear mixed model implementation in lme4}

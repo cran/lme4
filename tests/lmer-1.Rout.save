@@ -1,5 +1,5 @@
 
-R version 2.7.1 Patched (2008-06-23 r45972)
+R version 2.7.1 Patched (2008-08-07 r46253)
 Copyright (C) 2008 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
@@ -320,7 +320,22 @@ Error : length(levels(dm$flist[[1]])) < length(Y) is not TRUE
 > ##SG> case and optionally return an error or drop the redundant group
 > ##SG> with a warning.
 > 
+> ## Wrong formula gave a seg.fault at times:
+> D <-  data.frame(y= rnorm(20,10), ff = gl(4,5),
++                  x1=rnorm(20,3), x2=rnorm(20,7))
+> m0 <- lmer(y ~ (x1 + x2)|ff, data = D)
+> m1 <- lmer(y ~ x1 + x2|ff  , data = D)
+> m2 <- lmer(y ~ x1 + (x2|ff), data = D)
+> m3 <- lmer(y ~ (x2|ff) + x1, data = D)
+> stopifnot(identical(ranef(m0), ranef(m1)),
++           identical(ranef(m2), ranef(m3)),
++           inherits(tryCatch(lmer(y ~ x2|ff + x1, data = D), error = function(e)e),
++                    "error"))
+Warning message:
+In Ops.factor(ff, x1) : + not meaningful for factors
+> 
+> 
 > 
 > cat('Time elapsed: ', proc.time(),'\n') # for ``statistical reasons''
-Time elapsed:  6.248 0.169 6.864 0 0 
+Time elapsed:  8.652 0.16 8.994 0 0 
 > 

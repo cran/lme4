@@ -1,3 +1,37 @@
+2008-08-13  Douglas Bates <bates@stat.wisc.edu>
+
+        * [r212] pkg/R/lmer.R: Don't call LMM code on GLMMs or NLMMs in the
+          anova method (Antje Nuthmann)
+
+2008-08-08  Martin Maechler  <maechler@stat.math.ethz.ch>
+
+	* R/lmer.R (lmerFactorList): check matrix validity: error out
+	instead of later segfault.
+	(printMer): improve abbreviation for row/col names of correlation
+	matrix.
+
+	* tests/lmer-1.R: regression test against seg.fault
+
+2008-08-06  Douglas Bates <bates@stat.wisc.edu>
+
+        * [r210] pkg/DESCRIPTION, pkg/man/ranef.Rd: Change qqmath examples to
+          dotplot, new release
+
+2008-08-03  Douglas Bates <bates@stat.wisc.edu>
+
+        * [r209] pkg/NAMESPACE, pkg/R/lmer.R: Add dotplot method for the (S3)
+          ranef.mer class
+
+2008-07-31  Douglas Bates <bates@stat.wisc.edu>
+
+        * [r206] pkg/src/init.c, pkg/src/lmer.c, pkg/src/lmer.h: Added lme4_ghq
+          function based on Fortran sources.
+
+2008-07-27  Douglas Bates <bates@stat.wisc.edu>
+
+        * [r204] pkg/data/VerbAgg.rda, pkg/man/VerbAgg.Rd: Reduce back to a data
+          set with factors only
+
 2008-07-25  Douglas Bates <bates@stat.wisc.edu>
 
 	* [r202] DESCRIPTION, src/lmer.c: Implement cloglog inverse link
