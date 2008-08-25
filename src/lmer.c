@@ -62,9 +62,13 @@ enum dimP {
     vTyp_POS,			/**<variance type for generalized model */
     nest_POS,			/**<indicator of nested grouping factors */
     useSc_POS,			/**<does the family use a separate scale parameter */
-    nAGQ_POS,			/**<use adaptive Gauss-Hermite quadrature? */
+    nAGQ_POS,			/**<number of adaptive Gauss-Hermite quadrature pts */
+    verb_POS,			/**<verbose output in mer_optimize? */
+    mxit_POS,			/**<maximum # of iterations in mer_optimize */
+    mxfn_POS,			/**<maximum # of function evaluations in mer_optimize */
     cvg_POS			/**<convergence indictor from port optimization  */
 };
+
 
 /**
  * Extract the slot named nm from the object obj and return a null pointer
@@ -106,6 +110,12 @@ static R_INLINE double *SLOT_REAL_NULL(SEXP obj, SEXP nm)
 
 /** Return the double pointer to the fixef slot */
 #define FIXEF_SLOT(x) SLOT_REAL_NULL(x, lme4_fixefSym)
+
+/** Return the double pointer to the ghw slot */
+#define GHW_SLOT(x) SLOT_REAL_NULL(x, lme4_ghwSym)
+
+/** Return the double pointer to the ghx slot */
+#define GHX_SLOT(x) SLOT_REAL_NULL(x, lme4_ghxSym)
 
 /** Return the integer pointer to the Gp slot */
 #define Gp_SLOT(x) INTEGER(GET_SLOT(x, lme4_GpSym))
@@ -191,13 +201,16 @@ static R_INLINE double *SLOT_REAL_NULL(SEXP obj, SEXP nm)
 /** Minimum step factor in update_u */
 #define CM_SMIN     1e-5
 
+/** precision and maximum number of iterations used in GHQ */
+#define GHQ_EPS    1e-15
+#define GHQ_MAXIT  40
+
 #define LTHRESH     30.
 #define MLTHRESH   -30.
 
 static double MPTHRESH = 0;
 static double PTHRESH = 0;
 static const double INVEPS = 1/DOUBLE_EPS;
-
 
 /* In-line functions */
 
@@ -323,33 +336,35 @@ static int chkLen(char *buf, int nb, SEXP x, SEXP sym, int len, int zerok)
  * @param n length of mu and y
  * @param vTyp type of variance function: the 1-based index into
  *        c("constant", "mu(1-mu)", "mu", "mu^2", "mu^3")
- *
- * @return the sum of the deviance residuals
+ * @param ans pointer to vector of partial sums
+ * @param fac indices associating observations with partial sums 
+ *            (may be (int*)NULL)
+  * @return the sum of the deviance residuals
  */
-static double
+static double*
 lme4_devResid(const double* mu, const double* pWt, const double* y,
-	      int n, int vTyp)
+	      int n, int vTyp, double *ans, int *fac)
 {
-    double ans = 0.;
     for (int i = 0; i < n; i++) {
 	double mui = mu[i], wi = pWt ? pWt[i] : 1, yi = y[i];
 	double ri = yi - mui;
+	int ai = fac ? (fac[i] - 1) : 0;
 	switch(vTyp) {
 	case 1:			/* constant variance */
-	    ans += wi * ri * ri;
+	    ans[ai] += wi * ri * ri;
 	    break;
 	case 2:			/* mu(1-mu) variance */
-	    ans += 2 * wi *
+	    ans[ai] += 2 * wi *
 		(y_log_y(yi, mui) + y_log_y(1 - yi, 1 - mui));
 	    break;
 	case 3:			/* mu variance */
-	    ans += 2 * wi * (y_log_y(yi, mui) - (yi - mui));
+	    ans[ai] += 2 * wi * (y_log_y(yi, mui) - (yi - mui));
 	    break;
 	case 4:			/* mu^2 variance */
-	    ans += 2 * wi * (y_log_y(yi, mui) - (yi - mui)/mui);
+	    ans[ai] += 2 * wi * (y_log_y(yi, mui) - (yi - mui)/mui);
 	    break;
 	case 5:			/* mu^3 variance */
-	    ans += wi * (ri * ri)/(yi * mui * mui);
+	    ans[ai] += wi * (ri * ri)/(yi * mui * mui);
 	    break;
 	default:
 	    error(_("Unknown vTyp value %d"), vTyp);
@@ -1051,15 +1066,13 @@ ST_setPars(SEXP x, const double *pars)
  * Iterate to determine the conditional modes of the random effects.
  *
  * @param x pointer to an mer object
- * @param verb indicator of verbose iterations 
- *             (negative values produce a lot of output)
  *
  * @return number of iterations to convergence (0 for non-convergence) 
  */
-static int update_u(SEXP x, int verb)
+static int update_u(SEXP x)
 {
     int *dims = DIMS_SLOT(x);
-    int i, n = dims[n_POS], q = dims[q_POS];
+    int i, n = dims[n_POS], q = dims[q_POS], verb = dims[verb_POS];
     double *Cx = Cx_SLOT(x), *sXwt = SXWT_SLOT(x),
 	*res = RESID_SLOT(x), *u = U_SLOT(x),
 	cfac = ((double)n) / ((double)q), 
@@ -1348,7 +1361,7 @@ SEXP mer_MCMCsamp(SEXP x, SEXP fm)
 		/* Restore pars from the first columns of the samples */
     ST_setPars(fm, STsamp);
     Memcpy(FIXEF_SLOT(fm), fixsamp, p);
-    update_u(fm, 0);
+    update_u(fm);
     update_L(fm);
     update_RX(fm);
     lmm_update_fixef_u(fm);
@@ -1357,22 +1370,122 @@ SEXP mer_MCMCsamp(SEXP x, SEXP fm)
     return x;
 }
 
+
+/**
+ * Generate zeros and weights of Hermite polynomial of order N, for AGQ method
+ *
+ * changed from fortran in package 'glmmML'
+ * @param N order of the Hermite polynomial
+ * @param X zeros of the polynomial, abscissas for AGQ
+ * @param W weights used in AGQ
+ *
+ */
+
+static void internal_ghq(int N, double *x, double *w)
+{
+    int NR, IT, I, K, J;
+    double Z = 0, HF = 0, HD = 0;
+    double Z0, F0, F1, P, FD, Q, WP, GD, R, R1, R2;
+    double HN = 1/(double)N;
+    double *X = Calloc(N + 1, double), *W = Calloc(N + 1, double);
+
+    for(NR = 1; NR <= N / 2; NR++){
+	if(NR == 1)
+	    Z = -1.1611 + 1.46 * sqrt((double)N);
+	else
+	    Z -= HN * (N/2 + 1 - NR);
+	for (IT = 0; IT <= GHQ_MAXIT; IT++) {
+	    Z0 = Z;
+	    F0 = 1.0;
+	    F1 = 2.0 * Z;
+	    for(K = 2; K <= N; ++K){
+		HF = 2.0 * Z * F1 - 2.0 * (double)(K - 1.0) * F0;
+		HD = 2.0 * K * F1;
+		F0 = F1;
+		F1 = HF;
+	    }
+	    P = 1.0;
+	    for(I = 1; I <= NR-1; ++I){
+		P *= (Z - X[I]);
+	    }
+	    FD = HF / P;
+	    Q = 0.0;
+	    for(I = 1; I <= NR - 1; ++I){
+		WP = 1.0;
+		for(J = 1; J <= NR - 1; ++J){
+		    if(J != I) WP *= ( Z - X[J] );
+		}
+		Q += WP;
+	    }
+	    GD = (HD-Q*FD)/P;
+	    Z -= (FD/GD);
+	    if (fabs((Z - Z0) / Z) < GHQ_EPS) break;
+	}
+
+	X[NR] = Z;
+	X[N+1-NR] = -Z;
+	R=1.0;
+	for(K = 1; K <= N; ++K){
+	    R *= (2.0 * (double)K );
+	}
+	W[N+1-NR] = W[NR] = 3.544907701811 * R / (HD*HD);
+    }
+
+    if( N % 2 ){
+	R1=1.0;
+	R2=1.0;
+	for(J = 1; J <= N; ++J){
+	    R1=2.0*R1*J;
+	    if(J>=(N+1)/2) R2 *= J;
+	}
+	W[N/2+1]=0.88622692545276*R1/(R2*R2);
+	X[N/2+1]=0.0;
+    }
+
+    Memcpy(x, X + 1, N);
+    Memcpy(w, W + 1, N);
+
+    if(X) Free(X);
+    if(W) Free(W);
+}
+
+/**
+ * Return zeros and weights of Hermite polynomial of order n as a list
+ *
+ * @param np pointer to a scalar integer SEXP
+ * @return a list with two components, the abscissas and the weights.
+ *
+ */
+SEXP lme4_ghq(SEXP np)
+{
+    int n = asInteger(np);
+    SEXP ans = PROTECT(allocVector(VECSXP, 2));
+
+    if (n < 1) n = 1;
+    SET_VECTOR_ELT(ans, 0, allocVector(REALSXP, n ));
+    SET_VECTOR_ELT(ans, 1, allocVector(REALSXP, n ));
+    
+    internal_ghq(n, REAL(VECTOR_ELT(ans, 0)), REAL(VECTOR_ELT(ans, 1)));
+    UNPROTECT(1);
+    return ans;
+}
+
+
+
 /**
  * Optimize the profiled deviance of an lmer object or the Laplace
  * approximation to the deviance of a nlmer or glmer object.
  *
  * @param x pointer to an mer object
- * @param verbp pointer to indicator of verbose output
  *
  * @return R_NilValue
  */
-SEXP 
-mer_optimize(SEXP x, SEXP verbp)
+SEXP mer_optimize(SEXP x)
 {
     SEXP ST = GET_SLOT(x, lme4_STSym);
-    int *dims = DIMS_SLOT(x), verb = asInteger(verbp);
+    int *dims = DIMS_SLOT(x);
     int lmm = !(MUETA_SLOT(x) || V_SLOT(x)), nf = dims[nf_POS];
-    int nv = dims[np_POS] + (lmm ? 0 : dims[p_POS]);
+    int nv = dims[np_POS] + (lmm ? 0 : dims[p_POS]), verb = dims[verb_POS];
     int liv = S_iv_length(OPT, nv), lv = S_v_length(OPT, nv);
     double *g = (double*)NULL, *h = (double*)NULL, fx = R_PosInf;
     double *fixef = FIXEF_SLOT(x);
@@ -1392,7 +1505,9 @@ mer_optimize(SEXP x, SEXP verbp)
     }
 				/* initialize the state vectors v and iv */
     S_Rf_divset(OPT, iv, liv, lv, v);
-    if (verb) iv[OUTLEV] = 1;
+    iv[OUTLEV] = (verb < 0) ? -verb : verb;
+    iv[MXFCAL] = dims[mxfn_POS];
+    iv[MXITER] = dims[mxit_POS];
 				/* set the bounds to plus/minus Infty  */
     for (int i = 0; i < nv; i++) {
 	b[2*i] = R_NegInf; b[2*i+1] = R_PosInf; d[i] = 1;
@@ -1403,6 +1518,7 @@ mer_optimize(SEXP x, SEXP verbp)
 	for (int j = 0; j < nc; j++) b[pos + 2*j] = 0;
 	pos += nc * (nc + 1);
     }
+
     do {
 	ST_setPars(x, xv);		/* update ST and A */
 /* FIXME: Change this so that update_dev is always called and that
@@ -1415,7 +1531,7 @@ mer_optimize(SEXP x, SEXP verbp)
 	    fx = lmm_update_fixef_u(x);
 	} else {
 	    Memcpy(fixef, xv + dims[np_POS], dims[p_POS]);
-	    update_u(x, verb);
+	    update_u(x);
 	    mer_update_dev(x);
 	    fx = DEV_SLOT(x)[ML_POS];
 	}
@@ -1601,27 +1717,194 @@ SEXP mer_ST_setPars(SEXP x, SEXP pars)
  *
  * @param x pointer to an mer object
  *
+ * @return R_NilValue
  */
 SEXP mer_update_dev(SEXP x)
 {
-    double *d = DEV_SLOT(x);
+    SEXP flistP = GET_SLOT(x, lme4_flistSym);
+    double *d = DEV_SLOT(x), *u = U_SLOT(x);
     int *dims = DIMS_SLOT(x);
+    const int q = dims[q_POS], nAGQ = dims[nAGQ_POS];
+    CHM_FR L = L_SLOT(x);
+ 
+/* FIXME: This should allow for a GNMM.  Right now generalized and
+ * nonlinear are mutually exclusive.
+ */
+/* FIXME: Check these conditions in mer_validate. */
+    if (nAGQ < 1) error("nAGQ must be positive");
+    if ((nAGQ > 1) & (LENGTH(flistP) != 1))
+	error("AGQ method requires a single grouping factor");
+    d[ML_POS] = d[ldL2_POS];
 
-    if (MUETA_SLOT(x)) {
-	if (dims[nAGQ_POS] > 1) {
-	    error("Code not yet written");
+    if (MUETA_SLOT(x)) {	/* GLMM */
+	if (nAGQ == 1) {
+	    double ans = 0;
+	    lme4_devResid(MU_SLOT(x), PWT_SLOT(x), Y_SLOT(x), dims[n_POS],
+			  dims[vTyp_POS], &ans, (int*) NULL);
+	    d[disc_POS] = ans;
+	    d[ML_POS] += d[disc_POS] + d[usqr_POS];
+	    return R_NilValue;
 	}
-	d[disc_POS] = lme4_devResid(MU_SLOT(x), PWT_SLOT(x), Y_SLOT(x),
-				    dims[n_POS], dims[vTyp_POS]);
-	d[ML_POS] = d[disc_POS] + d[ldL2_POS] + d[usqr_POS];
-    } else {
+				/* Adaptive Gauss-Hermite quadrature */
+				/* Single grouping factor has been checked. */
+	const int nl = nlevels(VECTOR_ELT(flistP, 0));
+	const int nt = q / nl;
+	int *fl0 = INTEGER(VECTOR_ELT(flistP, 0)), *pointer = Alloca(nt, int);
+	double *ghw = GHW_SLOT(x), *ghx = GHX_SLOT(x),
+	                        /* store conditional mode */
+	    *uold = Memcpy(Calloc(q, double), u, q),
+	    *tmp = Calloc(nl, double),
+	    w_pro = 1, z_sum = 0;           /* values needed in AGQ evaluation */
+	R_CheckStack();
+
+	AZERO(pointer, nt);
+	AZERO(tmp, nl);
+
+	while(pointer[nt - 1] < nAGQ){
+	    double *z = Calloc(q, double);       /* current abscissas */
+	    double *ans = Calloc(nl, double);    /* current penalized residuals in different levels */
+
+				/* update abscissas and weights */
+	    for(int i = 0; i < nt; ++i){
+		for(int j = 0; j < nl; ++j){
+		    z[i + j * nt] = ghx[pointer[i]];
+		}
+		w_pro *= ghw[pointer[i]];
+		z_sum += z[pointer[i]] * z[pointer[i]];
+	    }
+
+	    CHM_DN cz = N_AS_CHM_DN(z, q, 1), sol;
+	    if(!(sol = M_cholmod_solve(CHOLMOD_L, L, cz, &c)))
+		error(_("cholmod_solve(CHOLMOD_L) failed"));
+	    Memcpy(z, (double *)sol->x, q);
+	    M_cholmod_free_dense(&sol, &c);
+
+	    for(int i = 0; i < q; ++i) u[i] = uold[i] + z[i];
+	    update_mu(x);
+	    
+	    AZERO(ans, nl);
+	    lme4_devResid(MU_SLOT(x), PWT_SLOT(x), Y_SLOT(x), dims[n_POS],
+			  dims[vTyp_POS], ans, fl0);
+	    
+	    for(int i = 0; i < nt; ++i)
+		for(int j = 0; j < nl; ++j)
+		    ans[j] += u[i + j * nt] * u[i + j * nt];
+
+	    for(int i = 0; i < nl; ++i)
+		tmp[i] += exp( -0.5 * ans[i]) * w_pro / sqrt(PI);
+				/* move pointer to next combination of weights and abbsicas */
+	    int count = 0;
+	    pointer[count]++;
+	    while(pointer[count] == nAGQ && count < nt - 1){
+		pointer[count] = 0;
+		pointer[++count]++;
+	    }
+
+	    w_pro = 1;
+	    z_sum = 0;
+
+	    if(z)    Free(z);
+	    if(ans)  Free(ans);
+	    
+	}
+
+	for(int j = 0; j < nl; ++j) d[ML_POS] -= 2 * log(tmp[j]);
+	Memcpy(u, uold, q);
+	update_mu(x);
+	if(tmp)   Free(tmp);
+	if(uold)  Free(uold);
+    } else {  /* NLMM */
 	double dn = (double) dims[n_POS];
 
 	d[disc_POS] = d[wrss_POS];
-	if (dims[nAGQ_POS] > 1) {
-	    error("Code not yet written");
+	if (nAGQ > 1) {
+				/* Adaptive Gauss-Hermite quadrature */
+				/* Single grouping factor has been checked. */
+	    const int nl = nlevels(VECTOR_ELT(flistP, 0));
+	    const int nt = q / nl;
+	    int *fl0 = INTEGER(VECTOR_ELT(flistP, 0)), *pointer = Alloca(nt, int);
+	    double *ghw = GHW_SLOT(x), *ghx = GHX_SLOT(x),
+		*res = RESID_SLOT(x), *tmp = Calloc(nl, double),
+				/* store conditional mode */
+		*uold = Memcpy(Calloc(q, double), u, q),
+		w_pro = 1, z_sum = 0;           /* values needed in AGQ evaluation */
+	    const double sigma = d[sigmaML_POS];   /* MLE of sigma */
+	    const double factor = - 1 / (2 * sigma * sigma);
+
+	    R_CheckStack();
+
+	    AZERO(pointer, nt);
+	    AZERO(tmp, nl);
+	    
+	    d[ML_POS] = dn * log(2*PI*d[pwrss_POS]/dn) + d[ldL2_POS];
+	    
+	    /* implementation of AGQ method (Laplacian will be a trivial case) */
+	    AZERO(pointer, nt);                    /* assign initial pointers, all 0 */
+	    AZERO(tmp, nl);
+
+	    /* add accuracy to integration approximation */
+	    while(pointer[nt - 1] < nAGQ){
+		double *z = Calloc(q, double);       /* current abscissas */
+		double *presid = Calloc(nl, double); /* current penalized residuals in different levels */
+		
+		/* update abscissas and weights */
+		for(int i = 0; i < nt; ++i){
+		    for(int j = 0; j < nl; ++j){
+			z[i + j * nt] = ghx[pointer[i]];
+		    }
+		    z_sum += ghx[pointer[i]] * ghx[pointer[i]];
+		    w_pro *= ghw[pointer[i]];
+		}
+		CHM_DN cz = N_AS_CHM_DN(z, q, 1), sol;
+		if(!(sol = M_cholmod_solve(CHOLMOD_L, L, cz, &c)))
+		    error(_("cholmod_solve(CHOLMOD_L) failed"));
+		Memcpy(z, (double *)sol->x, q);
+		M_cholmod_free_dense(&sol, &c);
+		for(int i = 0; i < q; ++i){
+		    u[i] = uold[i] + sigma * z[i];
+		}
+		update_mu(x);
+		
+		AZERO(presid, nl);
+		for(int i = 0; i < dims[n_POS]; ++i){
+		    presid[fl0[i]-1] += ( res[i] * res[i] );
+		}
+		
+		for(int i = 0; i < nt; ++i){
+		    for(int j = 0; j < nl; ++j)
+			presid[j] += u[i + j * nt] * u[i + j * nt];
+		}
+		
+		for(int j = 0; j < nl; ++j){
+		    tmp[j] += exp(factor * presid[j] + z_sum) * w_pro / sqrt(PI);
+		}
+		
+		/* move pointer to next combination of weights and abbsicas */
+		int count = 0;
+		pointer[count]++;
+		while(pointer[count] == nAGQ && count < nt - 1){
+		    pointer[count] = 0;
+		    pointer[++count]++;
+		}
+		if(z) Free(z);
+		w_pro = 1;
+		z_sum = 0;
+		if(presid) Free(presid);
+	    }
+	    
+	    for(int j = 0; j < nl; ++j){
+		d[ML_POS] -= ( 2 * log(tmp[j]) );
+	    }
+	    
+	    Memcpy(u, uold, q);
+	    update_mu(x);
+	    if(tmp)   Free(tmp);
+	    if(uold)  Free(uold);
+	    
 	}
-	d[ML_POS] = dn*(1 + log(d[pwrss_POS]) + log(2*PI/dn)) + d[ldL2_POS];
+	else{
+	    d[ML_POS] = dn*(1 + log(d[pwrss_POS]) + log(2*PI/dn)) + d[ldL2_POS];
+        }
     }
     return R_NilValue;
 }
@@ -1668,9 +1951,9 @@ SEXP mer_update_mu(SEXP x)
  *
  * @return number of iterations to convergence (0 for non-convergence) 
  */
-SEXP mer_update_u(SEXP x, SEXP verbP)
+SEXP mer_update_u(SEXP x)
 {
-    return ScalarInteger(update_u(x, asInteger(verbP)));
+    return ScalarInteger(update_u(x));
 }
 
 /**
@@ -2021,99 +2304,6 @@ SEXP spR_optimize(SEXP x, SEXP verbP)
     Free(Zcp);
     Free(tmp);
     return R_NilValue;
-}
-
-#define GHQ_EPS    1e-15
-#define GHQ_MAXIT  40
-
-static int internal_ghq(int N, double *X, double *W)
-{
-    int NR, IT, I, K, J;
-    double Z = 0, HF = 0, HD = 0;
-    double Z0, F0, F1, P, FD, Q, WP, GD, R, R1, R2;
-    double HN = 1/(double)N;
-
-/*   scanf("%d", &N); */
-
-/*   X = malloc( (N + 1) * sizeof(double) ); */
-/*   W = malloc( (N + 1) * sizeof(double) ); */
-
-
-    for(NR = 1; NR <= N / 2; ++NR){
-	if(NR == 1)
-	    Z = -1.1611 + 1.46 * sqrt( (double)N);
-	else
-	    Z -= HN * (N/2 + 1 - NR);
-/* 	IT = 0; */
-/* 	do{ */
-	for (IT = 0; IT <= GHQ_MAXIT; IT++) {
-	    Z0 = Z;
-	    F0 = 1.0;
-	    F1 = 2.0 * Z;
-	    for(K = 2; K <= N; ++K){
-		HF = 2.0 * Z * F1 - 2.0 * (double)(K - 1.0) * F0;
-		HD = 2.0 * K * F1;
-		F0 = F1;
-		F1 = HF;
-	    }
-	    P = 1.0;
-	    for(I = 1; I <= NR-1; ++I){
-		P *= (Z - X[I]);
-	    }
-	    FD = HF / P;
-	    Q = 0.0;
-	    for(I = 1; I <= NR - 1; ++I){
-		WP = 1.0;
-		for(J = 1; J <= NR - 1; ++J){
-		    if(J != I) WP *= ( Z - X[J] );
-		}
-		Q += WP;
-	    }
-	    GD = (HD-Q*FD)/P;
-	    Z -= (FD/GD);
-	    if (abs((Z - Z0) / Z) < GHQ_EPS) break;
-/* 	    IT++; */
-	} /* while(IT <= GHQ_MAXIT && abs((Z-Z0) / Z) > GHQ_EPS); */
-/* 	printf("[%d] %.4f\t", NR, Z ); */
-
-	X[NR] = Z;
-	X[N+1-NR] = -Z;
-	R=1.0;
-	for(K = 1; K <= N; ++K){
-	    R *= (2.0 * (double)K );
-	}
-	W[N+1-NR] = W[NR] = 3.544907701811 * R / (HD*HD);
-    }
-    if( N % 2 ){
-	R1=1.0;
-	R2=1.0;
-	for(J = 1; J <= N; ++J){
-	    R1=2.0*R1*J;
-	    if(J>=(N+1)/2) R2 *= J;
-	}
-	W[N/2+1]=0.88622692545276*R1/(R2*R2);
-	X[N/2+1]=0.0;
-    }
-
-/*   printf("\n"); */
-/*   for(I = 1; I <= N; ++I){ */
-/*     printf("%.4f %.4f\n", X[I], W[I]); */
-/*   } */
-  return 0;
-}
-
-SEXP lme4_ghq(SEXP np)
-{
-    int n = asInteger(np);
-    SEXP ans = PROTECT(allocVector(VECSXP, 2));
-
-    if (n < 1) n = 1;
-    SET_VECTOR_ELT(ans, 0, allocVector(REALSXP, n + 1));
-    SET_VECTOR_ELT(ans, 1, allocVector(REALSXP, n + 1));
-    
-    internal_ghq(n, REAL(VECTOR_ELT(ans, 0)), REAL(VECTOR_ELT(ans, 1)));
-    UNPROTECT(1);
-    return ans;
 }
 
 

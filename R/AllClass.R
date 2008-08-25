@@ -21,6 +21,7 @@ setClass("mer",
                         call = "call",   # matched call
                         flist = "data.frame",  # list of grouping factors
                         X = "matrix",    # fixed effects model matrix
+                        Xst = "dgCMatrix",    # sparse fixed effects model matrix
                         Zt = "dgCMatrix",# sparse form of Z'
                         pWt = "numeric",# prior weights,
                         offset = "numeric", # length 0 -> no offset
@@ -48,7 +49,9 @@ setClass("mer",
                         sqrtXWt = "matrix",# sqrt of model matrix row weights
                         sqrtrWt = "numeric",# sqrt of weights used with residuals
                         RZX = "matrix", # dense sol. to L RZX = ST'ZtX = AX
-                        RX = "matrix"),  # Cholesky factor of downdated X'X
+                        RX = "matrix",  # Cholesky factor of downdated X'X
+		        ghx = "numeric", # zeros of Hermite polynomial
+			ghw = "numeric"), # weights used for AGQ
          validity = function(object) .Call(mer_validate, object))
 
 setClass("merMCMC",

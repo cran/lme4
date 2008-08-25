@@ -14,7 +14,7 @@ static R_CallMethodDef CallEntries[] = {
     CALLDEF(mer_ST_initialize, 3),
     CALLDEF(mer_ST_setPars, 2),
     CALLDEF(mer_create_L, 1),
-    CALLDEF(mer_optimize, 2),
+    CALLDEF(mer_optimize, 1),
     CALLDEF(mer_postVar, 1),
     CALLDEF(mer_update_L, 1),
     CALLDEF(mer_update_RX, 1),
@@ -22,7 +22,7 @@ static R_CallMethodDef CallEntries[] = {
     CALLDEF(mer_update_projection, 1),
     CALLDEF(mer_update_ranef, 1),
     CALLDEF(mer_update_mu, 1),
-    CALLDEF(mer_update_u, 2),
+    CALLDEF(mer_update_u, 1),
     CALLDEF(mer_validate, 1),
     
     CALLDEF(merMCMC_validate, 1),
@@ -66,6 +66,7 @@ void R_init_lme4(DllInfo *dll)
     lme4_STSym = install("ST");
     lme4_VSym = install("V");
     lme4_XSym = install("X");
+    lme4_XstSym = install("Xst");
     lme4_ZtSym = install("Zt");
     lme4_devianceSym = install("deviance");
     lme4_dimsSym = install("dims");
@@ -73,6 +74,8 @@ void R_init_lme4(DllInfo *dll)
     lme4_etaSym = install("eta");
     lme4_fixefSym = install("fixef");
     lme4_flistSym = install("flist");
+    lme4_ghwSym = install("ghw");
+    lme4_ghxSym = install("ghx");
     lme4_gradientSym = install("gradient");
     lme4_iSym = install("i");
     lme4_ncSym = install("nc");

@@ -304,14 +304,13 @@ checkSTform <- function(ST, STnew)
     all(unlist(lapply(STnew, function(m) all(diag(m) > 0))))
 }
 
-lmerControl <- function(msVerbose = getOption("verbose"))
+lmerControl <- function(msVerbose = getOption("verbose"),
+                        maxIter = 300L, maxFN = 900L)
 ### Control parameters for lmer, glmer and nlmer
 {
     list(
-### FIXME: Should the user have control of maxIter and tolerance? If
-### so, how should they be passed to the lmer_optimize C function?
-         ## maxIter = as.integer(maxIter),
-         ## tolerance = as.double(tolerance),
+         maxIter = as.integer(maxIter),
+         maxFN = as.integer(maxFN),
 	 msVerbose = as.integer(msVerbose))# "integer" on purpose
 }
 
@@ -325,7 +324,8 @@ VecFromNames <- function(nms, mode = "numeric")
 }
 
 dimsNames <- c("nf", "n", "p", "q", "s", "np", "REML", "fTyp", "lTyp",
-               "vTyp", "nest", "useSc", "nAGQ", "cvg")
+               "vTyp", "nest", "useSc", "nAGQ", "verb", "mxit", "mxfn",
+               "cvg")
 
 devNames <- c("ML", "REML", "ldL2", "ldRX2", "sigmaML", "sigmaREML",
                "pwrss", "disc", "usqr", "wrss")
@@ -358,6 +358,9 @@ mkdims <- function(fr, FL, start, s = 1L)
     dd["p"] <- ncol(fr$X)             # number of fixed-effects coefficients
     dd["q"] <- nrow(Zt)               # number of random effects
     dd["s"] <- s
+    dd["mxit"] <- 300L                # maximum number of iterations
+    dd["mxfn"] <- 900L                # maximum number of function evaluations
+    dd["verb"] <- 0L                  # no verbose output
     nvc <- sapply(nc, function (qi) (qi * (qi + 1))/2) # no. of var. comp.
 ### FIXME: Check number of variance components versus number of
 ### levels in the factor for each term. Warn or stop as appropriate
@@ -433,9 +436,9 @@ convergenceMessage <- function(cvg)
     msg
 }
 
-mer_finalize <- function(ans, verbose)
+mer_finalize <- function(ans)
 {
-    .Call(mer_optimize, ans, verbose)
+    .Call(mer_optimize, ans)
     if (ans@dims["cvg"] > 6) warning(convergenceMessage(ans@dims["cvg"]))
     .Call(mer_update_ranef, ans)
     .Call(mer_update_mu, ans)
@@ -458,6 +461,7 @@ lmer_finalize <- function(fr, FL, start, REML, verbose)
 ### Only need to check the first factor because it is the one with
 ### the most levels.
     dm$dd["REML"] <- as.logical(REML)
+    dm$dd["verb"] <- as.integer(verbose)
     swts <- sqrt(unname(fr$wts))
     Cx <- numeric(0)
     if (length(swts))
@@ -502,7 +506,7 @@ lmer_finalize <- function(fr, FL, start, REML, verbose)
         if (length(STp) == length(stp))
             .Call(mer_ST_setPars, ans, stp)
     }
-    mer_finalize(ans, verbose)
+    mer_finalize(ans)
 }
 
 glmer_finalize <- function(fr, FL, glmFit, start, nAGQ, verbose)
@@ -516,10 +520,13 @@ glmer_finalize <- function(fr, FL, glmFit, start, nAGQ, verbose)
     dm$dd["useSc"] <- as.integer(!(famNms[dm$dd["fTyp"] ] %in%
 				   c("binomial", "poisson")))
     if ((nAGQ <- as.integer(nAGQ)) < 1) nAGQ <- 1L
-    dm$dd["nAGQ"] <- nAGQ
+    if (nAGQ %% 2 == 0) nAGQ <- nAGQ + 1L # reset nAGQ to be an odd number
+    dm$dd["nAGQ"] <- as.integer(nAGQ)
+    AGQlist <- .Call(lme4_ghq, nAGQ)
     y <- unname(as.double(glmFit$y))
     ##    dimnames(fr$X) <- NULL
     p <- dm$dd["p"]
+    dm$dd["verb"] <- as.integer(verbose)
     fixef <- fr$fixef
     fixef[] <- coef(glmFit)
     if (!is.null(ff <- start$fixef) && is.numeric(ff) &&
@@ -549,13 +556,15 @@ glmer_finalize <- function(fr, FL, glmFit, start, nAGQ, verbose)
                sqrtXWt = as.matrix(numeric(dm$dd["n"])),
                sqrtrWt = numeric(dm$dd["n"]),
                RZX = matrix(0, dm$dd["q"], p),
-               RX = matrix(0, p, p))
+               RX = matrix(0, p, p),
+	       ghx = AGQlist[[1]],
+	       ghw = AGQlist[[2]])
     if (!is.null(stp <- start$STpars) && is.numeric(stp)) {
         STp <- .Call(mer_ST_getPars, ans)
         if (length(STp) == length(stp))
             .Call(mer_ST_setPars, ans, stp)
     }
-    mer_finalize(ans, verbose)
+    mer_finalize(ans)
     ans
 }
 
@@ -718,10 +727,15 @@ nlmer <- function(formula, data, start = NULL, verbose = FALSE,
 #    if (length(xnms) > 0)
 #        Xt <- cbind(Xt, fr$X[rep.int(seq_len(n), s), xnms, drop = FALSE])
     dm <- mkdims(fr, FL, start$STpars, s)
+    cv <- do.call("lmerControl", control)
+    if (missing(verbose)) verbose <- cv$msVerbose
+    dm$dd["verb"] <- as.integer(verbose)
     p <- dm$dd["p"] <- length(start$fixef)
     n <- dm$dd["n"]
     if ((nAGQ <- as.integer(nAGQ)) < 1) nAGQ <- 1L
+    if (nAGQ %% 2 == 0) nAGQ <- nAGQ + 1L      # reset nAGQ to be an odd number
     dm$dd["nAGQ"] <- nAGQ
+    AGQlist = .Call(lme4_ghq, nAGQ)
 
     ans <- new(Class = "mer",
                env = env,
@@ -752,13 +766,13 @@ nlmer <- function(formula, data, start = NULL, verbose = FALSE,
                sqrtXWt = matrix(0, n, s, dimnames = list(NULL, pnames)),
                sqrtrWt = unname(sqrt(fr$wts)),
                RZX = matrix(0, dm$dd["q"], p),
-               RX = matrix(0, p, p)
+               RX = matrix(0, p, p),
+	       ghx = AGQlist[[1]],
+	       ghw = AGQlist[[2]] 
                )
     .Call(mer_update_mu, ans)
 ### Add a check that the parameter names match the column names of gradient
-    cv <- do.call("lmerControl", control)
-    if (missing(verbose)) verbose <- cv$msVerbose
-    mer_finalize(ans, verbose)
+    mer_finalize(ans)
 }
 
 #### Extractors specific to mixed-effects models
@@ -922,7 +936,7 @@ setMethod("anova", signature(object = "mer"),
               stop("single argument anova for GLMMs not yet implemented")
             if (length(object@V))
               stop("single argument anova for NLMMs not yet implemented")
-            
+
             p <- object@dims["p"]
             ss <- (.Call(mer_update_projection, object)[[2]])^2
             names(ss) <- names(object@fixef)
@@ -963,7 +977,7 @@ setMethod("deviance", signature(object="mer"),
       {
           if (missing(REML) || is.null(REML) || is.na(REML[1]))
               REML <- object@dims["REML"]
-          object@deviance[ifelse(REML, "REML", "ML")]
+          object@deviance[if(REML) "REML" else "ML"]
       })
 
 setMethod("fitted", signature(object = "mer"),
@@ -1029,7 +1043,7 @@ setMethod("summary", signature(object = "mer"),
           coefs <- cbind("Estimate" = fcoef, "Std. Error" = corF@sd) #, DF = DF)
           llik <- logLik(object, REML)
           dev <- object@deviance
-          mType <- ifelse(non <- as.logical(length(object@V)), "NMM", "LMM")
+          mType <- if((non <- as.logical(length(object@V)))) "NMM" else "LMM"
           if (gen <- as.logical(length(object@muEta)))
               mType <- paste("G", mType, sep = '')
           mName <- switch(mType, LMM = "Linear", NMM = "Nonlinear",
@@ -1040,7 +1054,7 @@ setMethod("summary", signature(object = "mer"),
 	  else
 	      method <- "the adaptive Gaussian Hermite approximation"
           if (mType == "LMM")
-              method <- ifelse(REML, "REML", "maximum likelihood")
+              method <- if(REML) "REML" else "maximum likelihood"
 
           AICframe <- data.frame(AIC = AIC(llik), BIC = BIC(llik),
                                  logLik = c(llik),
@@ -1269,7 +1283,7 @@ setMethod("refit", signature(object = "mer", newresp = "numeric"),
           newresp <- as.double(newresp[!is.na(newresp)])
           stopifnot(length(newresp) == object@dims["n"])
           object@y <- newresp
-          mer_finalize(object, FALSE) # non-verbose fit
+          mer_finalize(object)
       })
 
 BlockDiagonal <- function(lst)
@@ -1655,7 +1669,7 @@ devvals <- function(fm, pmat, sigma1 = FALSE)
         stop(gettextf("pmat must have %d columns", np + sigma1))
     storage.mode(pmat) <- "double"
     if (is.null(pnms <- dimnames(pmat)[[2]]))
-        pnms <- c(ifelse(sigma1, character(0), "sigma"),
+        pnms <- c(if(sigma1) character(0) else "sigma",
                   paste("th", seq_len(np), sep = ""))
     dev <- fm@deviance
     ans <- matrix(0, nrow(pmat), ncol(pmat) + length(dev),
