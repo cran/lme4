@@ -69,7 +69,7 @@ fm3 <- lmer(diameter ~ (1|plate) + (1|sample), Penicillin)
 ranef(fm1)
 str(rr1 <- ranef(fm1, postVar = TRUE))
 dotplot(rr1,scales = list(x = list(relation = 'free')))[["Subject"]]
-str(ranef(fm2, postVar = TRUE))
+##str(ranef(fm2, postVar = TRUE)) ## code not yet written
 op <- options(digits = 4)
 ranef(fm3, drop = TRUE)
 options(op)

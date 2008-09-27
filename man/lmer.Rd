@@ -43,7 +43,7 @@ nlmer(formula, data, start = NULL, verbose = FALSE, nAGQ = 1,
     model is fit.}
   \item{REML}{logical argument to \code{lmer} only. Should the estimates
     be chosen to optimize the REML criterion (as opposed to the
-    log-likelihood)?  Defaults to TRUE.}
+    log-likelihood)?  Defaults to \code{TRUE}.}
   \item{nAGQ}{a positive integer - the number of points per axis for
     evaluating the adaptive Gauss-Hermite approximation to the
     log-likelihood.  This defaults to 1, corresponding to the Laplacian

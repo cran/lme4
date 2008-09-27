@@ -98,7 +98,7 @@
       the dimensions are \eqn{n}, the number of observations, \eqn{p}, the
       number of fixed effects, \eqn{q}, the total number of random
       effects, \eqn{s}, the number of parameters in the nonlinear model
-      function and \eqn{nf}, the number of random-effects terms in the
+      function and \eqn{nt}, the number of random-effects terms in the
       model.}
 
     \item{\code{ST}:}{A list of S and T factors in the TSST' Cholesky

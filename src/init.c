@@ -15,7 +15,7 @@ static R_CallMethodDef CallEntries[] = {
     CALLDEF(mer_ST_setPars, 2),
     CALLDEF(mer_create_L, 1),
     CALLDEF(mer_optimize, 1),
-    CALLDEF(mer_postVar, 1),
+    CALLDEF(mer_postVar, 2),
     CALLDEF(mer_update_L, 1),
     CALLDEF(mer_update_RX, 1),
     CALLDEF(mer_update_dev, 1),

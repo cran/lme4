@@ -1,3 +1,46 @@
+2008-09-26  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r239] DESCRIPTION: New release
+	* [r238] R/carryOver.R: Carryover model revisions (unexported)
+	* [r237] R/lmer.R, src/lmer.c: Handle weights correctly for LMMs, fix
+	  some of the problems reported by Terry Therneau
+	* [r236] man/lmer.Rd: Cosmetic
+	* [r235] NAMESPACE: Allow for currently unexported predict method
+	* [r234] tests/lmer-1.Rout.save, tests/nlmer.R, tests/nlmer.Rout.save:
+	  remove some unstable tests which should be more stable in refactored
+	  code
+	* [r233] inst/doc/Doxyfile, inst/doc/Implementation.pdf,
+	  inst/doc/PLSvGLS.pdf, inst/doc/Theory.Rnw, inst/doc/Theory.pdf: Revise
+	  Theory.Rnw for the allcoef version
+
+2008-09-15  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r231] R/carryOver.R: Re-write of carryOver with utility functions
+	* [r230] src/lmer.c: Changes in update_dev from Bin Dai
+	* [r229] R/lmer.R: Added a preliminary, unexported predict method
+
+2008-09-09  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r227] R/lmer.R, src/lmer.c: Add new positions in the deviance slot
+	* [r226] inst/doc/Theory.Rnw, inst/doc/Theory.pdf: Revising the
+	  computational methods document in new notation
+	* [r225] man/mer-class.Rd, man/ranef.Rd: Allow which argument in
+	  mer_postVar
+	* [r224] R/AllClass.R, R/carryOver.R, R/lmer.R, src/init.c, src/lmer.c,
+	  src/lmer.h: Global change of nf (number of factors) to nt (number of
+	  terms); Allow which argument in mer_postVar
+
+2008-09-02  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r223] inst/doc/Theory.Rnw: Yet another rewrite of the theory
+
+2008-08-25  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r222] DESCRIPTION, R/AllClass.R, R/lmer.R,
+	  inst/doc/Implementation.pdf, inst/doc/PLSvGLS.pdf,
+	  inst/doc/Theory.pdf, src/Syms.h, src/init.c, src/lmer.c, src/lmer.h:
+	  Incorporate AGQ code from Bin Dai; Fold verbose indicator into dims;
+	  add mxit and mxfn to dims
 2008-08-20  Martin Maechler  <maechler@stat.math.ethz.ch>
 
 	* NAMESPACE: importFrom(stats, AIC) + comments on import(stats)

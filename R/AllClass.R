@@ -21,7 +21,7 @@ setClass("mer",
                         call = "call",   # matched call
                         flist = "data.frame",  # list of grouping factors
                         X = "matrix",    # fixed effects model matrix
-                        Xst = "dgCMatrix",    # sparse fixed effects model matrix
+                        Xst = "dgCMatrix", # sparse fixed effects model matrix
                         Zt = "dgCMatrix",# sparse form of Z'
                         pWt = "numeric",# prior weights,
                         offset = "numeric", # length 0 -> no offset
@@ -31,7 +31,7 @@ setClass("mer",
                         Gp = "integer",  # pointers to row groups of Zt
                         dims = "integer",# dimensions and indicators
                         ## slots that vary during optimization
-                        ST = "list", # list of TSST' rep of rel. var. mats
+                        ST = "list", # 
                         V = "matrix",    # gradient matrix
                         A = "dgCMatrix", # (ZTS)'
                         Cm = "dgCMatrix", # AH'G^{-1}W^{1/2} when s > 0
@@ -53,6 +53,33 @@ setClass("mer",
 		        ghx = "numeric", # zeros of Hermite polynomial
 			ghw = "numeric"), # weights used for AGQ
          validity = function(object) .Call(mer_validate, object))
+
+##' Parameterized components of an mer model.
+##'
+##' The virtual class of parameterized components of an mer model
+setClass("merParam", representation("VIRTUAL"))
+
+##' List of merParam objects
+setClass("merParamList",
+         representation(offset = "integer"), # pointers into parameter vector
+         contains = "list",
+         validity = function(object)
+         all(unlist(lapply(object, "is", class2 = "merParam"))))
+
+##' Random-effects covariance factors.
+##'
+##' The virtual class of components that generate the factors of the
+##' relative covariance matrices for random effects.
+setClass("merREfac",
+         representation(offset = "integer", # offset into the ranef vector
+                        "VIRTUAL"),
+         contains = "merParam")
+
+setClass("merST",
+         representation(Gp = "integer",  # pointers to r.e. term groups
+                        ST = "list"),    # list of TSST' rep of rel. cov. mats
+         contains = "merREfac")
+
 
 setClass("merMCMC",
          representation(
