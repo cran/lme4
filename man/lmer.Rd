@@ -52,7 +52,7 @@ nlmer(formula, data, start = NULL, verbose = FALSE, nAGQ = 1,
   \item{control}{a list of control parameters. See below for details.}
   \item{start}{a named list of starting values for the parameters in the
     model. If the list is of the same form as the \code{ST} slot, it is
-    becomes the starting values of the \code{ST} slot.  It the list
+    becomes the starting values of the \code{ST} slot.  If the list
     contains components named \code{fixef} and/or \code{ST}, these are
     used as the starting values for those slots.  (Setting starting
     values for \code{fixef} has no effect for a linear mixed model
@@ -77,18 +77,23 @@ nlmer(formula, data, start = NULL, verbose = FALSE, nAGQ = 1,
   \item{verbose}{logical scalar.  If \code{TRUE} verbose output is
     generated during the optimization of the parameter estimates.}
   \item{\dots}{other potential arguments.  A \code{method} argument was
-    used in earlier versions of the package. It's functionality has been
+    used in earlier versions of the package. Its functionality has been
     replaced by the \code{REML} and \code{nAGQ} arguments.}
 }
 \details{
-  This is a revised version of the \code{\link[nlme]{lme}} function from the
-  \pkg{nlme} package.  This version uses a different method of
-  specifying random-effects terms and allows for fitting generalized
-  linear mixed models and nonlinear mixed models in addition to linear
-  mixed models.
+
+  The \code{lmer} and \code{glmer} functions are nearly interchangeable.
+  If \code{lmer} is called with a non-default \code{family} argument the
+  call is replaced by a call to \code{glmer} with the current arguments.
+  If \code{glmer} is called with the default \code{family}, namely the
+  \code{\link[stats]{gaussian}} family with the identity link, then the call is
+  replaced by a call to \code{lmer} with the current arguments.  (They
+  are described as \dQuote{nearly} interchangeable because the
+  \code{REML} argument only applies to calls to \code{lmer} and the
+  \code{nAGQ} argument only applies to calls to \code{glmer}.)
 
   Additional standard arguments to model-fitting functions can be passed
-  to \code{lmer}.
+  to \code{lmer} or \code{glmer} or \code{nlmer}:
   \describe{
     \item{subset}{an optional expression indicating the subset of the rows of
       \code{data} that should be used in the fit. This can be a logical
@@ -107,6 +112,12 @@ nlmer(formula, data, start = NULL, verbose = FALSE, nAGQ = 1,
 	\item{\code{msVerbose}:}{a logical value passed as the
 	  \code{trace} argument to \code{nlminb} (see documentation on
 	  that function).  Default is \code{getOption("verbose")}.}
+	\item{\code{maxIter}:}{a positive integer passed as the
+	  \code{maxIter} argument to \code{nlminb} (see documentation on
+	  that function).  Default is \code{300}.}
+	\item{\code{maxFN}:}{a positive integer specifying the
+	  maximum number of evaluations of the deviance function allowed
+	  during the optimization. Default is \code{900}}.
       }
     }
     \item{model, x}{logicals.  If \code{TRUE} the corresponding

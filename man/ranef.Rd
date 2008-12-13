@@ -13,7 +13,8 @@
 }
 \usage{
 ranef(object, \dots)
-\S4method{ranef}{mer}(object, postVar, drop, \dots)
+\S4method{ranef}{mer}(object, postVar = FALSE, drop = FALSE,
+      whichel = names(wt), \dots)
 }
 \arguments{
   \item{object}{an object of a class of fitted models with random
@@ -26,6 +27,8 @@ ranef(object, \dots)
     return value that would be data frames with a single column, usually
     a column called \sQuote{\code{(Intercept)}}, should be returned as
     named vectors.}
+  \item{whichel}{character vector of names of factors for which to
+    return results.}
   \item{\dots}{some methods for this generic function require additional
     arguments.}
 }

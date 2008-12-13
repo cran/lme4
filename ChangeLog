@@ -1,3 +1,10 @@
+2008-12-13  Martin Maechler  <maechler@stat.math.ethz.ch>
+
+	* man/ranef.Rd: add 'whichel' argument to help page
+
+	* DESCRIPTION (Date, Version): 0.999375-28 to be released,
+	mainly for re-installation against new Matrix.
+
 2008-09-26  Douglas Bates <bates@stat.wisc.edu>
 
 	* [r239] DESCRIPTION: New release

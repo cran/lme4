@@ -1298,15 +1298,16 @@ setMethod("summary", signature(object = "mer"),
           mName <- switch(mType, LMM = "Linear", NMM = "Nonlinear",
                           GLMM = "Generalized linear",
                           GNMM = "Generalized nonlinear")
-	  if(dims["nAGQ"] == 1)
-              method <- "the Laplace approximation"
-	  else
-	      method <- "the adaptive Gaussian Hermite approximation"
-          if (mType == "LMM")
-              method <- if(REML) "REML" else "maximum likelihood"
-
+	  method <- {
+	      if (mType == "LMM")
+		  if(REML) "REML" else "maximum likelihood"
+	      else
+		  paste("the", if(dims["nAGQ"] == 1) "Laplace" else
+			"adaptive Gaussian Hermite",
+			"approximation")
+	  }
           AICframe <- data.frame(AIC = AIC(llik), BIC = BIC(llik),
-                                 logLik = c(llik),
+                                 logLik = as.vector(llik),
                                  deviance = dev["ML"],
                                  REMLdev = dev["REML"],
                                  row.names = "")
