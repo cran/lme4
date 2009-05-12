@@ -1,9 +1,36 @@
+2009-05-12  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r307] DESCRIPTION, src/lmer.c: Avoid alloca for arrays of size q (C
+	  stack overflows); New release
+
+2009-04-28  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r305] R/lmer.R: Refit method for matrix response, contributed
+ 	  by Ben Bolker
+
+2009-03-24  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r302] DESCRIPTION, man/Penicillin.Rd, src/lmer.c, tests/lmer-1.R,
+	  tests/lmer-1.Rout.save: Handle previously ignored offset specification
+	  in LMMs; add tests; new version
+	* [r301] inst/doc/Theory.Rnw, inst/doc/Theory.pdf: Updates
+	* [r300] R/lmer.R: Remove .Internal call and redundant check
+
+2009-01-05  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r275] R/carryOver.R: evaluate the random effects on the AR1 and
+	  general models.  (The carryOver function is not exported.)
+
 2008-12-13  Martin Maechler  <maechler@stat.math.ethz.ch>
 
 	* man/ranef.Rd: add 'whichel' argument to help page
 
 	* DESCRIPTION (Date, Version): 0.999375-28 to be released,
 	mainly for re-installation against new Matrix.
+
+2008-10-19  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r241] man/lmer.Rd: update
 
 2008-09-26  Douglas Bates <bates@stat.wisc.edu>
 

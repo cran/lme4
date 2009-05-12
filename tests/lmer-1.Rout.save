@@ -1,6 +1,6 @@
 
-R version 2.7.2 (2008-08-25)
-Copyright (C) 2008 The R Foundation for Statistical Computing
+R version 2.9.0 alpha (2009-03-24 r48209)
+Copyright (C) 2009 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -26,6 +26,11 @@ Attaching package: 'Matrix'
 
 	 xtabs 
 
+
+	The following object(s) are masked from package:base :
+
+	 rcond 
+
 > options(show.signif.stars = FALSE)
 > 
 > (fm1 <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy))
@@ -36,7 +41,7 @@ Formula: Reaction ~ Days + (Days | Subject)
  1756 1775 -871.8     1752    1744
 Random effects:
  Groups   Name        Variance Std.Dev. Corr  
- Subject  (Intercept) 612.092  24.7405        
+ Subject  (Intercept) 612.090  24.7405        
           Days         35.072   5.9221  0.066 
  Residual             654.941  25.5918        
 Number of obs: 180, groups: Subject, 18
@@ -322,7 +327,8 @@ Error : length(levels(dm$flist[[1]])) < length(Y) is not TRUE
 > 
 > ## Wrong formula gave a seg.fault at times:
 > D <-  data.frame(y= rnorm(20,10), ff = gl(4,5),
-+                  x1=rnorm(20,3), x2=rnorm(20,7))
++                  x1=rnorm(20,3), x2=rnorm(20,7),
++                  x3=rnorm(20,1))
 > m0 <- lmer(y ~ (x1 + x2)|ff, data = D)
 > m1 <- lmer(y ~ x1 + x2|ff  , data = D)
 > m2 <- lmer(y ~ x1 + (x2|ff), data = D)
@@ -335,8 +341,15 @@ CHOLMOD error: 
 Warning message:
 In Ops.factor(ff, x1) : + not meaningful for factors
 > 
+> ## Check the use of offset
+> om2 <- lmer(y ~ x1 + (x2|ff), data = D, offset = x3)
+> om3 <- lmer(y ~ x1 + (x2|ff) + offset(x3), data = D)
 > 
+> stopifnot(identical(ranef(om2), ranef(om3)),
++           identical(deviance(om2), deviance(om3)))
+> if (identical(TRUE, all.equal(fixef(m2), fixef(om2))))
++     stop("offset does not change the fixed effects")
 > 
 > cat('Time elapsed: ', proc.time(),'\n') # for ``statistical reasons''
-Time elapsed:  11.908 0.148 12.158 0.004 0.004 
+Time elapsed:  13.696 0.144 13.951 0 0 
 > 

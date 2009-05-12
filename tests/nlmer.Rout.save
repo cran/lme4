@@ -1,6 +1,6 @@
 
-R version 2.7.2 (2008-08-25)
-Copyright (C) 2008 The R Foundation for Statistical Computing
+R version 2.9.0 (2009-04-17)
+Copyright (C) 2009 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -26,6 +26,11 @@ Attaching package: 'Matrix'
 
 	 xtabs 
 
+
+	The following object(s) are masked from package:base :
+
+	 rcond 
+
 > 
 > showProc.time <- function() { ## CPU elapsed __since last called__
 +     .ot <- .pc
@@ -50,23 +55,23 @@ Formula: conc ~ SSfol(Dose, Time, lKe, lKa, lCl) ~ (lKe + lKa + lCl |      Subje
 Random effects:
  Groups   Name Variance Std.Dev. Corr          
  Subject  lKe  0.000000 0.00000                
-          lKa  0.227361 0.47682     NaN        
+          lKa  0.227358 0.47682     NaN        
           lCl  0.015722 0.12539     NaN -0.012 
- Residual      0.591715 0.76923                
+ Residual      0.591716 0.76923                
 Number of obs: 132, groups: Subject, 12
 
 Fixed effects:
     Estimate Std. Error t value
 lKe -2.47518    0.05641  -43.88
-lKa  0.47415    0.15288    3.10
-lCl -3.23550    0.05235  -61.80
+lKa  0.47414    0.15288    3.10
+lCl -3.23551    0.05235  -61.80
 
 Correlation of Fixed Effects:
     lKe    lKa   
 lKa -0.264       
 lCl  0.671 -0.141
 > showProc.time() # ~ 5.7s {dual-opteron 2814, on 64b, no optim.}
-Time elapsed:  6.14 0.016 6.158 
+Time elapsed:  13.029 0.064 13.147 
 > 
 > (nm3 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
 +               (lKe|Subject) + (lKa|Subject) + (lCl|Subject),
@@ -79,9 +84,9 @@ Formula: conc ~ SSfol(Dose, Time, lKe, lKa, lCl) ~ (lKe | Subject) + (lKa |     
 Random effects:
  Groups   Name Variance Std.Dev.
  Subject  lKe  0.000000 0.00000 
- Subject  lKa  0.227494 0.47696 
+ Subject  lKa  0.227490 0.47696 
  Subject  lCl  0.015738 0.12545 
- Residual      0.591689 0.76921 
+ Residual      0.591691 0.76921 
 Number of obs: 132, groups: Subject, 12
 
 Fixed effects:
@@ -95,7 +100,7 @@ Correlation of Fixed Effects:
 lKa -0.264       
 lCl  0.671 -0.133
 > showProc.time() # ~ 3.2s
-Time elapsed:  4.933 0 4.931 
+Time elapsed:  12.249 0.044 12.325 
 > 
 > ## dropping   lKe  from random effects:
 > (nm4 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
@@ -124,7 +129,7 @@ Correlation of Fixed Effects:
 lKa -0.264       
 lCl  0.671 -0.141
 > showProc.time()
-Time elapsed:  3.28 0 3.282 
+Time elapsed:  9.052 0.036 9.126 
 > 
 > (nm5 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
 +               (lKa|Subject) + (lCl|Subject),
@@ -152,7 +157,7 @@ Correlation of Fixed Effects:
 lKa -0.264       
 lCl  0.671 -0.133
 > showProc.time()
-Time elapsed:  2.752 0.004 2.755 
+Time elapsed:  7.781 0.024 7.814 
 > 
 > e3 <- expand(nm3)
 > stopifnot(identical(sapply(e3, class),
@@ -176,14 +181,9 @@ Time elapsed:  2.752 0.004 2.755
 + #                  c(1, 0.0310, 0.0909, -0.00187), tol = .009)
 + #          , allEQ(e2$S@x, rep(c(0.0000000, 0.9274296, 0.2366269), each=12))
 +           )
-Warning message:
-Ambiguous method selection for "==", target "dtCMatrix#numeric" (the first of the signatures shown will be used)
-    dMatrix#numeric
-    sparseMatrix#numeric
- 
 > 
 > showProc.time()
-Time elapsed:  0.12 0 0.121 
+Time elapsed:  0.096 0 0.099 
 > 
 > 
 > 

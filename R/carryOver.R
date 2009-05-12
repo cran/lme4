@@ -75,7 +75,7 @@ lagged_factor <- function(fr, idvar = "id", timevar = "Time", factors = "inst")
 ##' @return a dgCMatrix object obtained by accumulating the dgTMatrix
 ##'   objects from the list dgTlst with coefficients from coef.
 
-accum <- function(dgTlst, coef = rep(1, length(dgTlst)))
+accumdgTlst <- function(dgTlst, coef = rep(1, length(dgTlst)))
 {
     stopifnot(is.numeric(coef),
               length(coef) == length(dgTlst))
@@ -101,7 +101,7 @@ accum <- function(dgTlst, coef = rep(1, length(dgTlst)))
 
 updateFL <- function(FL, lagged, coef = rep(1, length(lagged[[1]])))
 {
-    updt <- lapply(lagged, accum, coef = coef)
+    updt <- lapply(lagged, accumdgTlst, coef = coef)
     fl <- FL$fl
     fnms <- names(fl)
     asgn <- attr(fl, "assign")
@@ -149,6 +149,7 @@ carryOver <-
              model = TRUE, x = TRUE, idvar = "id", timevar = "Time",
              factors = "sch", ...)
 {
+###FIXME: Reconsider the default values for idvar, timevar and factors
     stopifnot(length(formula <- as.formula(formula)) == 3,
               length(idvar <- as.character(idvar)) == 1,
               length(timevar <- as.character(timevar)) == 1,
@@ -194,6 +195,8 @@ carryOver <-
     AR1@Zt <- mkZt(updateFL(lf$FL, lagged, AR1pars[1]^(0:nyp)), nolag@ST)$Zt
     .Call(mer_ST_setPars, AR1, AR1pars[-1])
     .Call(mer_update_dev, AR1)
+    .Call(mer_update_ranef, AR1)
+    .Call(mer_update_mu, AR1)
 
     ## fit the general coefficients discount formula
     ## parameter bounds
@@ -212,6 +215,8 @@ carryOver <-
     gen@Zt <- mkZt(updateFL(lf$FL, lagged, c(1, genpars[ypind])), nolag@ST)$Zt
     .Call(mer_ST_setPars, gen, genpars[-ypind])
     .Call(mer_update_dev, gen)
+    .Call(mer_update_ranef, gen)
+    .Call(mer_update_mu, gen)
     list(nolag = nolag, undisc = undisc,
          AR1pars = AR1pars, AR1 = AR1,
          genpars = genpars, gen = gen)

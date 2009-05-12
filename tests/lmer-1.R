@@ -135,7 +135,8 @@ try(f.oops <- lmer(y ~ 1 + (1|group), data = tstDF))
 
 ## Wrong formula gave a seg.fault at times:
 D <-  data.frame(y= rnorm(20,10), ff = gl(4,5),
-                 x1=rnorm(20,3), x2=rnorm(20,7))
+                 x1=rnorm(20,3), x2=rnorm(20,7),
+                 x3=rnorm(20,1))
 m0 <- lmer(y ~ (x1 + x2)|ff, data = D)
 m1 <- lmer(y ~ x1 + x2|ff  , data = D)
 m2 <- lmer(y ~ x1 + (x2|ff), data = D)
@@ -145,6 +146,13 @@ stopifnot(identical(ranef(m0), ranef(m1)),
           inherits(tryCatch(lmer(y ~ x2|ff + x1, data = D), error = function(e)e),
                    "error"))
 
+## Check the use of offset
+om2 <- lmer(y ~ x1 + (x2|ff), data = D, offset = x3)
+om3 <- lmer(y ~ x1 + (x2|ff) + offset(x3), data = D)
 
+stopifnot(identical(ranef(om2), ranef(om3)),
+          identical(deviance(om2), deviance(om3)))
+if (identical(TRUE, all.equal(fixef(m2), fixef(om2))))
+    stop("offset does not change the fixed effects")
 
 cat('Time elapsed: ', proc.time(),'\n') # for ``statistical reasons''

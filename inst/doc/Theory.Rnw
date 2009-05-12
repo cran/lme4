@@ -1010,16 +1010,16 @@ as
 Let $\tilde{\bm L}_Z(\bm\theta)$ and $\tilde{\bm L}_X(\bm\theta)$ be
 the Cholesky factors at $\bm\theta$, $\tilde{\bm\beta}(\bm\theta)$ and
 $\tilde{\bm u}(\bm\theta)$.  Then the \emph{Laplace approximation} to
-the log-likelihood is
+the log-likelihood, $\ell_P(\bm\theta,\bm\beta,\sigma|\bm y)$, is
 \begin{equation}
   \label{eq:36}
-  -2\ell_P(\bm\theta,\bm\beta,\sigma|\bm y)\approx
+  -2\ell_P(\bm\theta,\bm\beta,\sigma|\bm y)=
   n\log(2\pi\sigma^2)+\log(|\tilde{\bm L}_{\bm Z}|^2)+
   \frac{\tilde{d}(\bm y,\bm\theta) +
     \left\|\tilde{\bm L}_{\bm X}\trans(\bm\beta-\tilde{\bm\beta})\right\|^2}{\sigma^2},
 \end{equation}
 producing the approximate profiled log-likelihood,
-$\tilde{\ell}_P(\bm\theta|\bm y)$,
+$\tilde{\ell}_P(\bm\theta|\bm y)$, of
 \begin{equation}
   \label{eq:37}
   -2\tilde{\ell}_P(\bm\theta|\bm y)\approx
@@ -1032,7 +1032,7 @@ $\tilde{\ell}_P(\bm\theta|\bm y)$,
 
 In a nonlinear mixed model we determine the parameter estimate,
 $\widehat{\bm\theta}_P$, from the Laplace approximation to the
-log-likelihood as
+profiled log-likelihood as
 \begin{equation}
   \label{eq:38}
   \widehat{\bm\theta}_P =
@@ -1045,14 +1045,119 @@ log-likelihood as
 Each evaluation of $\tilde{\ell}_P(\bm\theta|\bm y)$ requires a
 solving the penalized nonlinear least squares problem
 (\ref{eq:NLMMpnls}) simultaneously with respect to both sets of
-coefficients, $\bm u$ and $\bm\beta$, in the linear predictor,
-$\bm\gamma$.
+coefficients, $\bm u$ and $\bm\beta$, that appear in the linear
+predictor, $\bm\gamma$.
 
 For a weighted nonlinear mixed model with fixed weights, $\bm W$, we
 replace the unweighted discrepancy function $d(\bm u|\bm
 y,\bm\theta,\bm\beta)$ with the weighted discrepancy function,
-%% Finish this off
+\begin{equation}
+  \label{eq:39}
+  d(\bm u|\bm y,\bm\theta,\bm\beta) =
+  (\bm y-\bm\mu)\trans\bm W(\bm y-\bm\mu) + \|\bm u\|^2
+\end{equation}
+and the Laplace approximation to the profiled log-likelihood becomes
+\begin{equation}
+  \label{eq:40}
+  -2\tilde{\ell}_P(\bm\theta|\bm y)\approx
+  \log\left(\frac{|\tilde{\bm L}_{\bm Z}|^2}{|\bm W|}\right)+n\left(1+\log(2\pi
+    \tilde{d}(\bm y,\bm\theta)/n) \right).
+\end{equation}
 
+\subsection{Generalized linear mixed models}
+\label{sec:gener-line-mixed}
+
+In a \emph{generalized linear mixed model} (GLMM) the form of the
+scalar conditional distributions, $(\mathcal{Y}_i|\bc U=\bm u), i
+=1,\dots,n$ is allowed to be non-Gaussian.  For example, if the
+responses $y_i,i=1,\dots,n$, are binary, $y_i\in\{0,1\}$ then the
+scalar conditional distributions are Bernoulli
+\begin{equation}
+  \label{eq:41}
+  P[(\mathcal{Y}_i|\bc U=\bm u)=y]=
+  \begin{cases}
+    1-\mu_i&y=0\\
+    \mu_i&y=1
+  \end{cases},\quad 0\le\mu_i\le1
+\end{equation}
+because the $i$th scalar distribution must be determined by $\mu_i$.
+Similarly we would use Poisson conditional distributions,
+\begin{equation}
+  \label{eq:41}
+  P[(\mathcal{Y}_i|\bc U=\bm u)=y]=
+  \frac{e^{-\mu_i}\mu_i^{y}}{y!}\quad y=0,1,\dots,\quad 0\le\mu_i
+\end{equation}
+when the response represents a count.
+
+The Bernoulli and Poisson conditional distributions are completely
+determined by the value of the conditional mean, $\mu_i$.  In
+particular, the conditional variance, $\mathrm{Var}(\mathcal{Y}_i|\bc
+U=\bm u)$, is determined by the value of the conditional mean,
+$\mu_i$, as $\mu_i(1-\mu_i)$ for the Bernoulli and as $\mu_i$ for the
+Poisson.  For a generalized linear mixed model the discrepancy is
+\begin{equation}
+  \label{eq:42}
+  d(\bm u|\bm y,\bm\theta,\bm\beta)=
+  (\bm y-\bm\mu)\trans\bm W(\bm y-\bm\mu)+\|\bm u\|^2
+\end{equation}
+where the diagonal elements of the weights matrix, $\bm
+W$, are the inverses of the conditional variances at the current
+value of the conditional mean, $\bm\mu_{\bc Y|\bc U}$ and the
+conditional mean is the inverse link function applied to the linear predictor.
+
+That is, $\bm\eta=\bm\gamma$ so that
+\begin{equation}
+  \label{eq:43}
+  \bm\mu_{\bc Y|\bc U}=\bm g^{-1}\left(\bm\gamma(\bm
+    u,\bm\theta,\bm\beta)\right)=\bm g^{-1}\left(\bm
+    Z\bm\Lambda(\bm\theta)\bm u+\bm X\bm\beta\right)
+\end{equation}
+where $\bm g^{-1}$ is defined component-wise from the scalar inverse
+link function $g^{-1}$, which has the property that
+$\mu_i=g^{-1}(\eta_i)$ is in the appropriate range for any value of
+$\eta_i$.  For the Bernoulli family the appropriate range is
+$0\le\mu_i\le1$ whereas, for the Poisson family, the appropriate range
+is $0\le\mu_i$.
+
+\subsubsection{Canonical link functions}
+\label{sec:link-function}
+
+For any family of distributions there are an infinite number of
+possible scalar link and inverse link functions defined so that the
+inverse link function has the appropriate range.  For families such as
+the Bernoulli and Poisson families, which are in the exponential class
+of probability distributions, there is one particular scalar link
+function, called the \emph{canonical link function}, that arisesfrom the
+definition of the distribution itself.  
+
+To determine the canonical link function we consider the logarithm of
+the density function or the probability mass function.  In the case of
+the Poisson distribution the logarithm of the probability mass
+function is
+\begin{equation}
+  \label{eq:44}
+  \log(f(y_i|\mu_i))=\log\left(\frac{e^{-\mu_i}\mu_i^{y_i}}{y_i!}\right)=
+  y_i\log(\mu_i)-\mu_i-\log(y_i!) .
+\end{equation}
+All families in the exponential class have a log-density or
+log-probability function of this form where there can be additive
+terms that depend on $\mu_i$ only or additive terms that depend on
+$y_i$ only but there is just one term that depends on both $y_i$ and
+$\mu_i$ and that term has the form $y_i g(\mu_i)$ where $g$ is the
+canonical link for the distribution.  Thus, the canonical link for the
+Poisson family is the \emph{log link}, $\eta_i=g(\mu_i)=\log(\mu_i)$,
+with inverse link, $\mu_i=g^{-1}(\eta_i)=\exp(\eta_i)$.
+
+For the Bernoulli family the logarithm of the probability mass
+function is
+\begin{equation}
+  \label{eq:45}
+  \log(f(y_i|\mu_i))=\log\left(\mu_i^{y_i}(1-\mu_i)^{1-y_i}\right)=
+  y_i\log(mu_i) + (1-y_i)\log(1-\mu_i)=
+  y_i\log\left(\frac{mu_i}{1-\mu_i}\right)+\log(1-\mu_i)
+\end{equation}
+so the canonical link function is the \emph{logit link},
+$eta_i=g(\mu_i)=\log\left(\mu_i/(1-\mu_i)\right)$, with inverse link $\mu_i==g^{-1}(\eta_i)=1/(1+e^{-\eta_i})$.
 \section{Details of the implementation}
 \label{sec:details}
 

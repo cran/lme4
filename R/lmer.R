@@ -1474,11 +1474,7 @@ printMer <- function(x, digits = max(3, getOption("digits") - 3),
 		    if (is.logical(symbolic.cor) && symbolic.cor) {
 			corf <- as(corF, "matrix")
 			dimnames(corf) <- list(rns,
-					       if(getRversion() >= "2.8.0")
-					       abbreviate(rn, minlength=1, strict=TRUE)
-					       else ## for now
-					       .Internal(abbreviate(rn, 1, TRUE))
-					       )
+					       abbreviate(rn, minlength=1, strict=TRUE))
 			print(symnum(corf))
 		    }
 		    else {
@@ -1534,6 +1530,19 @@ setMethod("refit", signature(object = "mer", newresp = "numeric"),
           mer_finalize(object)
       })
 
+## Contributed by Ben Bolker
+setMethod("refit", signature(object = "mer", newresp = "matrix"),
+          function(object, newresp, ...)
+      {
+          stopifnot(ncol(newresp) == 2,
+                    all(!is.na(wts <- rowSums(newresp))),
+                    length(wts) == object@dims["n"])
+          object@y <- newresp[,1]/wts
+          object@pWt <- wts
+          mer_finalize(object)
+      })
+
+          
 BlockDiagonal <- function(lst)
 {
     stopifnot(is(lst, "list"))

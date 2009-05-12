@@ -1,6 +1,7 @@
 \name{refit}
 \alias{refit}
 \alias{refit,mer,numeric-method}
+\alias{refit,mer,matrix-method}
 \title{Re-fit a model to a new response vector}
 \description{
 
