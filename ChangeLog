@@ -1,5 +1,13 @@
+2009-05-20  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r312] DESCRIPTION: New release; allow earlier version of Matrix
+	  released with R-2.9.0
+	* [r311] R/lmer.R: Force copy of fitted model passed to mcmcsamp
+	* [r310] man/refit.Rd: Add alias for mer,matrix method
+
 2009-05-12  Douglas Bates <bates@stat.wisc.edu>
 
+	* [r309] tests/nlmer.Rout.save: Slight difference in calculated results
 	* [r307] DESCRIPTION, src/lmer.c: Avoid alloca for arrays of size q (C
 	  stack overflows); New release
 

@@ -1743,6 +1743,7 @@ setMethod("mcmcsamp", signature(object = "mer"),
 ### Generate a Markov chain Monte Carlo sample from the posterior distribution
 ### of the parameters in a linear mixed model
       {
+          object@fixef <- fixef(object) # force a copy
           n <- max(1, as.integer(n)[1])
           dd <- object@dims
           ranef <- matrix(numeric(0), nrow = dd["q"], ncol = 0)
