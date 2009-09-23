@@ -1065,7 +1065,7 @@ static int update_u(SEXP x)
     
     if (!sXwt) return(0);	/* nothing to do for LMMs */
     if (!(L->is_ll)) error(_("L must be LL', not LDL'"));
-    if (q > n) error(_("q = %d > n = %d"), q, n);
+    /* if (q > n) error(_("q = %d > n = %d"), q, n); */
     if (Cx) {		    /* A and C have the same structure */
 	C = A_SLOT(x);
 	R_CheckStack();

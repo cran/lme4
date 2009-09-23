@@ -1,3 +1,21 @@
+2009-09-23  Martin Maechler  <maechler@stat.math.ethz.ch>
+
+	* DESCRIPTION (Version, Depends): 0.999375-32; needs latest version of Matrix
+
+	* src/init.c (lme4_R_cholmod_error): now using own CHOLMOD error
+	handler, which does reset the 'Common' "as to start".
+
+	* tests/lmer-1.R: re-activate first part of mcmcsamp() examples.
+
+2009-06-02  Douglas Bates <bates@stat.wisc.edu>
+
+	* [r318] R/lmer.R: Duh! Forgot the meaning of "stopifnot" and did not
+	  reverse the condition.  Now fixed.
+	* [r316] DESCRIPTION: New release
+	* [r315] R/lmer.R: More informative error message for lmer_finalize.
+	  Also check this condition in glmer_finalize.
+	* [r314] src/lmer.c: Suppress check on q > n in update_u.
+
 2009-05-20  Douglas Bates <bates@stat.wisc.edu>
 
 	* [r312] DESCRIPTION: New release; allow earlier version of Matrix

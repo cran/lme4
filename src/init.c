@@ -1,12 +1,12 @@
 #include "lmer.h"
 #include <R_ext/Rdynload.h>
 #include "Matrix.h"
-#include "Syms.h" 
+#include "Syms.h"
 
 #define CALLDEF(name, n)  {#name, (DL_FUNC) &name, n}
 
 static R_CallMethodDef CallEntries[] = {
-  
+
     CALLDEF(lme4_ghq, 1),
     CALLDEF(mer_MCMCsamp, 2),
     CALLDEF(mer_ST_chol, 1),
@@ -24,18 +24,40 @@ static R_CallMethodDef CallEntries[] = {
     CALLDEF(mer_update_mu, 1),
     CALLDEF(mer_update_u, 1),
     CALLDEF(mer_validate, 1),
-    
+
     CALLDEF(merMCMC_validate, 1),
     CALLDEF(merMCMC_VarCorr, 2),
-    
+
     CALLDEF(spR_optimize, 2),
     CALLDEF(spR_update_mu, 1),
 
   {NULL, NULL, 0}
 };
 
-/** cholmod_common struct local to the package */
+/** cholmod_common struct local to the lme4 package */
 cholmod_common c;
+
+/** Need our own CHOLMOD error handler */
+void attribute_hidden
+lme4_R_cholmod_error(int status, const char *file, int line, const char *message)
+{
+    if(status < 0) {
+#ifdef Failure_in_matching_Matrix
+/* This fails unexpectedly with
+ *  function 'cholmod_l_defaults' not provided by package 'Matrix'
+ * from ../tests/lmer-1.R 's  (l.68)  lmer(y ~ habitat + (1|habitat*lagoon)
+ */
+	M_cholmod_defaults(&c);/* <--- restore defaults,
+				* as we will not be able to .. */
+	c.final_ll = 1;	    /* LL' form of simplicial factorization */
+#endif
+
+	error("Cholmod error '%s' at file:%s, line %d", message, file, line);
+    }
+    else
+	warning("Cholmod warning '%s' at file:%s, line %d",
+		message, file, line);
+}
 
 /** Initializer for lme4, called upon loading the package.
  *
@@ -54,6 +76,9 @@ void R_init_lme4(DllInfo *dll)
 
     M_R_cholmod_start(&c);
     c.final_ll = 1;	    /* LL' form of simplicial factorization */
+
+    /* need own error handler, that resets  final_ll (after *_defaults()) : */
+    c.error_handler = lme4_R_cholmod_error;
 
     lme4_ASym = install("A");
     lme4_CmSym = install("Cm");
