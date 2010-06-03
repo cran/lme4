@@ -4,17 +4,16 @@ import(Matrix)# including update()
 import(lattice)
 
 ## Generics for which we define new methods:
-importFrom("nlme", fixef, ranef, BIC)
+importFrom("nlme", fixef, ranef, VarCorr)
 importFrom("graphics", plot)
+importFrom("stats4", AIC, BIC, logLik)# so S4 methods are used!
 importFrom("stats",
-           AIC,
            anova,
            coef,
            confint,
            deviance,
            fitted,
            formula,
-           logLik,
            model.frame,
            model.matrix,
            predict,
@@ -24,16 +23,18 @@ importFrom("stats",
            ## update, -- already from 'Matrix'
            vcov
            )
-## but  import("stats") is not ok, because Matrix export "better" versions of
+## but  import("stats") is not ok, because Matrix exports "better" versions of
 ## update(), xtabs() and cov2cor()
 
 
-export("glmer",
+## re-export imported S4 generics
+export(AIC, BIC, logLik)
+## and the rest (S3 generics; regular functions):
+export("HPDinterval",
+       "glmer",
        #"gsummary", "hatTrace",
-       "HPDinterval",
        "lmList",
-       "lmer",
-       "lmer2",
+       "lmer", "lmer2",
        "mcmcsamp",
        "nlmer",
        #"pooledSD",
@@ -82,8 +83,8 @@ exportMethods(
               )
 
 S3method(plot, coef.mer)
-S3method(print, coef.mer)
 S3method(plot, ranef.mer)
+S3method(print, coef.mer)
 S3method(print, ranef.mer)
 S3method(qqmath, ranef.mer)
 S3method(dotplot, ranef.mer)
