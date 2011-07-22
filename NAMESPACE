@@ -26,6 +26,7 @@ importFrom("stats",
 ## but  import("stats") is not ok, because Matrix exports "better" versions of
 ## update(), xtabs() and cov2cor()
 
+#exportPattern("^[^\\.]")
 
 ## re-export imported S4 generics
 export(AIC, BIC, logLik)
@@ -40,6 +41,7 @@ export("HPDinterval",
        #"pooledSD",
        "refit",
        "VarCorr")
+
 
 exportClasses("lmList", "mer", "merMCMC", "summary.mer")
 
@@ -81,6 +83,10 @@ exportMethods(
               "with",
               "xyplot"
               )
+
+S3method(terms, mer)# even though we have it S4 method as well
+S3method(drop1, mer)
+S3method(extractAIC, mer)
 
 S3method(plot, coef.mer)
 S3method(plot, ranef.mer)
