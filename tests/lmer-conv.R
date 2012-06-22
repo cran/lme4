@@ -8,7 +8,7 @@ structure(Sys.info()[c(4,5,1:3)], class="simple.list")
 sessionInfo()
 ## and for even more details:
 c(Matrix = packageDescription("Matrix")$Built,
-  lme4   = packageDescription("lme4")$Built)
+  lme4 = packageDescription("lme4")$Built)
 if(SysI[["sysname"]] == "Linux" && require("sfsmisc")) local({
     nn <- names(.Sc <- sfsmisc::Sys.cpuinfo())
     nn <- names(.Sc <- .Sc[nn != "flags"])

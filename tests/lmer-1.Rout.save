@@ -1,6 +1,6 @@
 
-R version 2.13.0 RC (2011-04-07 r55350)
-Copyright (C) 2011 The R Foundation for Statistical Computing
+R version 2.15.1 beta (2012-06-14 r59562) -- "Roasted Marshmallows"
+Copyright (C) 2012 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -264,7 +264,7 @@ In Ops.factor(habitat, lagoon) : * not meaningful for factors
 + m2 <- lmer(incidence / size ~ period, weights = size,
 +             family = binomial, data = cbpp)
 + )
-Error in lmerFactorList(formula, fr, 0L, 0L) : 
+Error in lmerFactorList(formula, fr, rmInt = FALSE, drop = FALSE) : 
   No random effects terms specified in formula
 > 
 > ## useRs can set LME4_UNSAFE_BLAS for less strict checking:
@@ -325,7 +325,7 @@ Slot "deviance":
 
 Slot "dims":
    nt     n     p     q     s    np   LMM  REML  fTyp  lTyp  vTyp  nest useSc 
-    1    10     1     2     1     1     0     1     2     5     1     1     1 
+    1    10     1     2     1     1     1     1     2     5     1     1     1 
  nAGQ  verb  mxit  mxfn   cvg 
     1     0   300   900     4 
 
@@ -366,7 +366,7 @@ Slot "deviance":
 
 Slot "dims":
    nt     n     p     q     s    np   LMM  REML  fTyp  lTyp  vTyp  nest useSc 
-    1    10     1     2     1     1     0     1     2     5     1     1     1 
+    1    10     1     2     1     1     1     1     2     5     1     1     1 
  nAGQ  verb  mxit  mxfn   cvg 
     1     0   300   900     4 
 
@@ -416,7 +416,7 @@ Slot "deviance":
 
 Slot "dims":
    nt     n     p     q     s    np   LMM  REML  fTyp  lTyp  vTyp  nest useSc 
-    1    20     1     2     1     1     0     1     2     5     1     1     1 
+    1    20     1     2     1     1     1     1     2     5     1     1     1 
  nAGQ  verb  mxit  mxfn   cvg 
     1     0   300   900     4 
 
@@ -484,7 +484,7 @@ Slot "deviance":
 
 Slot "dims":
    nt     n     p     q     s    np   LMM  REML  fTyp  lTyp  vTyp  nest useSc 
-    1    20     2     4     1     3     0     1     2     5     1     1     1 
+    1    20     2     4     1     3     1     1     2     5     1     1     1 
  nAGQ  verb  mxit  mxfn   cvg 
     1     0   300   900     5 
 
@@ -635,5 +635,8 @@ m1  4  585.49  599.41 -288.75 450.67      1  < 2.2e-16
 > if(.unsafe.BLAS) rm(identical)
 > 
 > cat('Time elapsed: ', proc.time(),'\n') # for ``statistical reasons''
-Time elapsed:  6.933 0.147 7.379 0 0 
+Time elapsed:  6.352 0.052 6.414 0 0 
 > 
+> proc.time()
+   user  system elapsed 
+  6.352   0.052   6.414 

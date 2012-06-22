@@ -1,6 +1,6 @@
 
-R version 2.13.0 Patched (2011-04-20 r55568)
-Copyright (C) 2011 The R Foundation for Statistical Computing
+R version 2.14.2 RC (2012-02-26 r58499)
+Copyright (C) 2012 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
 Platform: x86_64-unknown-linux-gnu (64-bit)
 
@@ -19,6 +19,7 @@ Type 'q()' to quit R.
 > ### suppressPackageStartupMessages(...)  as we have an *.Rout.save to Rdiff against
 > stopifnot(suppressPackageStartupMessages(require(lme4)))
 > 
+> ## TODO: nicer version of this is in  system.file("test-tools.R", package = "Matrix")
 > showProc.time <- function() { ## CPU elapsed __since last called__
 +     .ot <- .pc
 +     .pc <<- proc.time()
@@ -58,7 +59,7 @@ Correlation of Fixed Effects:
 lKa -0.264       
 lCl  0.671 -0.141
 > showProc.time() # ~ 5.7s {dual-opteron 2814, on 64b, no optim.}
-Time elapsed:  9.708 0.028 9.849 
+Time elapsed:  7.571 0.06 7.807 
 > 
 > (nm3 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
 +               (lKe|Subject) + (lKa|Subject) + (lCl|Subject),
@@ -87,7 +88,7 @@ Correlation of Fixed Effects:
 lKa -0.264       
 lCl  0.671 -0.133
 > showProc.time() # ~ 3.2s
-Time elapsed:  7.003 0.015 7.054 
+Time elapsed:  5.408 0.044 5.572 
 > 
 > ## dropping   lKe  from random effects:
 > (nm4 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
@@ -116,7 +117,7 @@ Correlation of Fixed Effects:
 lKa -0.264       
 lCl  0.671 -0.141
 > showProc.time()
-Time elapsed:  3.735 0.001 3.75 
+Time elapsed:  2.925 0.013 2.985 
 > 
 > (nm5 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
 +               (lKa|Subject) + (lCl|Subject),
@@ -144,7 +145,7 @@ Correlation of Fixed Effects:
 lKa -0.264       
 lCl  0.671 -0.133
 > showProc.time()
-Time elapsed:  3.225 0.007 3.251 
+Time elapsed:  2.514 0 2.55 
 > 
 > e3 <- expand(nm3)
 > stopifnot(identical(sapply(e3, class),
@@ -170,5 +171,5 @@ Time elapsed:  3.225 0.007 3.251
 +           )
 > 
 > showProc.time()
-Time elapsed:  0.04 0 0.04 
+Time elapsed:  0.037 0 0.037 
 > 

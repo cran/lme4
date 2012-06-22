@@ -32,6 +32,8 @@ importFrom("stats",
 export(AIC, BIC, logLik)
 ## and the rest (S3 generics; regular functions):
 export("HPDinterval", "getME",
+       "isLMM", "isGLMM", "isNLMM",
+       "isREML",
        "glmer",
        #"gsummary", "hatTrace",
        "lmList",
@@ -40,7 +42,9 @@ export("HPDinterval", "getME",
        "nlmer",
        #"pooledSD",
        "refit",
+       "sigma",
        "VarCorr")
+
 
 
 exportClasses("lmList", "mer", "merMCMC", "summary.mer")
@@ -87,6 +91,10 @@ exportMethods(
 S3method(terms, mer)# even though we have it S4 method as well
 S3method(drop1, mer)
 S3method(extractAIC, mer)
+S3method(isLMM, mer)
+S3method(isGLMM, mer)
+S3method(isNLMM, mer)
+S3method(isREML, mer)
 
 S3method(plot, coef.mer)
 S3method(plot, ranef.mer)

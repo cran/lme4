@@ -125,6 +125,6 @@ void R_init_lme4(DllInfo *dll)
 /** Finalizer for lme4 called upon unloading the package.
  *
  */
-void R_unload_lme4(DllInfo *dll){
+void R_unload_lme4(DllInfo *dll) {
     M_cholmod_finish(&c);
 }

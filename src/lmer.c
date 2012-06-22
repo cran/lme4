@@ -1376,13 +1376,13 @@ static double update_dev(SEXP x)
 	    double *ans = Calloc(nl, double);    /* current penalized residuals in different levels */
 
 				/* update abscissas and weights */
+	    /* fixes from Wayne Zhang */
 	    for(int i = 0; i < nre; ++i){
 		for(int j = 0; j < nl; ++j){
 		    z[i + j * nre] = ghx[pointer[i]];
 		}
 		w_pro *= ghw[pointer[i]];
-		if(!MUETA_SLOT(x))
-		  z_sum += z[pointer[i]] * z[pointer[i]];
+		z_sum += ghx[pointer[i]] * ghx[pointer[i]];
 	    }
 
 	    CHM_DN cz = N_AS_CHM_DN(z, q, 1), sol;
@@ -1391,7 +1391,10 @@ static double update_dev(SEXP x)
 	    Memcpy(z, (double *)sol->x, q);
 	    M_cholmod_free_dense(&sol, &c);
 
-	    for(int i = 0; i < q; ++i) u[i] = uold[i] + sigma * z[i];
+	    /* fix from Wayne Zhang */
+	    for(int i = 0; i < q; ++i) 
+		u[i] = uold[i] + sqrt(2) * sigma * z[i];
+
 	    update_mu(x);
 
 	    AZERO(ans, nl);
@@ -1404,7 +1407,7 @@ static double update_dev(SEXP x)
 
 	    for(int i = 0; i < nl; ++i)
 		tmp[i] += exp( factor * ans[i] + z_sum) * w_pro / sqrt(PI);
-				/* move pointer to next combination of weights and abbsicas */
+	    /* move pointer to next combination of weights and abscissas */
 	    int count = 0;
 	    pointer[count]++;
 	    while(pointer[count] == nAGQ && count < nre - 1){
@@ -2451,58 +2454,6 @@ static double
 	    ans[(upper ? lind : uind)] = 0;
 	}
     }
-    return ans;
-}
-
-/**
- * Simulate a sample of random matrices from a Wishart distribution
- *
- * @param ns Number of samples to generate
- * @param nuP Degrees of freedom
- * @param scal Positive-definite scale matrix
- *
- * @return
- */
-SEXP
-lme4_rWishart(SEXP ns, SEXP nuP, SEXP scal)
-{
-    SEXP ans;
-    int *dims = INTEGER(getAttrib(scal, R_DimSymbol)), info,
-	n = asInteger(ns), psqr;
-    double *scCp, *ansp, *tmp, nu = asReal(nuP), one = 1, zero = 0;
-
-    if (!isMatrix(scal) || !isReal(scal) || dims[0] != dims[1])
-	error("scal must be a square, real matrix");
-    if (n <= 0) n = 1;
-    psqr = dims[0] * dims[0];
-    tmp = Alloca(psqr, double);
-    scCp = Alloca(psqr, double);
-    R_CheckStack();
-
-    Memcpy(scCp, REAL(scal), psqr);
-    AZERO(tmp, psqr);
-    F77_CALL(dpotrf)("U", &(dims[0]), scCp, &(dims[0]), &info);
-    if (info)
-	error("scal matrix is not positive-definite");
-    PROTECT(ans = alloc3DArray(REALSXP, dims[0], dims[0], n));
-    ansp = REAL(ans);
-    GetRNGstate();
-    for (int j = 0; j < n; j++) {
-	double *ansj = ansp + j * psqr;
-	std_rWishart_factor(nu, dims[0], 1, tmp);
-	F77_CALL(dtrmm)("R", "U", "N", "N", dims, dims,
-			&one, scCp, dims, tmp, dims);
-	F77_CALL(dsyrk)("U", "T", &(dims[1]), &(dims[1]),
-			&one, tmp, &(dims[1]),
-			&zero, ansj, &(dims[1]));
-
-	for (int i = 1; i < dims[0]; i++)
-	    for (int k = 0; k < i; k++)
-		ansj[i + k * dims[0]] = ansj[k + i * dims[0]];
-    }
-
-    PutRNGstate();
-    UNPROTECT(1);
     return ans;
 }
 

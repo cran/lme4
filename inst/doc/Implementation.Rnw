@@ -298,13 +298,13 @@ nc <- length(dev)
 nms <- names(dev)
 vals <- matrix(0, nrow = length(sg), ncol = nc, dimnames = list(NULL, nms))
 for (i in seq(along = sg)) {
-    .Call("mer_ST_setPars", mm, sg[i], PACKAGE = "lme4")
-    .Call("mer_update_L", mm, PACKAGE = "lme4")
-    res <- try(.Call("mer_update_RX", mm, PACKAGE = "lme4"), silent = TRUE)
+    .Call(lme4:::mer_ST_setPars, mm, sg[i])
+    .Call(lme4:::mer_update_L, mm)
+    res <- try(.Call(lme4:::mer_update_RX, mm), silent = TRUE)
     if (inherits(res, "try-error")) {
         vals[i,] <- NA
     } else {
-        .Call("mer_update_ranef", mm, PACKAGE = "lme4")
+        .Call(lme4:::mer_update_ranef, mm)
         vals[i,] <- mm@deviance
     }
 }
@@ -358,13 +358,13 @@ sg <- seq(3.75, 8.25, len = 101)
 vals <- matrix(0, nrow = length(sg), ncol = length(dev),
                dimnames = list(NULL, names(dev)))
 for (i in seq_along(sg)) {
-    .Call("mer_ST_setPars", mm, sg[i], PACKAGE = "lme4")
-    .Call("mer_update_L", mm, PACKAGE = "lme4")
-    res <- try(.Call("mer_update_RX", mm, PACKAGE = "lme4"), silent = TRUE)
+    .Call(lme4:::mer_ST_setPars, mm, sg[i])
+    .Call(lme4:::mer_update_L, mm)
+    res <- try(.Call(lme4:::mer_update_RX, mm), silent = TRUE)
     if (inherits(res, "try-error")) {
         vals[i,] <- NA
     } else {
-        .Call("mer_update_ranef", mm, PACKAGE = "lme4")
+        .Call(lme4:::mer_update_ranef, mm)
         vals[i,] <- mm@deviance
     }
 }

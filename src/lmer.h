@@ -6,7 +6,6 @@
  * GET_SLOT, MAKE_CLASS, NEW_OBJECT, SET_SLOT, etc. */
 #include <Rdefines.h>
 
-/* SEXP lme4_rWishart(SEXP ns, SEXP dfp, SEXP scal); */
 SEXP lme4_ghq(SEXP np);
 
 SEXP mer_MCMCsamp(SEXP x, SEXP fm);

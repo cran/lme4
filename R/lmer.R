@@ -1,12 +1,5 @@
 # lmer, glmer and nlmer plus methods and utilities
 
-if (FALSE) {
-### FIXME: Move this function to the stats package
-rWishart <- function(n, df, invScal)
-### Random sample from a Wishart distribution
-    .Call(lme4_rWishart, n, df, invScal)
-}
-
 ### Utilities for parsing the mixed model formula
 
 findbars <- function(term)
@@ -233,6 +226,32 @@ isNested <- function(f1, f2)
     all(diff(sm@p) < 2)
 }
 
+
+isREML <- function(x, ...) UseMethod("isREML")
+isLMM  <- function(x, ...) UseMethod("isLMM")
+isNLMM <- function(x, ...) UseMethod("isNLMM")
+isGLMM <- function(x, ...) UseMethod("isGLMM")
+
+##' @S3method isREML mer
+isREML.mer <- function(x, ...) as.logical(x@dims["REML"])
+
+##' @S3method isGLMM mer
+isGLMM.mer <- function(x,...) {
+    length(x@muEta) > 0
+  ## or: is(x@resp,"glmResp")
+}
+
+##' @S3method isNLMM mer
+isNLMM.mer <- function(x,...) {
+  ## or: is(x@resp,"nlsResp")
+  !isLMM.mer(x) & !isGLMM.mer(x)
+}
+
+##' @S3method isLMM mer
+isLMM.mer <- function(x,...) as.logical(x@dims["LMM"])
+## or: is(x@resp,"lmerResp") ?
+
+
 ##' dimsNames and devNames are in the package's namespace rather than
 ##' in the function lmerFactorList because the function sparseRasch
 ##' needs to access them.
@@ -347,7 +366,6 @@ lmerFactorList <- function(formula, fr, rmInt, drop)
     ## check for nesting of factors
     dd["nest"] <- all(sapply(seq_along(fl)[-1],
                              function(i) isNested(fl[[i-1]], fl[[i]])))
-
     list(trms = trms, fl = fl, dims = dd)
 }
 
@@ -373,8 +391,10 @@ lmerControl <- function(msVerbose = getOption("verbose"),
 	 msVerbose = as.integer(msVerbose))# "integer" on purpose
 }
 
+##' Generate a named vector of the given mode.
+##' NB: If \code{defaults} contains more than one entry of a given name,
+##' the *last* one wins
 VecFromNames <- function(nms, mode = "numeric", defaults = list())
-### Generate a named vector of the given mode
 {
     ans <- vector(mode = mode, length = length(nms))
     names(ans) <- nms
@@ -633,7 +653,7 @@ lmer <-
     stopifnot(length(formula <- as.formula(formula)) == 3)
 
     fr <- lmerFrames(mc, formula, contrasts) # model frame, X, etc.
-    FL <- lmerFactorList(formula, fr, 0L, 0L) # flist, Zt, dims
+    FL <- lmerFactorList(formula, fr, rmInt=FALSE, drop=FALSE) # flist, Zt, dims
     largs <- list(...)
     if (!is.null(method <- largs$method)) {
         warning(paste("Argument", sQuote("method"),
@@ -648,6 +668,7 @@ lmer <-
 ### FIXME: issue a warning if the control argument has an msVerbose component
     cv <- do.call(lmerControl, control)
     if (missing(verbose)) verbose <- cv$msVerbose
+    FL$dims["LMM"] <- 1L
     FL$dims["mxit"] <- cv$maxIter
     FL$dims["mxfn"] <- cv$maxFN
     ans <- list(fr = fr, FL = FL, start = start, REML = REML, verbose = verbose)
@@ -712,7 +733,7 @@ function(formula, data, family = gaussian, start = NULL,
     glmFit <- glm.fit(fr$X, fr$Y, weights = wts, # glm on fixed effects
                       offset = offset, family = family,
                       intercept = attr(attr(fr$mf, "terms"), "intercept") > 0)
-    FL <- lmerFactorList(formula, fr, 0L, 0L) # flist, Zt
+    FL <- lmerFactorList(formula, fr, rmInt=FALSE, drop=FALSE) # flist, Zt
 ### FIXME: issue a warning if the control argument has an msVerbose component
     cv <- do.call(lmerControl, control)
     if (missing(verbose)) verbose <- cv$msVerbose
@@ -765,12 +786,11 @@ nlmer <- function(formula, data, start = NULL, verbose = FALSE,
                      contrasts, vnms)
     mf <- fr$mf
     env <- new.env()
-    lapply(names(mf), function(nm) assign(nm, env = env, mf[[nm]]))
+    lapply(names(mf), function(nm) assign(nm, envir = env, mf[[nm]]))
     n <- nrow(mf)
     lapply(pnames,
-           function(nm) assign(nm, env = env, rep(start$fixef[[nm]],
+           function(nm) assign(nm, envir = env, rep(start$fixef[[nm]],
                                    length.out = n)))
-
     n <- nrow(mf)
     mf <- mf[rep(seq_len(n), s), ]
     row.names(mf) <- NULL
@@ -781,7 +801,7 @@ nlmer <- function(formula, data, start = NULL, verbose = FALSE,
                                         # factor list and model matrices
     FL <- lmerFactorList(substitute(foo ~ bar, list(foo = nlform[[2]],
                                                     bar = formula[[3]])),
-                         fr, TRUE, TRUE)
+			 fr, rmInt=TRUE, drop=TRUE)
     X <- as.matrix(mf[,pnames])
     rownames(X) <- NULL
     xnms <- colnames(fr$X)
@@ -922,7 +942,7 @@ setMethod("ranef", signature(object = "mer"),
           lterm <- lapply(plist(reinds(object@Gp), cn),
                           function(el) {
                               cni <- el[[2]]
-                              matrix(rr[ el[[1]] ], nc = length(cni),
+                              matrix(rr[ el[[1]] ], ncol = length(cni),
                                      dimnames = list(NULL, cni))
                           })
           wt <- whichterms(object)
@@ -1309,10 +1329,10 @@ setMethod("simulate", "mer",
 	      etasim.fix <- etasim.fix+offset
 	  }
 	  etasim.reff <- as(t(object@A) %*% # UNSCALED random-effects contribution
-			    matrix(rnorm(nsim * dims["q"]), nc = nsim),
+			    matrix(rnorm(nsim * dims["q"]), ncol = nsim),
 			    "matrix")
 	  if (length(object@V) == 0 && length(object@muEta) == 0) {
-	      etasim.resid <- matrix(rnorm(nsim * n), nc = nsim) ## UNSCALED residual
+	      etasim.resid <- matrix(rnorm(nsim * n), ncol = nsim) ## UNSCALED residual
 	      etasim <- etasim.fix + sigma*(etasim.reff+etasim.resid)
 	      val <- etasim
 	  }
@@ -1560,7 +1580,7 @@ printMer <- function(x, digits = max(3, getOption("digits") - 3),
 		p <- ncol(corF)
 		if (p > 1) {
 		    rn <- rownames(so@coefs)
-		    rns <- abbreviate(rn, minlen=11)
+		    rns <- abbreviate(rn, minlength=11)
 		    cat("\nCorrelation of Fixed Effects:\n")
 		    if (is.logical(symbolic.cor) && symbolic.cor) {
 			corf <- as(corF, "matrix")
@@ -1570,8 +1590,8 @@ printMer <- function(x, digits = max(3, getOption("digits") - 3),
 		    }
 		    else {
 			corf <- matrix(format(round(corF@x, 3), nsmall = 3),
-				       nc = p,
-                                       dimnames = list(rns, abbreviate(rn, minlen=6)))
+				       ncol = p, dimnames = list(rns,
+					       abbreviate(rn, minlength=6)))
 			corf[!lower.tri(corf)] <- ""
 			print(corf[-1, -p, drop=FALSE], quote = FALSE)
 		    }
@@ -2068,7 +2088,7 @@ devvals <- function(fm, pmat, sigma1 = FALSE)
 ##     template <- FUN(x)
 ##     if (!is.numeric(template))
 ##         stop("simulestimate currently only handles functions that return numeric vectors")
-##     ans <- matrix(template, nr = nsim, nc = length(template), byrow = TRUE)
+##     ans <- matrix(template, nr = nsim, ncol = length(template), byrow = TRUE)
 ##     colnames(ans) <- names(template)
 ##     for (i in 1:nsim) {
 ##         x@wrkres <- x@y <- lpred[,i]
@@ -2328,24 +2348,6 @@ whichreind <- function(fm, fnm = names(fm@flist))
            function (ind) unlist(reinds(fm@Gp)[ind]))
 
 
-## From: Soren.Hojsgaard@agrsci.dk
-## To: "maechler@stat.math.ethz.ch" <maechler@stat.math.ethz.ch>
-## CC: "bates@stat.wisc.edu" <bates@stat.wisc.edu>, Ulrich Halekoh
-## 	<Ulrich.Halekoh@agrsci.dk> <Soren.Hojsgaard@agrsci.dk>
-## Date: Thu, 18 Aug 2011 15:22:05 +0200
-## Subject: Slots that we extract to do Kenward-Roger approximation
-
-## Dear Martin,
-
-## It seems that what we extract is:
-
-##  @X
-##  @Gp
-##  @Zt
-##  @dims['REML']
-##  @dims['nt']
-
-
 ##' "Generalized Extractor" -- the version for classical lme4
 ##' @param object [ng]lmer() fit
 ##' @param name character string
@@ -2356,7 +2358,8 @@ whichreind <- function(fm, fnm = names(fm@flist))
 getME <- function(object,
                   name = c("X", "Z","Zt", "u",
                   "Gp",
-                  "L", "Lambda", "Lambdat",
+                  "L", "Lambda", "Lambdat", "A",
+                  "flist",
                   "RX", "RZX",
                   "beta", "theta",
 		  "REML", "n_rtrms", "is_REML"))
@@ -2376,10 +2379,24 @@ getME <- function(object,
            "beta" = unname(object@fixef),
 	   "n_rtrms" = object@dims[["nt"]], ##  = #{random-effect terms in the formula}
 	   "is_REML" = as.logical(object@dims[["REML"]]),
-
-	   "Lambda"=, ## from object@L  ??
-	   "Lambdat"=,
-           "theta"=,
+	   "Lambda"={warning("Lambda is not available in lme4"); NA}, ## FIXME??
+	   "Lambdat"={warning("Lambdat is not available in lme4"); NA},
+           "A"=object@A,
+           "flist"=object@flist,
+           "theta"= {
+             mnames <- function(z) {
+               v <- colnames(z)
+               m <- outer(v,v,paste,sep=".")
+               diag(m) <- v
+               m[lower.tri(m,diag=TRUE)]
+             }
+             n <- unname(c(unlist(mapply(function(g,v) {
+               paste(g,mnames(v),sep=".")
+             },names(object@flist),object@ST))))
+             x <- c(sapply(object@ST,function(z) z[lower.tri(z,diag=TRUE)]))
+             names(x) <- n
+             x
+           },
            "..foo.." =# placeholder!
            stop(gettextf("'%s' is not implemented yet",
                          sprintf("getME(*, \"%s\")", name))),
