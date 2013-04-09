@@ -1,12 +1,14 @@
 
-R version 2.14.2 RC (2012-02-26 r58499)
+R Under development (unstable) (2012-12-14 r61321) -- "Unsuffered Consequences"
 Copyright (C) 2012 The R Foundation for Statistical Computing
 ISBN 3-900051-07-0
-Platform: x86_64-unknown-linux-gnu (64-bit)
+Platform: i686-pc-linux-gnu (32-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
 You are welcome to redistribute it under certain conditions.
 Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
 
 R is a collaborative project with many contributors.
 Type 'contributors()' for more information and
@@ -32,34 +34,36 @@ Type 'q()' to quit R.
 > ## 'Theoph' Data modeling
 > 
 > Th.start <- c(lKe = -2.5, lKa = 0.5, lCl = -3)
+> op <- options(digits=3)
 > (nm2 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
 +               (lKe+lKa+lCl|Subject),
 +               Theoph, start = Th.start))
 Nonlinear mixed model fit by the Laplace approximation 
 Formula: conc ~ SSfol(Dose, Time, lKe, lKa, lCl) ~ (lKe + lKa + lCl |      Subject) 
    Data: Theoph 
-   AIC BIC logLik deviance
- 152.1 181 -66.07    132.1
+ AIC BIC logLik deviance
+ 152 181  -66.1      132
 Random effects:
  Groups   Name Variance Std.Dev. Corr          
- Subject  lKe  0.000000 0.00000                
-          lKa  0.227357 0.47682     NaN        
-          lCl  0.015722 0.12539     NaN -0.012 
- Residual      0.591716 0.76923                
+ Subject  lKe  0.0000   0.000                  
+          lKa  0.2274   0.477       NaN        
+          lCl  0.0157   0.125       NaN -0.012 
+ Residual      0.5917   0.769                  
 Number of obs: 132, groups: Subject, 12
 
 Fixed effects:
     Estimate Std. Error t value
-lKe -2.47518    0.05641  -43.88
-lKa  0.47414    0.15288    3.10
-lCl -3.23551    0.05235  -61.80
+lKe  -2.4752     0.0564   -43.9
+lKa   0.4741     0.1529     3.1
+lCl  -3.2355     0.0524   -61.8
 
 Correlation of Fixed Effects:
     lKe    lKa   
 lKa -0.264       
 lCl  0.671 -0.141
+> options(op)
 > showProc.time() # ~ 5.7s {dual-opteron 2814, on 64b, no optim.}
-Time elapsed:  7.571 0.06 7.807 
+Time elapsed:  5.432 0.012 5.456 
 > 
 > (nm3 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
 +               (lKe|Subject) + (lKa|Subject) + (lCl|Subject),
@@ -72,23 +76,23 @@ Formula: conc ~ SSfol(Dose, Time, lKe, lKa, lCl) ~ (lKe | Subject) + (lKa |     
 Random effects:
  Groups   Name Variance Std.Dev.
  Subject  lKe  0.000000 0.00000 
- Subject  lKa  0.227493 0.47696 
+ Subject  lKa  0.227490 0.47696 
  Subject  lCl  0.015738 0.12545 
- Residual      0.591689 0.76921 
+ Residual      0.591692 0.76921 
 Number of obs: 132, groups: Subject, 12
 
 Fixed effects:
     Estimate Std. Error t value
 lKe -2.47500    0.05641  -43.88
 lKa  0.47408    0.15291    3.10
-lCl -3.23539    0.05236  -61.79
+lCl -3.23538    0.05236  -61.79
 
 Correlation of Fixed Effects:
     lKe    lKa   
 lKa -0.264       
 lCl  0.671 -0.133
 > showProc.time() # ~ 3.2s
-Time elapsed:  5.408 0.044 5.572 
+Time elapsed:  4.536 0.128 4.692 
 > 
 > ## dropping   lKe  from random effects:
 > (nm4 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
@@ -117,7 +121,7 @@ Correlation of Fixed Effects:
 lKa -0.264       
 lCl  0.671 -0.141
 > showProc.time()
-Time elapsed:  2.925 0.013 2.985 
+Time elapsed:  3.233 0.068 3.381 
 > 
 > (nm5 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
 +               (lKa|Subject) + (lCl|Subject),
@@ -145,7 +149,7 @@ Correlation of Fixed Effects:
 lKa -0.264       
 lCl  0.671 -0.133
 > showProc.time()
-Time elapsed:  2.514 0 2.55 
+Time elapsed:  2.8 0.068 2.95 
 > 
 > e3 <- expand(nm3)
 > stopifnot(identical(sapply(e3, class),
@@ -171,5 +175,8 @@ Time elapsed:  2.514 0 2.55
 +           )
 > 
 > showProc.time()
-Time elapsed:  0.037 0 0.037 
+Time elapsed:  0.04 0.04 0.08 
 > 
+> proc.time()
+   user  system elapsed 
+ 19.713   2.692  23.289 

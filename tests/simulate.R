@@ -41,9 +41,12 @@ stopifnot(is.list(s4), sapply(s4,ncol)==2,
 	  sapply(s4,nrow) == nrow(cbpp))
 showProc.time()
 
-r1 <- pboot(gm0,gm1, 10)
-showProc.time()
-summary(r1)
+
+## FIXME: fails on more recent R 3.0.0, maybe 2.15.3?
+##  with downdated X'X problem ...
+## r1 <- pboot(gm0,gm1, 10)
+## showProc.time()
+## summary(r1)
 
 
 ## FIXME: want real Poisson example, but will have to simulate one instead for now

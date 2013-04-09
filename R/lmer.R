@@ -873,6 +873,13 @@ coef.mer <- function(object, ...)
                       '" ignored', sep = ''))
     fef <- data.frame(rbind(fixef(object)), check.names = FALSE)
     ref <- ranef(object)
+    ## check for variables in RE but missing from FE, fill in zeros in FE accordingly
+    refnames <- unlist(lapply(ref,colnames))
+    nmiss <- length(missnames <- setdiff(refnames,names(fef)))
+    if (nmiss >0) {
+        fillvars <- setNames(data.frame(rbind(rep(0,nmiss))),missnames)
+        fef <- cbind(fillvars,fef)
+    }
     val <- lapply(ref, function(x) fef[rep(1, nrow(x)),,drop = FALSE])
     for (i in seq(a = val)) {
         refi <- ref[[i]]
@@ -1045,7 +1052,7 @@ setMethod("anova", signature(object = "mer"),
 				logLik = llk,
 				"Chisq" = chisq,
 				"Chi Df" = dfChisq,
-				"Pr(>Chisq)" = pchisq(chisq, dfChisq, lower = FALSE),
+				"Pr(>Chisq)" = pchisq(chisq, dfChisq, lower.tail = FALSE),
 				row.names = names(mods), check.names = FALSE)
 	      class(val) <- c("anova", class(val))
               attr(val, "heading") <-
@@ -1432,7 +1439,7 @@ setMethod("summary", signature(object = "mer"),
               if (!dims[["useSc"]]) {
                   coefs <- coefs[, 1:2, drop = FALSE]
                   stat <- coefs[,1]/coefs[,2]
-                  pval <- 2*pnorm(abs(stat), lower = FALSE)
+                  pval <- 2*pnorm(abs(stat), lower.tail = FALSE)
                   coefs <- cbind(coefs, "z value" = stat, "Pr(>|z|)" = pval)
               } else {
                   stat <- coefs[,1]/coefs[,2]

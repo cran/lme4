@@ -156,7 +156,7 @@ setMethod("confint", signature(object = "lmList"),
           if (length(object) < 1)
               return(new("lmList.confint", array(numeric(0), c(0,0,0))))
           mCall$object <- object[[1]]
-          template <- eval(mCall)
+          template <- as.matrix(eval(mCall))
           val <- array(template, c(dim(template), length(object)),
                        c(dimnames(template), list(names(object))))
           pool <- list(...)$pool
@@ -198,8 +198,8 @@ setMethod("plot", signature(x = "lmList.confint"),
                            ordered(rep(dn[[1]], dd[2] * dd[3]),
                                    levels = levs),
                            intervals = as.vector(arr),
-                           what = gl(dd[3], dd[1] * dd[2], len = ll, lab = dn[[3]]),
-                           end = gl(dd[2], dd[1], len = ll))
+                           what = gl(dd[3], dd[1] * dd[2], length = ll, labels = dn[[3]]),
+                           end = gl(dd[2], dd[1], length = ll))
           strip <- dots[["strip"]]
           if (is.null(strip)) {
               strip <- function(...) strip.default(..., style = 1)

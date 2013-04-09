@@ -14,9 +14,11 @@ allEQ <- function(x,y, tolerance = 4e-4, ...)
 ## 'Theoph' Data modeling
 
 Th.start <- c(lKe = -2.5, lKa = 0.5, lCl = -3)
+op <- options(digits=3)
 (nm2 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~
               (lKe+lKa+lCl|Subject),
               Theoph, start = Th.start))
+options(op)
 showProc.time() # ~ 5.7s {dual-opteron 2814, on 64b, no optim.}
 
 (nm3 <- nlmer(conc ~ SSfol(Dose, Time,lKe, lKa, lCl) ~

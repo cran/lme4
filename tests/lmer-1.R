@@ -1,4 +1,5 @@
 ### suppressPackageStartupMessages(...)  as we have an *.Rout.save to Rdiff against
+## ?? FIXME: options(digits=4) ???
 stopifnot(suppressPackageStartupMessages(require(lme4)))
 options(show.signif.stars = FALSE)
 
@@ -39,7 +40,9 @@ a.group <- rnorm(n.groups, 1, 2)
 y <- rnorm (n, a.group[group.id], 1)
 ## fit and summarize the model
 fit.1 <- lmer (y ~ 1 + (1 | group.id))
-coef (fit.1)# failed in Matrix 0.99-6
+op <- options(digits=4) ## reduce precision for more robust comparisons
+coef (fit.1) # failed in Matrix 0.99-6
+options(op)
 (sf1 <- summary(fit.1)) # show() is as without summary()
 
 
@@ -113,18 +116,32 @@ if(.unsafe.BLAS) identical <- all.equal ## "the horror" ..
     M1 <- lmer (y ~ 1 | group)
     mcmcsamp (M1, n = 2, saveb=TRUE) # fine
 
-    M2. <- lmer (y ~ 1 + x + (1 + x | group)) # had false convergence
+    M2. <- lmer  (y ~ 1 + x + (1 + x | group)) # had false convergence
     ## convergence now ok (but ranef corr. = -1; fixef = -.996 :
-    summary(M2.)
+    op <- options(digits=4)
+    fixef(M2.)
+    cov2cor(vcov(M2.))
+    ## discrepancies have occured at digit 140.641x;
+    ##  digits= doesn't handle it properly since other
+    ##  elements have smaller magnitudes
+    round(c(unlist(VarCorr(M2.))),3)  
+    options(op)
+    ## summary(M2.)
     M2  <- lmer (y ~ x + ( x | group))
     ## should be identical (and is .. well, not on all versions on Mac OSX):
     stopifnot(identical(fixef(M2), fixef(M2.)),
 	      identical(ranef(M2), ranef(M2.)),
 	      identical(resid(M2), resid(M2.)))
 
+    op <- options(digits=3)
     mcmcsamp (M2, saveb=TRUE)
+    options(op)
+    ## note: M2@dims["cvg"] (convergence indicator from PORT optimization)
+    ## changed between versions from 4="relative function convergence" to
+    ## 5="both X- and relative function convergence"
 
 if (FALSE) {  # mcmcsamp for  glmer  not yet available
+              ## ... and may never be ...
 
     ## mcmc for glmer:
     rG1k <- mcmcsamp(m1, n = 1000)
