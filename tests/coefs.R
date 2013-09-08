@@ -8,4 +8,3 @@ d <- data.frame(resp=runif(100),
 library(lme4)
 mix1 <- lmer(resp ~ 0 + var1 + var1:var2 + (1|var3), data=d)
 coef(mix1)
-

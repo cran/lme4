@@ -1,6 +1,5 @@
 \name{sigma}
 \alias{sigma}
-\alias{sigma,mer-method}
 \title{Extract residual standard error}
 \usage{
   sigma(object, ...)
@@ -9,7 +8,7 @@
   \item{object}{a fitted model.}
 
   \item{...}{additional, optional arguments.  (None are
-  used in the \code{mer} method)}
+  used in the merMod method)}
 }
 \value{
   the residual standard error as a scalar
@@ -20,6 +19,6 @@
 \details{
   This is a generic function.  At present the only methods
   are for mixed-effects models of class
-  \code{\linkS4class{mer}}.
+  \code{\linkS4class{merMod}}.
 }
 
