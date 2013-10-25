@@ -1,4 +1,4 @@
-## FIXME: documentation still refers to \linkS4class quite a bit, inappropriately
+## NB:  doc in ../man/*.Rd  ***not*** auto generated
 ## FIXME: need to document S3 methods better (can we pull from r-forge version?)
 
 ##'
@@ -1161,9 +1161,12 @@ ranef.merMod <- function(object, condVar = FALSE, drop = FALSE,
 ##' @method refit merMod
 ##' @rdname refit
 ##' @export
-refit.merMod <- function(object, newresp=NULL, ...)
+refit.merMod <- function(object, newresp=NULL, rename.response=FALSE, ...)
 {
-    rr <- object@resp$copy()
+
+    if (length(list(...))>0)
+        warning("additional arguments to refit.merMod ignored")
+    newrespSub <- substitute(newresp)
 
     ## for backward compatibility/functioning of refit(fit,simulate(fit))
     if (is.list(newresp)) {
@@ -1174,14 +1177,27 @@ refit.merMod <- function(object, newresp=NULL, ...)
                  "consider ",sQuote("lapply(object,refit)"))
         }
     }
-    
+
+    rr <- object@resp$copy()
+
     if (!is.null(newresp)) {
+
+        ## update call and model frame with new response
+        rcol <- attr(attr(mf <- model.frame(object),"terms"),"response")
+        if (rename.response) {
+            attr(object@frame,"formula")[[2]] <- object@call$formula[[2]] <-
+                newrespSub
+            names(object@frame)[rcol] <- deparse(newrespSub)
+        }
+
         if (!is.null(na.act <- attr(object@frame,"na.action"))) {
             ## will only get here if na.action is 'na.omit' or 'na.exclude'
             if (is.matrix(newresp)) {
                 newresp <- newresp[-na.act,]
             } else newresp <- newresp[-na.act]
         }
+
+        object@frame[,rcol] <- newresp
 
         if (isGLMM(object) && rr$family$family=="binomial") {
             ## re-do conversion of two-column matrix and factor
@@ -1198,7 +1214,10 @@ refit.merMod <- function(object, newresp=NULL, ...)
                 newresp <- as.numeric(newresp)-1
             }
         }
-        stopifnot(length(newresp <- as.numeric(as.vector(newresp))) == length(rr$y))
+
+        stopifnot(length(newresp <- as.numeric(as.vector(newresp))) ==
+                  length(rr$y))
+
         rr$setResp(newresp)
     }
 
@@ -1581,48 +1600,51 @@ getLlikAIC <- function(object, cmp = object@devcomp$cmp) {
 
 ## This is modeled a bit after	print.summary.lm :
 ## Prints *both*  'mer' and 'merenv' - as it uses summary(x) mainly
-printMerenv <- function(x, digits = max(3, getOption("digits") - 3),
+##' @S3method print summary.merMod
+print.summary.merMod <- function(x, digits = max(3, getOption("digits") - 3),
 			correlation = NULL, symbolic.cor = FALSE,
 			signif.stars = getOption("show.signif.stars"),
 			ranef.comp = c("Variance", "Std.Dev."), ...)
 {
-    so <- summary(x)
-    cat(sprintf("%s ['%s']\n",so$methTitle, so$objClass))
-    .prt.family(so)
-    ## FIXME: commenting out for now, restore after release?
+    cat(sprintf("%s ['%s']\n",x$methTitle, x$objClass))
+    .prt.family(x)
+    ## not for patched branch?
+    ## need residuals.merMod() rather than residuals():
+    ##  summary.merMod has no residuals method
     ## cat("Scaled residuals:\n")
-    ## print(summary(residuals(x,type="pearson",scaled=TRUE)),digits=digits)
-    .prt.call(so$call); cat("\n")
-    .prt.aictab(so$AICtab, 4); cat("\n")
-    .prt.VC(so$varcor, digits=digits, useScale= so$useScale,
+    ## print(residuals.merMod(x,type="pearson",scaled=TRUE)),digits=digits)
+    .prt.call(x$call); cat("\n")
+    .prt.aictab(x$AICtab, 4); cat("\n")
+    .prt.VC(x$varcor, digits=digits, useScale= x$useScale,
 	    comp = ranef.comp, ...)
-    .prt.grps(so$ngrps, nobs= so$devcomp$dims[["n"]])
+    .prt.grps(x$ngrps, nobs= x$devcomp$dims[["n"]])
 
-    p <- nrow(so$coefficients)
+    p <- nrow(x$coefficients)
     if (p > 0) {
 	cat("\nFixed effects:\n")
-	printCoefmat(so$coefficients, zap.ind = 3, #, tst.ind = 4
+	printCoefmat(x$coefficients, zap.ind = 3, #, tst.ind = 4
 		     digits = digits, signif.stars = signif.stars)
-	if(!is.logical(correlation)) { # default
+	if(is.null(correlation)) { # default
 	    correlation <- p <= 20
 	    if(!correlation) {
-		nam <- deparse(substitute(x)) # << TODO: improve if this is called from show()
-		cat(sprintf(paste("\nCorrelation matrix not shown by default, as p = %d > 20.",
+		nam <- deparse(substitute(x))
+		if(length(nam) > 1 || nchar(nam) >= 32) nam <- "...."
+		message(sprintf(paste("\nCorrelation matrix not shown by default, as p = %d > 20.",
 				  "Use print(%s, correlation=TRUE)  or",
 				  "    vcov(%s)	 if you need it\n", sep="\n"),
 			    p, nam, nam))
 	    }
 	}
+	else if(!is.logical(correlation)) stop("'correlation' must be NULL or logical")
 	if(correlation) {
-	    if(is.null(VC <- so$vcov)) VC <- vcov(x)
+	    if(is.null(VC <- x$vcov)) VC <- vcov(x)
 	    corF <- VC@factors$correlation
 	    if (is.null(corF)) {
-		cat("\nCorrelation of Fixed Effets is not available\n")
-	    }
-	    else {
+		cat("\nCorrelation of Fixed Effects is not available\n")
+	    } else {
 		p <- ncol(corF)
 		if (p > 1) {
-		    rn <- rownames(so$coefficients)
+		    rn <- rownames(x$coefficients)
 		    rns <- abbreviate(rn, minlength=11)
 		    cat("\nCorrelation of Fixed Effects:\n")
 		    if (is.logical(symbolic.cor) && symbolic.cor) {
@@ -1630,20 +1652,19 @@ printMerenv <- function(x, digits = max(3, getOption("digits") - 3),
 			dimnames(corf) <- list(rns,
 					       abbreviate(rn, minlength=1, strict=TRUE))
 			print(symnum(corf))
-		    }
-		    else {
+		    } else {
 			corf <- matrix(format(round(corF@x, 3), nsmall = 3),
 				       ncol = p,
 				       dimnames = list(rns, abbreviate(rn, minlength=6)))
 			corf[!lower.tri(corf)] <- ""
 			print(corf[-1, -p, drop=FALSE], quote = FALSE)
-		    }
-		}
-	    }
-	}
-    }
+		    } ## !symbolic.cor
+		}  ## if (p > 1)
+            }  ## !is.null(corF)
+        } ## if (correlation)
+    } ## if (p>0)
     invisible(x)
-}## printMerenv()
+}## print.summary.merMod
 
 
 ##' @S3method print merMod
@@ -1675,9 +1696,6 @@ print.merMod <- function(x, digits = max(3, getOption("digits") - 3),
 }
 ##' @exportMethod show
 setMethod("show",  "merMod", function(object) print.merMod(object))
-
-##' @S3method print summary.merMod
-print.summary.merMod <- printMerenv
 
 ##' Return the deviance component list
 ##'
@@ -2151,10 +2169,12 @@ summary.merMod <- function(object, ...)
 		   coefficients=coefs, sigma=sig,
 		   vcov=vcov(object, correlation=TRUE, sigm=sig),
 		   varcor=varcor, # and use formatVC(.) for printing.
-		   AICtab = llAIC[["AICtab"]], call=object@call
+		   AICtab = llAIC[["AICtab"]], call=object@call,
+                   residuals=residuals(object,"pearson")
 		   ), class = "summary.merMod")
 }
 
+## TODO: refactor?
 ##' @S3method summary summary.merMod
 summary.summary.merMod <- function(object, varcov = TRUE, ...) {
     if(varcov && is.null(object$vcov))
@@ -2321,9 +2341,13 @@ optwrap <- function(optimizer, fn, par, lower=-Inf, upper=Inf,
                    if(!is.numeric(control$rhoend)) control$rhoend <- 2e-7
                },
                Nelder_Mead = {
-                   if (is.null(control$xst))
-                       xst <- c(rep.int(0.1, length(environment(fn)$pp$theta)),  ## theta parameters
-                                sqrt(diag(environment(fn)$pp$unsc())))
+                   if (is.null(control$xst))  {
+                       thetaStep <- 0.1
+                       nTheta <- length(environment(fn)$pp$theta)
+                       betaSD <- sqrt(diag(environment(fn)$pp$unsc()))
+                       xst <- c(rep.int(thetaStep, nTheta),
+                                pmin(betaSD,10))
+                   }
                    control$xst <- 0.2*xst
                    if (is.null(control$xt)) control$xt <- control$xst*5e-4
                })

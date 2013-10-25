@@ -54,8 +54,19 @@ namespace glm {
 	const T operator()(const T& x) const {return x ? std::log(x) : T();}
     };
 
+    template <typename T>
+    struct safemult : public std::binary_function<T, T, T> {
+	const T operator()(const T& x, const T& y) const {return x ? (x*y) : T();}
+    };
+
     static inline ArrayXd Y_log_Y(const ArrayXd& y, const ArrayXd& mu) {
+	// return y * (y/mu).unaryExpr(logN0<double>());
 	return y * (y/mu).unaryExpr(logN0<double>());
+    }
+
+    static inline double Y_log_Y(const double y, const double mu) {
+	double v=(y/mu);  // BMB: could do this better if I understood templates
+	return y * ( v ? std::log(v) : v );
     }
 
     template<typename T>
@@ -80,7 +91,8 @@ namespace glm {
     template<typename T>
     struct cauchitinv : public std::unary_function<T, T> {
 	const T operator() (const T& x) const {
-	    return T(::Rf_pcauchy(double(x), 0., 1., 1, 0));
+	    return T(std::min(1.-std::numeric_limits<T>::epsilon(),
+			      ::Rf_pcauchy(double(x), 0., 1., 1, 0)));
 	}
     };
 
@@ -98,10 +110,17 @@ namespace glm {
 	}
     };
 
+    // TODO: (re)consider clamping this (and the other inverse-link functions)
+    // * warn on active clamp?
+    // * clamp from both sides?
+    // * intercept problems elsewhere?
+    // * allow toggling of clamp activity by user?
+    // (applies to logitmueta too)
     template<typename T>
     struct logitinv : public std::unary_function<T, T> {
 	const T operator() (const T& x) const {
-	    return T(::Rf_plogis(double(x), 0., 1., 1, 0));
+	    return T(std::min(1.-std::numeric_limits<T>::epsilon(),
+			      Rf_plogis(double(x), 0., 1., 1, 0)));
 	}
     };
 
@@ -115,14 +134,16 @@ namespace glm {
     template<typename T>
     struct logitmueta : public std::unary_function<T, T> {
 	const T operator() (const T& x) const {
-	    return T(::Rf_dlogis(double(x), 0., 1., 0));
+	    return T(std::max(std::numeric_limits<T>::epsilon(),
+			      Rf_dlogis(double(x), 0., 1., 0)));
 	}
     };
 
     template<typename T>
     struct probitinv : public std::unary_function<T, T> {
 	const T operator() (const T& x) const {
-	    return T(::Rf_pnorm5(double(x), 0., 1., 1, 0));
+	    return T(std::min(1.-std::numeric_limits<T>::epsilon(),
+			      ::Rf_pnorm5(double(x), 0., 1., 1, 0)));
 	}
     };
 
@@ -156,6 +177,15 @@ namespace glm {
     };
     //@}
 
+    template<typename T>
+    struct boundexp : public std::unary_function<T, T> {
+	const T operator() (const T& x) const {
+	    return T(std::max(std::numeric_limits<T>::epsilon(),
+			      exp(double(x))));
+	}
+    };
+
+
     //@{
     double                binomialDist::aic     (const ArrayXd& y, const ArrayXd& n, const ArrayXd& mu,
 						 const ArrayXd& wt, double dev) const {
@@ -168,6 +198,24 @@ namespace glm {
 	return (-2. * ans);
     }
     const ArrayXd         binomialDist::devResid(const ArrayXd& y, const ArrayXd& mu, const ArrayXd& wt) const {
+	int debug=0;
+	if (debug) {
+	    for (int i=0; i < mu.size(); ++i) {
+		double r = 2. * wt[i] * (Y_log_Y(y[i], mu[i]) + Y_log_Y(1. - y[i], 1. - mu[i]));
+		if (r!=r) {  
+		    // attempt to detect `nan` (needs cross-platform testing, but should compile 
+		    // everywhere whether or not it actually works)
+		    Rcpp::Rcout << "(bD) " << "nan @ pos " << i << ": y= " << y[i] 
+				<< "; mu=" << mu[i] 
+				<< "; wt=" << wt[i] 
+				<< "; 1-y=" << 1. - y[i] 
+				<< "; 1-mu=" << 1. - mu[i] 
+				<< "; ylogy=" << Y_log_Y(y[i], mu[i]) 
+				<< "; cylogy=" << Y_log_Y(1.-y[i], 1.-mu[i]) 
+				<< std::endl;
+		}
+	    }
+	}
 	return 2. * wt * (Y_log_Y(y, mu) + Y_log_Y(1. - y, 1. - mu));
     }
     const ArrayXd         binomialDist::variance(const ArrayXd& mu) const {return mu.unaryExpr(x1mx<double>());}
@@ -250,8 +298,8 @@ namespace glm {
 
     //@{
     const ArrayXd      logLink::linkFun(const ArrayXd&  mu) const {return  mu.log();}
-    const ArrayXd      logLink::linkInv(const ArrayXd& eta) const {return eta.exp();}
-    const ArrayXd      logLink::muEta(  const ArrayXd& eta) const {return eta.exp();}
+    const ArrayXd      logLink::linkInv(const ArrayXd& eta) const {return eta.unaryExpr(boundexp<double>());}
+    const ArrayXd      logLink::muEta(  const ArrayXd& eta) const {return eta.unaryExpr(boundexp<double>());}
     //@}
 
     //@{

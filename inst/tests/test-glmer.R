@@ -1,6 +1,9 @@
 library("testthat")
 library("lme4")
 
+testLevel <- if (nzchar(s <- Sys.getenv("LME4_TEST_LEVEL")))
+                 as.numeric(s) else 1
+
 context("fitting glmer models")
 test_that("glmer", {
     expect_warning(glmer(z~ 1|f, family=binomial, method="abc"),"Use the nAGQ argument")
@@ -83,5 +86,58 @@ test_that("glmer", {
                          control=lmerControl()),
                    "instead of passing a list of class")
 
-})
+    ##
+    load(system.file("testdata","radinger_dat.RData",package="lme4"))
+    mod <- glmer(presabs~predictor+(1|species),family=binomial,
+                 radinger_dat)
+    expect_is(mod,"merMod")
+    ## TODO: is this reliable across platforms or do we have to loosen?
+    expect_equal(unname(fixef(mod)),c(0.5425528,6.4289962))
+    set.seed(101)
+    d <- data.frame(y=rbinom(1000,size=1,p=0.5),
+                    x=runif(1000),
+                    f=factor(rep(1:20,each=50)),
+                    x2=rep(0:1,c(999,1)))
+    mod2 <- glmer(y~x+x2+(1|f),data=d,family=binomial)
+    expect_equal(unname(fixef(mod2))[1:2],
+                 c(-0.10036244,0.03548523),tol=1e-4)
+    expect_true(unname(fixef(mod2)[3]<(-10)))
+    mod3 <- update(mod2,family=binomial(link="probit"))
+    expect_equal(unname(fixef(mod3))[1:2],
+                 c(-0.06288878,0.02224270),tol=1e-4)
+    expect_true(unname(fixef(mod3)[3]<(-4)))
+    mod4 <- update(mod2,family=binomial(link="cauchit"))
 
+    ## on-the-fly creation of index variables
+    if (FALSE) {
+        ## FIXME: fails in testthat context -- 'd' is not found
+        ##  in the parent environment of glmer() -- but works fine
+        ## otherwise ...
+        set.seed(101)
+        d <- data.frame(y1=rpois(100,1),  x=rnorm(100), ID=1:100)
+        fit1 <- glmer(y1 ~ x+(1|ID),data=d,family=poisson)
+        fit2 <- update(fit1, .~ x+(1|rownames(d)))
+        expect_equal(unname(unlist(VarCorr(fit1))),
+                     unname(unlist(VarCorr(fit2))))
+    }
+
+    ## ?? 
+    testLevel <- if (nzchar(s <- Sys.getenv("LME4_TEST_LEVEL")))
+        as.numeric(s) else 1
+
+    if (testLevel>1) {
+
+
+        load(system.file("testdata","mastitis.rda",package="lme4"))
+        t1 <- system.time(g1 <-
+                          glmer(NCM ~ birth + calvingYear + (1|sire) +
+                     (1|herd),mastitis,poisson))
+        t2 <- system.time(g2 <- update(g1,
+                         control=glmerControl(optimizer="bobyqa")))
+        ## 20 seconds N-M vs 8 seconds bobyqa ...
+        ## problem is fairly ill-conditioned so parameters
+        ##  are relatively far apart even though likelihoods are OK
+        expect_equal(logLik(g1),logLik(g2),tol=1e-7)
+    }
+    
+})

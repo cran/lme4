@@ -254,22 +254,15 @@ extern "C" {
     }
 
     static double internal_glmerWrkIter(merPredD *pp, glmResp *rp, bool uOnly) {
-        // Rcpp::Rcout << "\nresDev before updateXwts:" << rp->resDev() << std::endl;
-	// Rcpp::Rcout << "sqrL:" << pp->sqrL(1.) << std::endl;
-	// Rcpp::Rcout << "delb 1:\n" << pp->delb() << std::endl;
-  	// Rcpp::Rcout << "before:\n" << rp->muEta() << std::endl;
-  	// Rcpp::Rcout << "min delu at pt 1 of gwi: " << pp->delu().minCoeff() << std::endl;
-	// Rcpp::Rcout << "max delu at pt 1 of gwi: " << pp->delu().maxCoeff() << std::endl;
+	int debug=0; // !=0 to enable
+	if (debug) Rcpp::Rcout << "(igWI, pre-updateXwts) Xwts: min: " << 
+		       pp->Xwts().minCoeff() << 
+		       " sqrtWrkWt: min: " <<
+		       rp->sqrtWrkWt().minCoeff() << std::endl;
 	pp->updateXwts(rp->sqrtWrkWt());
-	// Rcpp::Rcout << "\nmin after:\n" << rp->muEta().minCoeff() << std::endl;
-	// Rcpp::Rcout << "max after:\n" << rp->muEta().maxCoeff() << std::endl;
-  	// Rcpp::Rcout << "resDev after updateXwts:" << rp->resDev() << std::endl;
-	// Rcpp::Rcout << "sqrL:" << pp->sqrL(1.) << std::endl;
-        // Rcpp::Rcout << "delb 2:\n" << pp->delb() << std::endl; 
-	// Rcpp::Rcout << "min delu at pt 2 of gwi: " << pp->delu().minCoeff() << std::endl;
-	// Rcpp::Rcout << "max delu at pt 2 of gwi: " << pp->delu().maxCoeff() << std::endl;
-	// n.b. next line fails to compile ... 'no method'
-	// Rcpp::Rcout << "\nd_L before updateDecomp: " << pp->L() << std::endl;
+	if (debug) Rcpp::Rcout << "(igWI) Xwts: min: " << 
+		       pp->Xwts().minCoeff() << 
+		       " max: " << pp->Xwts().maxCoeff() << std::endl;
 	pp->updateDecomp();
 	// n.b. next line fails to compile ... 'no method'
 	// Rcpp::Rcout << "\nd_L after updateDecomp: " << pp->L() << std::endl;
@@ -286,33 +279,39 @@ extern "C" {
 	// Rcpp::Rcout << "max delu at pt 4 of gwi: " << pp->delu().maxCoeff() << std::endl;
 	if (uOnly) pp->solveU();
         else pp->solve();
-	// Rcpp::Rcout << "\nresDev after solve:" << rp->resDev() << std::endl;
-	// Rcpp::Rcout << "sqrL:" << pp->sqrL(1.) << std::endl;
-	// Rcpp::Rcout << "delb 5:\n" << pp->delb() << std::endl;
-	// Rcpp::Rcout << "min delu at pt 5 of gwi: " << pp->delu().minCoeff() << std::endl;
-	// Rcpp::Rcout << "max delu at pt 5 of gwi: " << pp->delu().maxCoeff() << std::endl;
+	if (debug) {
+	    Rcpp::Rcout << "(igWI)" <<
+		" delu_min: " << pp->delu().minCoeff() <<
+		"; delu_max: " << pp->delu().maxCoeff() <<
+		"; delb_min: " << pp->delb().minCoeff() <<
+		"; delb_max: " << pp->delb().maxCoeff() <<
+		std::endl; // if (verb) 
+	}
 	rp->updateMu(pp->linPred(1.));
-	// Rcpp::Rcout << "\nresDev after updateMu:" << rp->resDev() << std::endl;
-	// Rcpp::Rcout << "sqrL:" << pp->sqrL(1.) << std::endl;
-	// Rcpp::Rcout << "delb 6: " << pp->delb() << std::endl;
-	// Rcpp::Rcout << "resDev before end:\n" << rp->resDev() << std::endl;
-	// Rcpp::Rcout << "min delu at pt 6 of gwi: " << pp->delu().minCoeff() << std::endl;
-	// Rcpp::Rcout << "max delu at pt 6 of gwi: " << pp->delu().maxCoeff() << std::endl;
-	// Rcpp::Rcout << "rp->resDev() at pt 6 of gwi: " << rp->resDev() << std::endl;
-	// Rcpp::Rcout << "pp->sqrL(1.) at pt 6 of gwi: " << pp->sqrL(1.) << std::endl;
+	if (debug) Rcpp::Rcout << "(igWI) mu: min: " << rp->mu().minCoeff() << 
+		       " max: " << rp->mu().maxCoeff() << std::endl;
 	return rp->resDev() + pp->sqrL(1.);
     }
 
     static void pwrssUpdate(glmResp *rp, merPredD *pp, bool uOnly, double tol, int verbose) {
         //Rcpp::Rcout << "\nFirst pwrssUpdate resDev:  " << rp->resDev() << std::endl;
 	double oldpdev=std::numeric_limits<double>::max();
-	bool   cvgd = false, verb = verbose > 2;
-	for (int i = 0; i < 30; i++) {
-	    // Rcpp::Rcout << "*** pwrssUpdate step " << i << std::endl;
-	    // Rcpp::Rcout << "\nmin delu at iteration " << i << ": " << pp->delu().minCoeff() << std::endl;
-	    // Rcpp::Rcout << "\nmax delu at iteration " << i << ": " << pp->delu().maxCoeff() << std::endl;
-	    // Rcpp::Rcout << "\nresDev before dels, iter:  " << i << ",  " << rp->resDev() << std::endl;
-	    // Rcpp::Rcout << "\ndelb 1: " << pp->delb() << std::endl;
+	double pdev;
+	int maxit = 30, maxstephalfit = 10;
+	bool   cvgd = false, verb = verbose > 2, moreverb = verbose > 10;
+
+	pdev = oldpdev; // define so debugging statements work on first step
+	for (int i = 0; i < maxit; i++) {
+	    if (verb) {
+		Rcpp::Rcout << "*** pwrssUpdate step " << i << std::endl;
+		// Rcpp::Rcout << "\nmin delu at iteration " << i << ": " << pp->delu().minCoeff() << std::endl;
+		// Rcpp::Rcout << "\nmax delu at iteration " << i << ": " << pp->delu().maxCoeff() << std::endl;
+		// Rcpp::Rcout << "\nresDev before dels, iter:  " << i << ",  " << rp->resDev() << std::endl;
+		// FIXME: would like to print this in row, not column, format
+		// 
+		// Rcpp::Rcout << "before update:" << "pdev = " << pdev << std::endl; // if (verb) 
+	    }
+
 	    Vec   olddelu(pp->delu()), olddelb(pp->delb());
 	    // Rcpp::Rcout << "\ndelb 2: " << pp->delb() << std::endl;
 	    // Rcpp::Rcout << "\nresDev before internal_glmerWrkIter, iter:  " << i << ",  " << rp->resDev() << std::endl;
@@ -322,26 +321,23 @@ extern "C" {
 	    // Rcpp::Rcout << i << ": " << pdev << std::endl; // if (verb) 
 	    // Rcpp::Rcout << "i = " << i << ", pdev = " << pdev << std::endl; // if (verb) 
 	    if (std::abs((oldpdev - pdev) / pdev) < tol) {cvgd = true; break;}
-	    // Rcpp::Rcout << "\ndelb 4: " << pp->delb() << std::endl;
-	    if (pdev > oldpdev) { // PWRSS step led to _larger_ deviation; try step halving
-		if (verb) Rcpp::Rcout << "\npwrssUpdate: Entering step halving loop" << std::endl;
-		// Vec   saved_delu(pp->delu());
-		// for (int m = 0; m < 100; m++) {
-		//  double ustep = m/100.0;
-		//  pp->setDelu(olddelu+saved_delu*ustep);
-		//  Rcpp::Rcout << "\npdev test, iter: " << m << " " << internal_glmerWrkIter(pp, rp, uOnly) << std::endl;
-		//}
-		//pp->setDelu(saved_delu);
-		// Rcpp::Rcout << "Step halving: oldpdev = "
-		// 	    << oldpdev << ", pdev = " << pdev
-		// 	    << ", diff = " << (pdev-oldpdev)
-		// 	    << std::endl;
-		for (int k = 0; k < 10 && pdev > oldpdev; k++) {
-		    //Rcpp::Rcout << "\nben's test: " << pp->delu()[0] << std::endl;
-		    //Rcpp::Rcout << "\nben's test: " << olddelu[0] << std::endl;
-		    //Rcpp::Rcout << "\nStep halving time!" << std::endl;
-		    // Rcpp::Rcout << "min delu at pt 1 of step halving iteration " << k << ": " << pp->delu().minCoeff() << std::endl;
-		    // Rcpp::Rcout << "max delu at pt 1 of step halving iteration " << k << ": " << pp->delu().maxCoeff() << std::endl;
+
+	    // if (pdev != pdev) Rcpp::Rcout << "nan detected" << std::endl;
+	    // if (isnan(pdev)) Rcpp::Rcout << "nan detected" << std::endl;
+
+	    // trying to detect nan; may be hard to do it completely portably,
+	    // and hard to detect in advance (i.e. what conditions lead to
+	    // nan from internal_glmerWrkIter ... ?)
+	    // http://stackoverflow.com/questions/570669/checking-if-a-double-or-float-is-nan-in-c
+	    // check use of isnan() in base R code, or other Rcpp code??
+#define isNAN(a)  (a!=a)
+	    if (isNAN(pdev) | (pdev > oldpdev)) { 
+		// PWRSS step led to _larger_ deviation, or nan; try step halving
+		if (verb) Rcpp::Rcout << 
+			      "\npwrssUpdate: Entering step halving loop" 
+				      << std::endl;
+		for (int k = 0; k < maxstephalfit && 
+			 (isNAN(pdev) | pdev > oldpdev); k++) {
 		    pp->setDelu((olddelu + pp->delu())/2.);
 		    if (!uOnly) pp->setDelb((olddelb + pp->delb())/2.);
 		    // Rcpp::Rcout << "min delu at pt 2 of step halving iteration " << k << ": " << pp->delu().minCoeff() << std::endl;
@@ -350,15 +346,19 @@ extern "C" {
 		    //pdev <- rp->resDev() + pp->sqrL(1.);  // experiment!!  SCW
 		    rp->updateMu(pp->linPred(1.));
 		    pdev = rp->resDev() + pp->sqrL(1.);
-		    // Rcpp::Rcout << "min delu at pt 3 of step halving iteration " << k << ": " << pp->delu().minCoeff() << std::endl;
-		    // Rcpp::Rcout << "max delu at pt 3 of step halving iteration " << k << ": " << pp->delu().maxCoeff() << std::endl;
-		    // Rcpp::Rcout << "Step " << k << ": " << oldpdev << " = "
-		    // 		<< oldpdev << ", pdev = " << pdev
-		    // 		<< ", diff = " << (pdev-oldpdev)
-		    // 		<< std::endl;
+		    if (moreverb) {
+			Rcpp::Rcout << "step-halving iteration " <<
+			    k << ":  pdev=" << pdev << 
+			    "; delu_min: " << pp->delu().minCoeff() <<
+			    "; delu_max: " << pp->delu().maxCoeff() <<
+			    "; delb_min: " << pp->delb().minCoeff() <<
+			    "; delb_max: " << pp->delb().maxCoeff() <<
+			    std::endl; 
+		    } // if (moreverb) 
 		}
-		if ((pdev - oldpdev) > tol) throw runtime_error("PIRLS step-halving failed to reduce deviance in pwrssUpdate");
-		// if (pdev > oldpdev) throw runtime_error("PIRLS step failed");
+		if (isNAN(pdev) | (pdev - oldpdev) > tol) 
+		    // FIXME: fill in max halfsetp iters in error statement
+		    throw runtime_error("(maxstephalfit) PIRLS step-halvings failed to reduce deviance in pwrssUpdate");
 	    } // step-halving
 	    //Rcpp::Rcout << "\ndelb 5: " << pp->delb() << std::endl;
 	    oldpdev = pdev;
