@@ -20,6 +20,7 @@ importFrom("nlme", fixef,ranef,VarCorr)
 importMethodsFrom("Matrix", "%*%",coerce,crossprod,diag,t,tcrossprod)
 ## other CRAN packages:
 importFrom("minqa", bobyqa)
+importFrom("Rcpp", evalCpp)
 
 export(bootMer)
 export(devcomp)

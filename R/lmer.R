@@ -1831,7 +1831,7 @@ tnames <- function(object,diag.only=FALSE,old=TRUE,prefix=NULL) {
 ##' stopifnot(is(Z, "CsparseMatrix"),
 ##'           c(180,36) == dim(Z),
 ##' 	  all.equal(fixef(fm1), getME(fm1, "beta"),
-##' 		    check.attr=FALSE, tol = 0))
+##' 		    check.attributes=FALSE, tol = 0))
 ##'
 ##' ## All that can be accessed [potentially ..]:
 ##' (nmME <- eval(formals(getME)$name))

@@ -100,7 +100,7 @@ Type 'q()' to quit R.
 +                     ##c(-1.3766013, -1.0058773,
 +                     ##  -1.1430128, -1.5922817),
 + 		    tol = 5.e-4,
-+                     check.attr=FALSE),
++                     check.attributes=FALSE),
 +           all.equal(deviance(m2), 100.010030538022, tol=1e-9)
 +           ## with bobyqa first (AGQ=0), then
 +           ##all.equal(deviance(m2), 101.119749563, tol=1e-9)

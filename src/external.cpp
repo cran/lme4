@@ -300,7 +300,7 @@ extern "C" {
 	int maxit = 30, maxstephalfit = 10;
 	bool   cvgd = false, verb = verbose > 2, moreverb = verbose > 10;
 
-	pdev = oldpdev; // define so debugging statements work on first step
+//	pdev = oldpdev; // define so debugging statements work on first step
 	for (int i = 0; i < maxit; i++) {
 	    if (verb) {
 		Rcpp::Rcout << "*** pwrssUpdate step " << i << std::endl;
@@ -331,13 +331,13 @@ extern "C" {
 	    // http://stackoverflow.com/questions/570669/checking-if-a-double-or-float-is-nan-in-c
 	    // check use of isnan() in base R code, or other Rcpp code??
 #define isNAN(a)  (a!=a)
-	    if (isNAN(pdev) | (pdev > oldpdev)) { 
+	    if (isNAN(pdev) || (pdev > oldpdev)) { 
 		// PWRSS step led to _larger_ deviation, or nan; try step halving
 		if (verb) Rcpp::Rcout << 
 			      "\npwrssUpdate: Entering step halving loop" 
 				      << std::endl;
 		for (int k = 0; k < maxstephalfit && 
-			 (isNAN(pdev) | pdev > oldpdev); k++) {
+			 (isNAN(pdev) || pdev > oldpdev); k++) {
 		    pp->setDelu((olddelu + pp->delu())/2.);
 		    if (!uOnly) pp->setDelb((olddelb + pp->delb())/2.);
 		    // Rcpp::Rcout << "min delu at pt 2 of step halving iteration " << k << ": " << pp->delu().minCoeff() << std::endl;
@@ -356,7 +356,7 @@ extern "C" {
 			    std::endl; 
 		    } // if (moreverb) 
 		}
-		if (isNAN(pdev) | (pdev - oldpdev) > tol) 
+		if (isNAN(pdev) || (pdev - oldpdev) > tol) 
 		    // FIXME: fill in max halfsetp iters in error statement
 		    throw runtime_error("(maxstephalfit) PIRLS step-halvings failed to reduce deviance in pwrssUpdate");
 	    } // step-halving
