@@ -13,12 +13,14 @@
 }
 \arguments{
   \item{formula}{a two-sided linear formula object
-  describing both the fixed-effects and fixed-effects part
+  describing both the fixed-effects and random-effects part
   of the model, with the response on the left of a \code{~}
   operator and the terms, separated by \code{+} operators,
   on the right.  Random-effects terms are distinguished by
   vertical bars (\code{"|"}) separating expressions for
-  design matrices from grouping factors.}
+  design matrices from grouping factors. Two vertical bars
+  (\code{"||"}) can be used to specify  multiple uncorrelated
+  random effects for the same grouping variable.}
 
 
   \item{data}{an optional data frame containing the
@@ -60,9 +62,15 @@
   included, or a character vector of the row names to be
   included.  All observations are included by default.}
 
-  \item{weights}{an optional vector of \sQuote{prior
-  weights} to be used in the fitting process.  Should be
-  \code{NULL} or a numeric vector.}
+  \item{weights}{an optional vector of \sQuote{prior weights} to be used
+  in the fitting process.  Should be \code{NULL} or a numeric vector.
+  Prior \code{weights} are \emph{not} normalized or standardized in any
+  way.  In particular, the diagonal of the residual covariance matrix is
+  the squared residual standard deviation parameter \code{\link{sigma}}
+  times the vector of inverse \code{weights}.  Therefore, if the
+  \code{weights} have relatively large magnitudes, then in order to
+  compensate, the \code{\link{sigma}} parameter will also need to have a
+  relatively large magnitude.}
 
   \item{na.action}{a function that indicates what should
   happen when the data contain \code{NA}s.  The default
@@ -139,8 +147,14 @@
 ## linear mixed models - reference values from older code
 (fm1 <- lmer(Reaction ~ Days + (Days | Subject), sleepstudy))
 summary(fm1)# (with its own print method)
+
+str(terms(fm1))
+stopifnot(identical(terms(fm1, fixed.only=FALSE),
+                    terms(model.frame(fm1))))
+attr(terms(fm1, FALSE), "dataClasses") # fixed.only=FALSE needed for dataCl.
+
 fm1_ML <- update(fm1,REML=FALSE)
-(fm2 <- lmer(Reaction ~ Days + (1|Subject) + (0+Days|Subject), sleepstudy))
+(fm2 <- lmer(Reaction ~ Days + (Days || Subject), sleepstudy))
 anova(fm1, fm2)
 sm2 <- summary(fm2)
 print(fm2, digits=7, ranef.comp="Var") # the print.merMod()         method
@@ -148,5 +162,15 @@ print(sm2, digits=3, corr=FALSE)       # the print.summary.merMod() method
 
 (vv <- vcov.merMod(fm2, corr=TRUE))
 as(vv, "corMatrix")# extracts the ("hidden") 'correlation' entry in @factors
+
+## Fit sex-specific variances by constructing numeric dummy variables
+## for sex and sex:age; in this case the estimated variance differences
+## between groups in both intercept and slope are zero ...
+data(Orthodont,package="nlme")
+Orthodont$nsex <- as.numeric(Orthodont$Sex=="Male")
+Orthodont$nsexage <- with(Orthodont, nsex*age)
+lmer(distance ~ age + (age|Subject) + (0+nsex|Subject) +
+     (0 + nsexage|Subject), data=Orthodont)
+
 }
 \keyword{models}

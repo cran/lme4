@@ -4,6 +4,7 @@
 //
 // This file is part of lme4.
 
+#include <iomanip>
 #include "predModule.h"
 #include "respModule.h"
 #include "optimizer.h"
@@ -264,19 +265,7 @@ extern "C" {
 		       pp->Xwts().minCoeff() << 
 		       " max: " << pp->Xwts().maxCoeff() << std::endl;
 	pp->updateDecomp();
-	// n.b. next line fails to compile ... 'no method'
-	// Rcpp::Rcout << "\nd_L after updateDecomp: " << pp->L() << std::endl;
-	// Rcpp::Rcout << "resDev after updateDecomp:" << rp->resDev() << std::endl;
-	// Rcpp::Rcout << "sqrL:" << pp->sqrL(1.) << std::endl;
-	// Rcpp::Rcout << "delb 3:\n" << pp->delb() << std::endl;
-	// Rcpp::Rcout << "min delu at pt 3 of gwi: " << pp->delu().minCoeff() << std::endl;
-	// Rcpp::Rcout << "max delu at pt 3 of gwi: " << pp->delu().maxCoeff() << std::endl;
 	pp->updateRes(rp->wtWrkResp());
-	// Rcpp::Rcout << "\nresDev after updateRes:" << rp->resDev() << std::endl;
-	// Rcpp::Rcout << "sqrL:" << pp->sqrL(1.) << std::endl;
-	// Rcpp::Rcout << "delb 4:\n" << pp->delb() << std::endl;
-	// Rcpp::Rcout << "min delu at pt 4 of gwi: " << pp->delu().minCoeff() << std::endl;
-	// Rcpp::Rcout << "max delu at pt 4 of gwi: " << pp->delu().maxCoeff() << std::endl;
 	if (uOnly) pp->solveU();
         else pp->solve();
 	if (debug) {
@@ -293,14 +282,27 @@ extern "C" {
 	return rp->resDev() + pp->sqrL(1.);
     }
 
-    static void pwrssUpdate(glmResp *rp, merPredD *pp, bool uOnly, double tol, int verbose) {
-        //Rcpp::Rcout << "\nFirst pwrssUpdate resDev:  " << rp->resDev() << std::endl;
+    // FIXME: improve verbose output (remove code, even commented,
+    //     intended for finding pointer/referencing/updating bugs;
+    //     leave code that allows end-user to see what's going on
+    //     in PWRSS iterations)
+    //
+    //   Separate verb settings for min/max delu, delb 
+    //      (and which_min, which_max) vs entire
+    //       delu/delb vectors? note length(delu) will generally be 
+    //       >> length(delb) ...
+    //
+    // FIXME: sufficient to print just before/after update?
+    //
+    // FIXME: allow user-set maxit
+    static void pwrssUpdate(glmResp *rp, merPredD *pp, bool uOnly,
+			    double tol, int verbose) {
 	double oldpdev=std::numeric_limits<double>::max();
 	double pdev;
 	int maxit = 30, maxstephalfit = 10;
 	bool   cvgd = false, verb = verbose > 2, moreverb = verbose > 10;
 
-//	pdev = oldpdev; // define so debugging statements work on first step
+	pdev = oldpdev; // define so debugging statements work on first step
 	for (int i = 0; i < maxit; i++) {
 	    if (verb) {
 		Rcpp::Rcout << "*** pwrssUpdate step " << i << std::endl;
@@ -311,15 +313,16 @@ extern "C" {
 		// 
 		// Rcpp::Rcout << "before update:" << "pdev = " << pdev << std::endl; // if (verb) 
 	    }
-
 	    Vec   olddelu(pp->delu()), olddelb(pp->delb());
-	    // Rcpp::Rcout << "\ndelb 2: " << pp->delb() << std::endl;
-	    // Rcpp::Rcout << "\nresDev before internal_glmerWrkIter, iter:  " << i << ",  " << rp->resDev() << std::endl;
-	    double pdev=internal_glmerWrkIter(pp, rp, uOnly);
-	    // Rcpp::Rcout << "\ndelb 3: " << pp->delb() << std::endl;
-	    // Rcpp::Rcout << "\nresDev after internal_glmerWrkIter, iter:  " << i << ",  " << rp->resDev() << std::endl;
-	    // Rcpp::Rcout << i << ": " << pdev << std::endl; // if (verb) 
-	    // Rcpp::Rcout << "i = " << i << ", pdev = " << pdev << std::endl; // if (verb) 
+	    pdev = internal_glmerWrkIter(pp, rp, uOnly);
+	    if (verb) {
+		Rcpp::Rcout << "pdev=" << pdev << 
+		    "; delu_min: " << pp->delu().minCoeff() <<
+		    "; delu_max: " << pp->delu().maxCoeff() <<
+		    "; delb_min: " << pp->delb().minCoeff() <<
+		    "; delb_max: " << pp->delb().maxCoeff() <<
+		    std::endl; // if (verb) 
+	    }
 	    if (std::abs((oldpdev - pdev) / pdev) < tol) {cvgd = true; break;}
 
 	    // if (pdev != pdev) Rcpp::Rcout << "nan detected" << std::endl;
@@ -337,13 +340,9 @@ extern "C" {
 			      "\npwrssUpdate: Entering step halving loop" 
 				      << std::endl;
 		for (int k = 0; k < maxstephalfit && 
-			 (isNAN(pdev) || pdev > oldpdev); k++) {
+			 (isNAN(pdev) || (pdev > oldpdev)); k++) {
 		    pp->setDelu((olddelu + pp->delu())/2.);
 		    if (!uOnly) pp->setDelb((olddelb + pp->delb())/2.);
-		    // Rcpp::Rcout << "min delu at pt 2 of step halving iteration " << k << ": " << pp->delu().minCoeff() << std::endl;
-		    // Rcpp::Rcout << "max delu at pt 2 of step halving iteration " << k << ": " << pp->delu().maxCoeff() << std::endl;
-		    // pdev = internal_glmerWrkIter(pp, rp, uOnly);
-		    //pdev <- rp->resDev() + pp->sqrL(1.);  // experiment!!  SCW
 		    rp->updateMu(pp->linPred(1.));
 		    pdev = rp->resDev() + pp->sqrL(1.);
 		    if (moreverb) {
@@ -356,28 +355,27 @@ extern "C" {
 			    std::endl; 
 		    } // if (moreverb) 
 		}
-		if (isNAN(pdev) || (pdev - oldpdev) > tol) 
+		if (isNAN(pdev) || ((pdev - oldpdev) > tol) )
 		    // FIXME: fill in max halfsetp iters in error statement
 		    throw runtime_error("(maxstephalfit) PIRLS step-halvings failed to reduce deviance in pwrssUpdate");
 	    } // step-halving
-	    //Rcpp::Rcout << "\ndelb 5: " << pp->delb() << std::endl;
 	    oldpdev = pdev;
 	} // pwrss loop
 	if (!cvgd)
-	    throw runtime_error("pwrssUpdate did not converge in 30 iterations");
+	    // FIXME: fill in max iters in error statement
+	    throw runtime_error("pwrssUpdate did not converge in (maxit) iterations");
     }
 
     SEXP glmerLaplace(SEXP pp_, SEXP rp_, SEXP nAGQ_, SEXP tol_, SEXP verbose_) {
         BEGIN_RCPP;
         XPtr<glmResp>  rp(rp_);
         XPtr<merPredD> pp(pp_);
-        //Rcpp::Rcout << "\nglmerLaplace resDev:  " << rp->resDev() << std::endl;
-	//Rcpp::Rcout << "\ndelb 1:  " << pp->delb() << std::endl;
+
+	if ( ::Rf_asInteger(verbose_) >100) {
+	    Rcpp::Rcout << "\nglmerLaplace resDev:  " << rp->resDev() << std::endl;
+	    Rcpp::Rcout << "\ndelb 1:  " << pp->delb() << std::endl;
+	}
 	pwrssUpdate(rp, pp, ::Rf_asInteger(nAGQ_), ::Rf_asReal(tol_), ::Rf_asInteger(verbose_));
-	//Rcpp::Rcout << "\ndelb 2:  " << pp->delb() << std::endl;
-	//Rcpp::Rcout << "\nldL2:  " << pp->ldL2() << std::endl;
-	//Rcpp::Rcout << "\nldRX2:  " << pp->ldRX2() << std::endl;
-	//Rcpp::Rcout << "\nsqrL:  " << pp->sqrL(1.) << std::endl;
         return ::Rf_ScalarReal(rp->Laplace(pp->ldL2(), pp->ldRX2(), pp->sqrL(1.)));
         END_RCPP;
     }
@@ -515,8 +513,11 @@ extern "C" {
 
     SEXP isNullExtPtr(SEXP Ptr) {
         void *ptr = R_ExternalPtrAddr(Ptr);
-//      Rcpp::Rcout << "In isNullExtPtr, address is " << ptr << std::endl;
         return ::Rf_ScalarLogical(ptr == (void*)NULL);
+    }
+  
+    void setNullExtPtr(SEXP Ptr) {
+        return R_ClearExternalPtr(Ptr);
     }
 
     // linear model response (also the base class for other response classes)
@@ -591,14 +592,25 @@ extern "C" {
     }
 
     static double lmer_dev(XPtr<merPredD> ppt, XPtr<lmerResp> rpt, const Eigen::VectorXd& theta) {
+	int debug=0;
+	double val;
+
         ppt->setTheta(theta);
+
 	ppt->updateXwts(rpt->sqrtXwt());
         ppt->updateDecomp();
         rpt->updateMu(ppt->linPred(0.));
         ppt->updateRes(rpt->wtres());
         ppt->solve();
         rpt->updateMu(ppt->linPred(1.));
-        return rpt->Laplace(ppt->ldL2(), ppt->ldRX2(), ppt->sqrL(1.));
+	val=rpt->Laplace(ppt->ldL2(), ppt->ldRX2(), ppt->sqrL(1.));
+	if (debug) {
+	    Rcpp::Rcout.precision(10);
+	    Rcpp::Rcout << "lmer_dev: theta=" <<
+		ppt->theta() << ", val=" << val << std::endl;
+	}
+
+        return val;
     }
 
     SEXP lmer_Deviance(SEXP pptr_, SEXP rptr_, SEXP theta_) {
@@ -633,6 +645,24 @@ extern "C" {
         BEGIN_RCPP;
         merPredD *ans = new merPredD(Xs, Lambdat, LamtUt, Lind, RZX, Ut, Utr, V, VtV,
                                      Vtr, Xwts, Zt, beta0, delb, delu, theta, u0);
+        return wrap(XPtr<merPredD>(ans, true));
+        END_RCPP;
+    }
+
+    SEXP merPredDDuplicate(SEXP Xs, SEXP Lambdat, SEXP LamtUt, SEXP Lind,
+			   SEXP RZX, SEXP Ut, SEXP Utr, SEXP V, SEXP VtV,
+			   SEXP Vtr, SEXP Xwts, SEXP Zt, SEXP beta0,
+			   SEXP delb, SEXP delu, SEXP theta, SEXP u0) {
+        BEGIN_RCPP;
+        merPredD *ans = new merPredD(::Rf_duplicate(Xs), ::Rf_duplicate(Lambdat), 
+				     ::Rf_duplicate(LamtUt), ::Rf_duplicate(Lind), 
+				     ::Rf_duplicate(RZX), ::Rf_duplicate(Ut), 
+				     ::Rf_duplicate(Utr), ::Rf_duplicate(V), 
+				     ::Rf_duplicate(VtV), ::Rf_duplicate(Vtr), 
+				     ::Rf_duplicate(Xwts), ::Rf_duplicate(Zt), 
+				     ::Rf_duplicate(beta0), ::Rf_duplicate(delb), 
+				     ::Rf_duplicate(delu), ::Rf_duplicate(theta), 
+				     ::Rf_duplicate(u0));
         return wrap(XPtr<merPredD>(ans, true));
         END_RCPP;
     }
@@ -967,6 +997,7 @@ static R_CallMethodDef CallEntries[] = {
     CALLDEF(glm_Create, 10),    // generate external pointer
 
     CALLDEF(glm_setN, 2),       // setters
+    CALLDEF(glm_setTheta,       2),
 
     CALLDEF(glm_aic,            1), // getters
     CALLDEF(glm_devResid,       1),
@@ -974,7 +1005,6 @@ static R_CallMethodDef CallEntries[] = {
     CALLDEF(glm_link,           1),
     CALLDEF(glm_muEta,          1),
     CALLDEF(glm_resDev,         1),
-    CALLDEF(glm_setTheta,       2),
     CALLDEF(glm_sqrtWrkWt,      1),
     CALLDEF(glm_theta,          1),
     CALLDEF(glm_variance,       1),
@@ -1006,7 +1036,8 @@ static R_CallMethodDef CallEntries[] = {
     CALLDEF(golden_xeval,       1),
     CALLDEF(golden_xpos,        1),
 
-    CALLDEF(isNullExtPtr, 1),
+    CALLDEF(isNullExtPtr,       1),
+    CALLDEF(setNullExtPtr,      1),
 
     CALLDEF(lm_Create,          7), // generate external pointer
 
@@ -1027,6 +1058,7 @@ static R_CallMethodDef CallEntries[] = {
     CALLDEF(lmer_opt1,          4),
 
     CALLDEF(merPredDCreate,    17), // generate external pointer
+    CALLDEF(merPredDDuplicate, 17), // generate external pointer to duplicate merPredD
 
     CALLDEF(merPredDsetTheta,   2), // setters
     CALLDEF(merPredDsetBeta0,   2), 

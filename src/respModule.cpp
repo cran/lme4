@@ -30,6 +30,7 @@ namespace lme4 {
 	  d_sqrtrwt(as<MVec>(sqrtrwt)),
 	  d_wtres(  as<MVec>(wtres)) {
 	updateWrss();
+	d_ldW = d_weights.array().log().sum();
     }
 
     /** 
@@ -53,18 +54,8 @@ namespace lme4 {
      * @return Updated weighted residual sum of squares
      */
     double lmResp::updateWrss() {
-	// Rcpp::Rcout << "\nwrss 1:\n" << d_wrss << std::endl;
-	// double testwrss(0);
-	// manual computation
-	// for (int p = 0; p < d_y.size(); ++p) {
-	//   testwrss =+ pow(d_sqrtrwt[p] * (d_y[p] - d_mu[p]), 2);
-	// }
-	// Rcpp::Rcout << "\ntestwrss: " << testwrss << std::endl;
 	d_wtres = d_sqrtrwt.cwiseProduct(d_y - d_mu);
-	// Rcpp::Rcout << "\nwrss 2:\n" << d_wrss << std::endl;
 	d_wrss  = d_wtres.squaredNorm();
-	// Rcpp::Rcout << "\nwrss: " << d_wrss << std::endl;
-	// Rcpp::Rcout << "\nwrss 3:\n" << d_wrss << std::endl;
 	return d_wrss;
     }
 
@@ -90,6 +81,8 @@ namespace lme4 {
 	if (ww.size() != d_weights.size())
 	    throw invalid_argument("setWeights: Size mismatch");
 	d_weights = ww;
+	d_sqrtrwt = ww.array().sqrt();
+	d_ldW = ww.array().log().sum();
     }
 
     lmerResp::lmerResp(SEXP y, SEXP weights, SEXP offset, SEXP mu,
@@ -100,9 +93,9 @@ namespace lme4 {
 
     double lmerResp::Laplace(double ldL2, double ldRX2, double sqrL) const {
         double lnum = std::log(2.* M_PI * (d_wrss + sqrL));
-        if (d_reml == 0) return ldL2 + d_y.size() * (1. + lnum - std::log(d_y.size()));
+        if (d_reml == 0) return ldL2 - d_ldW + d_y.size() * (1. + lnum - std::log(d_y.size()));
         double nmp = d_y.size() - d_reml;
-        return ldL2 + ldRX2 + nmp * (1. + lnum - std::log(nmp));
+        return ldL2 - d_ldW + ldRX2 + nmp * (1. + lnum - std::log(nmp));
     }
   
     double lmerResp::Laplace(double ldL2, double ldRX2, double sqrL, double sigma_sq) const {
@@ -111,6 +104,7 @@ namespace lme4 {
       double result = df * (2.0 * M_LN_SQRT_2PI + std::log(sigma_sq)); // (2pi sigma_sq)^-df/2
       result += (d_wrss + sqrL) / sigma_sq; // exp(-1/2sigma_sq x |pwrss|)
       result += ldL2 + (d_reml > 0 ? ldRX2 : 0.0); // det|LL'|^-1/2 and similar REML penalty
+      result += -d_ldW; // subtract prior weights factor
       return result;
     }
 
@@ -132,7 +126,6 @@ namespace lme4 {
     }
 
     ArrayXd glmResp::devResid() const {
-	// Rcpp::Rcout << "\nd_mu\n" << d_mu << std::endl;
 	return d_fam.devResid(d_y, d_mu, d_weights);
     }
 
@@ -175,34 +168,11 @@ namespace lme4 {
 
     double glmResp::updateMu(const VectorXd& gamma) {
 	int debug=0;
-	// Rcpp::Rcout << "\nstart of updateMu:\nminimum mu 1:\n" << d_mu.minCoeff() << std::endl;
-	// Rcpp::Rcout << "maximum mu 1:\n" << d_mu.maxCoeff() << std::endl;
-	// Rcpp::Rcout << "minimum gamma 1:\n" << gamma.minCoeff() << std::endl;
-	// Rcpp::Rcout << "maximum gamma 1:\n" << gamma.maxCoeff() << std::endl;
-	// Rcpp::Rcout << "minimum offset 1:\n" << d_offset.minCoeff() << std::endl;
-	// Rcpp::Rcout << "maximum offset 1:\n" << d_offset.maxCoeff() << std::endl;
-	// Rcpp::Rcout << "minimum eta 1:\n" << d_eta.minCoeff() << std::endl;
-	// Rcpp::Rcout << "maximum eta 1:\n" << d_eta.maxCoeff() << std::endl;
 	d_eta = d_offset + gamma; // lengths are checked here
-	// Rcpp::Rcout << "\n after offset+gamma:\nminimum mu 2:\n" << d_mu.minCoeff() << std::endl;
-	// Rcpp::Rcout << "maximum mu 2:\n" << d_mu.maxCoeff() << std::endl;
-	// Rcpp::Rcout << "minimum gamma 2:\n" << gamma.minCoeff() << std::endl;
-	// Rcpp::Rcout << "maximum gamma 2:\n" << gamma.maxCoeff() << std::endl;
-	// Rcpp::Rcout << "minimum offset 2:\n" << d_offset.minCoeff() << std::endl;
-	// Rcpp::Rcout << "maximum offset 2:\n" << d_offset.maxCoeff() << std::endl;
-	// Rcpp::Rcout << "minimum eta 2:\n" << d_eta.minCoeff() << std::endl;
-	// Rcpp::Rcout << "maximum eta 2:\n" << d_eta.maxCoeff() << std::endl;
 	d_mu  = d_fam.linkInv(d_eta);
 	if (debug) Rcpp::Rcout << "updateMu: min mu:" << 
 		       d_mu.minCoeff() << " max mu: " << 
 		       d_mu.maxCoeff() << std::endl;
-	// Rcpp::Rcout << "maximum mu 3:\n" << d_mu.maxCoeff() << std::endl;
-	// Rcpp::Rcout << "minimum gamma 3:\n" << gamma.minCoeff() << std::endl;
-	// Rcpp::Rcout << "maximum gamma 3:\n" << gamma.maxCoeff() << std::endl;
-	// Rcpp::Rcout << "minimum offset 3:\n" << d_offset.minCoeff() << std::endl;
-	// Rcpp::Rcout << "maximum offset 3:\n" << d_offset.maxCoeff() << std::endl;
-	// Rcpp::Rcout << "minimum eta 3:\n" << d_eta.minCoeff() << std::endl;
-	// Rcpp::Rcout << "maximum eta 3:\n" << d_eta.maxCoeff() << std::endl;
 	return updateWrss();
     }
 

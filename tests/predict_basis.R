@@ -26,12 +26,12 @@ newdat <- data.frame(Days=5:12)
 tmpf <- function(fit) {
     with(sleepstudy,plot(Reaction~Days,xlim=c(0,12)))
     with(sleepstudy,points(Days,predict(fit),col=2))
-    with(newdat0,lines(Days,predict(fit,REform=NA,newdata=newdat0),col=4))
-    with(newdat,lines(Days,predict(fit,REform=NA,newdata=newdat),col=5))
+    with(newdat0,lines(Days,predict(fit,ReForm=NA,newdata=newdat0),col=4))
+    with(newdat,lines(Days,predict(fit,ReForm=NA,newdata=newdat),col=5))
 }
 
-stopifnot(all.equal(predict(fm2,newdat,REform=NA),
-                    predict(fm3,newdat,REform=NA)))
+stopifnot(all.equal(predict(fm2,newdat,ReForm=NA),
+                    predict(fm3,newdat,ReForm=NA)))
 
 ## pictures
 tmpf(fm1)
@@ -47,6 +47,6 @@ gm1 <- glmer(y ~ poly(x,2) + (1|f), d, family=binomial)
 gm2 <- glmer(y ~ poly(x,2,raw=TRUE) + (1|f), d, family=binomial)
 
 newdat <- data.frame(x=c(1,4,6))
-stopifnot(all.equal(predict(gm1,newdat,REform=NA),
-                    predict(gm2,newdat,REform=NA),tol=3e-6))
+stopifnot(all.equal(predict(gm1,newdat,ReForm=NA),
+                    predict(gm2,newdat,ReForm=NA),tolerance=3e-6))
 

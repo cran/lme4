@@ -87,8 +87,6 @@ namespace lme4 {
     VectorXd merPredD::beta(const double& f) const {return d_beta0 + f * d_delb;}
 
     VectorXd merPredD::linPred(const double& f) const {
-  //Rcpp::Rcout << "\nmin u:\n" << u(f).minCoeff() << std::endl;
-  //Rcpp::Rcout << "\nmax u:\n" << u(f).maxCoeff() << std::endl;
         return d_X * beta(f) + d_Zt.adjoint() * b(f);
     }
 
@@ -97,10 +95,14 @@ namespace lme4 {
         const int nf(ll.size());
         const MiVec nl(as<MiVec>(rho["nlevs"])),
             nct(as<MiVec>(rho["nctot"])), off(as<MiVec>(rho["offsets"]));
-
+	// ll : flist
+	// trmlst : terms : list with one element per factor, indicating corresponding term
+        // nf : : number of unique factors
+	// nl : nlevs : number of levels for each unique factor
+	// nct : nctot : total number of components per factor
+	// off : offsets : points to where each term starts
         Rcpp::List ans(nf);
         ans.names() = clone(as<Rcpp::CharacterVector>(ll.names()));
-
         const SpMatrixd d_Lambda(d_Lambdat.adjoint());
         for (int i = 0; i < nf; i++) {
             int         ncti(nct[i]), nli(nl[i]);
@@ -108,14 +110,18 @@ namespace lme4 {
             ansi.attr("dim") = Rcpp::IntegerVector::create(ncti, ncti, nli);
             ans[i] = ansi;
             const MiVec trms(as<MiVec>(trmlst(i)));
+	    // ncti : total number of components in factor i
+	    // nli : number of levels in factor i
+	    // ansi : array in which to store condVar's for factor i
+	    // trms : pointers to terms corresponding to factor i
             if (trms.size() == 1) { // simple case
                 int offset = off[trms[0] - 1];
                 for (int j = 0; j < nli; ++j) {
-                    MatrixXd Lv(d_Lambda.innerVectors(offset + j * ncti, ncti));
-                    d_L.solveInPlace(Lv, CHOLMOD_A);
-                    MatrixXd rr(MatrixXd(ncti, ncti).setZero().
-                                selfadjointView<Eigen::Lower>().rankUpdate(Lv.adjoint()));
-                    std::copy(rr.data(), rr.data() + rr.size(), &ansi[j * ncti * ncti]);
+		    MatrixXd LvT(d_Lambdat.innerVectors(offset + j * ncti, ncti));
+		    MatrixXd Lv(LvT.adjoint());
+		    d_L.solveInPlace(LvT, CHOLMOD_A);
+		    MatrixXd rr(Lv * LvT);
+		    std::copy(rr.data(), rr.data() + rr.size(), &ansi[j * ncti * ncti]);
                 }
             } else {
                 throw std::runtime_error("multiple terms per factor not yet written");
@@ -149,16 +155,24 @@ namespace lme4 {
     }
 
     void merPredD::setTheta(const VectorXd& theta) {
-        if (theta.size() != d_theta.size())
-            throw invalid_argument("theta size mismatch");
-                                // update theta
-        std::copy(theta.data(), theta.data() + theta.size(), d_theta.data());
-                                // update Lambdat
-        int    *lipt = d_Lind.data();
-        double *LamX = d_Lambdat.valuePtr(), *thpt = d_theta.data();
-        for (int i = 0; i < d_Lind.size(); ++i) {
-            LamX[i] = thpt[lipt[i] - 1];
-        }
+
+        if (theta.size() != d_theta.size()) {
+	    Rcpp::Rcout << "(" << theta.size() << "!=" <<
+		d_theta.size() << ")" << std::endl;
+	    // char errstr[100];
+	    // sprintf(errstr,"theta size mismatch (%d != %d)",
+	    //	    theta.size(),d_theta.size());
+	    throw invalid_argument("theta size mismatch");
+	}
+	// update theta
+	std::copy(theta.data(), theta.data() + theta.size(), 
+		  d_theta.data());
+	// update Lambdat
+	int    *lipt = d_Lind.data();
+	double *LamX = d_Lambdat.valuePtr(), *thpt = d_theta.data();
+	for (int i = 0; i < d_Lind.size(); ++i) {
+	    LamX[i] = thpt[lipt[i] - 1];
+	}
     }
 
     merPredD::Scalar merPredD::solve() {
@@ -178,19 +192,13 @@ namespace lme4 {
     }
 
     merPredD::Scalar merPredD::solveU() {
-  //Rcpp::Rcout << "\nd_u0:\n" << d_u0 << std::endl;
         d_delb.setZero(); // in calculation of linPred delb should be zero after solveU
         d_delu          = d_Utr - d_u0;
-  //d_delu            = d_Utr - d_delu; // experiment!!  SCW
-  //Rcpp::Rcout << "\nd_delu before:\n" << d_delu << std::endl;
-  //Rcpp::Rcout << "\nd_LamtUt:\n" << d_LamtUt << std::endl;
-  //Rcpp::Rcout << "\nd_Utr:\n" << d_Utr << std::endl;
         d_L.solveInPlace(d_delu, CHOLMOD_P);
         d_L.solveInPlace(d_delu, CHOLMOD_L);    // d_delu now contains cu
         d_CcNumer       = d_delu.squaredNorm(); // numerator of convergence criterion
         d_L.solveInPlace(d_delu, CHOLMOD_Lt);
         d_L.solveInPlace(d_delu, CHOLMOD_Pt);
-        //Rcpp::Rcout << "\nd_delu after:\n" << d_delu << std::endl;
   return d_CcNumer;
     }
 
@@ -324,11 +332,12 @@ namespace lme4 {
         return d_RX.matrixU();
     }
 
-    MatrixXd merPredD::RXi() const {
+    MatrixXd merPredD::RXi() const { // inverse RX
         return d_RX.matrixU().solve(MatrixXd::Identity(d_p,d_p));
     }
 
-    MatrixXd merPredD::unsc() const {
+    MatrixXd merPredD::unsc() const { // unscaled var-cov mat of FE
+        // R translation: tcrossprod(RXi)
         return MatrixXd(MatrixXd(d_p, d_p).setZero().
                         selfadjointView<Eigen::Lower>().
                         rankUpdate(RXi()));

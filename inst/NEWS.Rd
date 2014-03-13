@@ -3,6 +3,179 @@
 \name{NEWS}
 \title{lme4 News}
 \encoding{UTF-8}
+\section{CHANGES IN VERSION 1.1-5}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item made internal handling of \code{weights}/\code{offset}
+      arguments slightly more robust (Github #191)
+      \item handle non-positive-definite estimated fixed effect
+      variance-covariance matrices slightly more generally/robustly
+      (fall back on RX approximation, with a warning,
+      if finite-difference Hessian
+      is non-PD; return \code{NA} matrix if RX approximation is
+      also bad)
+    } 
+  }
+  \subsection{MINOR USER-VISIBLE CHANGES}{
+    \itemize{
+      \item Added output specifying when Gauss-Hermite quadrature
+      was used to fit the model, and specifying number of GHQ points
+      (Github #190)
+    }
+  }
+}
+\section{CHANGES IN VERSION 1.1-4}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item Models with prior weights returned an incorrect sigma and
+      deviance (Github issue #155). The deviance bug was only a
+      practical issue in model comparisons, not with inferences given a
+      particular model. Both bugs are now fixed.
+      \item Profiling failed in some cases for models with vector random
+      effects (Github issue #172)
+      \item Standard errors of fixed effects are now computed
+      from the approximate Hessian by default (see the
+      \code{use.hessian} argument in \code{vcov.merMod}); this
+      gives better (correct) answers when the estimates of
+      the random- and fixed-effect parameters are correlated
+      (Github #47)
+    }
+  }
+  \subsection{MAJOR USER-VISIBLE CHANGES}{
+    \itemize{
+      \item The default optimizer for \code{lmer} fits has been
+      switched from "Nelder_Mead" to "bobyqa" because we have
+      generally found the latter to be more reliable.  To switch
+      back to the old behaviour,
+      use \code{control=lmerControl(optimizer="Nelder_Mead")}.
+      \item Better handling of rank-deficient/overparameterized
+      fixed-effect model matrices; see \code{check.rankX} option
+      to \code{[g]lmerControl}.  The default value is
+      "message+drop.cols", which automatically drops redundant
+      columns and issues a message (not a warning). (Github #144)
+    }
+  }
+  \subsection{MINOR USER-VISIBLE CHANGES}{
+    \itemize{
+      \item slight changes in convergence checking; tolerances can
+      be specified where appropriate, and some default tolerances
+      have changed (e.g., \code{check.conv.grad})
+      \item improved warning messages about rank-deficiency in X and Z
+      etc. (warnings now try to indicate whether the unidentifiability
+      is in the fixed- or random-effects part of the model)
+      \item \code{predict} and \code{simulate} now prefer
+      \code{re.form} as the argument to specify which random effects
+      to condition on, but allow \code{ReForm}, \code{REForm}, or
+      \code{REform}, giving a message (not a warning) that they are
+      deprecated (addresses Github #170)
+      \item small fixes for printing consistency in models with no
+      fixed effects
+      \item we previously exported a \code{fortify} function identical
+      to the one found in \code{ggplot2} in order to be able to define a
+      \code{fortify.merMod} S3 method without inducing a dependency on
+      \code{ggplot2}.  This has now been unexported to avoid masking
+      \code{ggplot2}'s own \code{fortify} methods; if you want to
+      add diagnostic information to the results of a model, use
+      \code{fortify.merMod} explicitly.
+      \item \code{simulate.formula} now checks for names associated
+      with the \code{theta} and \code{beta} parameter vectors. If
+      missing, it prints a message (not a warning); otherwise, it
+      re-orders the parameter vectors to match the internal
+      representation.
+      \item preliminary implementation of a \code{check.scaleX} argument
+      in \code{[g]lmerControl} that warns about scaling if some columns
+      of the fixed-effect model matrix have large standard
+      deviations (relative to 1, or to each other)
+    }
+  }
+}
+\section{CHANGES IN VERSION 1.1-3}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item The gradient and Hessian are now computed via finite
+      differencing after the nonlinear fit is done, and the results
+      are used for additional convergence tests. Control of the
+      behaviour is available through the \code{check.conv.*} options
+      in \code{[g]lmerControl}. Singular fits (fits with estimated
+      variances of zero or correlations of +/- 1) can also be tested for,
+      although the current default value of the \code{check.conv.singular}
+      option is \code{"ignore"}; this may be changed to \code{"warning"}
+      in the future. The results are stored in \code{@optinfo$derivs}.
+      (Github issue #120; based on code by Rune Christensen.)
+      \item The \code{simulate} method will now work to generate
+      simulations "from scratch" by providing a model formula,
+      a data frame holding the predictor variables, and a list
+      containing the values of the model parameters:
+      see \code{?simulate.merMod}. (Github issue #115)
+      \item \code{VarCorr.merMod} objects now have an \code{as.data.frame}
+      method, converting the list of matrices to a more
+      convenient form for reporting and post-processing. (Github issue #129)
+    }
+  }
+  \subsection{MINOR USER-VISIBLE CHANGES}{
+    \itemize{
+      \item results of \code{fitted()}, \code{predict()},
+      and \code{residuals()} now have
+      names in all cases (previously results were unnamed, or
+      named only when predicting from new data)
+      \item the \code{anova} method now has a \code{refit} argument
+      that controls whether objects of class \code{lmerMod} should be
+      refitted with ML before producing the \code{anova} table.
+      (Github issues #141, #165; contributed by Henrik Singmann.)
+      \item the \code{print} method for \code{VarCorr} objects
+      now has a \code{formatter} argument for finer control
+      of standard deviation and variance formats
+      \item the \code{optinfo} slot now stores slightly more
+      information, including the number of function evaluations
+      (\code{$feval}).
+      \item \code{dotplot.ranef.mer} now adds titles to sub-plots by default,
+      like \code{qqmath.ranef.mer}
+    }
+  }
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{fitted} now respects \code{na.action} settings (Github
+      issue #149)
+      \item \code{confint(.,method="boot")} now works when there are
+      \code{NA} values in the original data set (Github issue #158)
+      \item previously, the code stored the results (parameter values,
+      residuals, etc.) based on the \emph{last} set of parameters
+      evaluated, rather than the optimal parameters.  These were
+      not always the same, but were almost always very close,
+      but some previous results will change slightly
+      (Github issue #166)
+    }
+  }
+}
+\section{CHANGES IN VERSION 1.1-0}{
+  \subsection{MINOR USER-VISIBLE CHANGES}{
+    \itemize{
+      \item when using the default \code{method="profile"},
+      \code{confint} now returns appropriate upper/lower bounds
+      (-1/1 for correlations, 0/Inf for standard deviations)
+      rather than \code{NA} when appropriate
+    }
+  }
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item in a previous development version, \code{ranef} returned
+      incorrect conditional variances (github issue #148). this is 
+      now fixed
+    }
+  }
+}
+
+\section{CHANGES IN VERSION 1.0-6 (2013-10-27)}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item prediction now works when new data have fewer factor
+      levels than are present in the original data (Github issue #143,
+      reported by Rune Haubo)
+      \item the existence of a variable "new" in the global environment
+  would mess \code{lme4} up: reported at http://stackoverflow.com/questions/19801070/error-message-glmer-using-r-what-must-be-a-character-string-or-a-function
+    }
+  }
+}
 
 \section{CHANGES IN VERSION 1.0-5 (2013-10-24)}{
   \subsection{USER-VISIBLE CHANGES}{
@@ -26,7 +199,7 @@
       work with \code{update}: optional
       \code{rename.response} option added to \code{refit.merMod}, to allow
       this (but the default is still \code{FALSE}, for
-      back-compatibility (reported by A. Kuznetsova)
+      back-compatibility) (reported by A. Kuznetsova)
       \item fixed buglet preventing on-the-fly creation of index variables,
       e.g. \code{y~1+(1|rownames(data))} (reported by J. Dushoff)
       \item \code{predict} now works properly for \code{glmer} models
@@ -158,7 +331,7 @@
       \item A general-purpose \code{\link{getME}} accessor method allows
       extraction of a wide variety of components of a mixed-model
       fit. \code{getME} also allows a vector of objects to be returned as
-      a list of mixed-model componenets. This has been backported to
+      a list of mixed-model components. This has been backported to
       be compatible with older versions of \code{lme4} that still produce \code{mer}
       objects rather than \code{merMod} objects. However, backporting is incomplete;
       some objects are only extractable in newer versions of \code{lme4}.

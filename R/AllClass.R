@@ -1,6 +1,4 @@
 ### Class definitions for the package
-##' @useDynLib lme4 .registration=TRUE
-NULL
 
 ##' Class "lmList" of 'lm' Objects on Common Model
 ##'
@@ -21,6 +19,14 @@ setClass("lmList",
 
 ## TODO: export
 setClass("lmList.confint", contains = "array")
+
+forceCopy <- function(x) {
+    if (is.numeric(x)) return(x+0)
+    ## FIXME: doesn't handle non-numeric fields yet ...
+    ## resp@family is the only non-numeric field other than Ptr
+    ## need equivalent force-copy no-op for other classes
+    x
+}
 
 ### FIXME
 ### shouldn't we have "merPred"  with two *sub* classes "merPredD" and "merPredS"
@@ -57,14 +63,14 @@ setClass("lmList.confint", contains = "array")
 merPredD <-
     setRefClass("merPredD", # Predictor class for mixed-effects models with dense X
                 fields =
-                list(Lambdat = "dgCMatrix",
-                     LamtUt  = "dgCMatrix",
-                     Lind    = "integer",
-                     Ptr     = "externalptr",
-                     RZX     = "matrix",
-                     Ut      = "dgCMatrix",
-                     Utr     = "numeric",
-                     V       = "matrix",
+                list(Lambdat = "dgCMatrix",   # depends: theta and Lind
+                     LamtUt  = "dgCMatrix",   # depends: Lambdat and Ut
+                     Lind    = "integer",     # depends: nothing
+                     Ptr     = "externalptr", # depends: 
+                     RZX     = "matrix",      # depends: lots
+                     Ut      = "dgCMatrix",   # depends: Zt and weights
+                     Utr     = "numeric",     # depends: lots
+                     V       = "matrix",      # depends: 
                      VtV     = "matrix",
                      Vtr     = "numeric",
                      X       = "matrix",
@@ -153,6 +159,7 @@ merPredD <-
                          def <- .refClassDef
                          selfEnv <- as.environment(.self)
                          vEnv    <- new.env(parent=emptyenv())
+                         
                          for (field in setdiff(names(def@fieldClasses), "Ptr")) {
                              if (shallow)
                                  assign(field, get(field, envir = selfEnv), envir = vEnv)
@@ -160,10 +167,14 @@ merPredD <-
                                  current <- get(field, envir = selfEnv)
                                  if (is(current, "envRefClass"))
                                      current <- current$copy(FALSE)
-                                 assign(field, current, envir = vEnv)
+                                 ## hack (https://stat.ethz.ch/pipermail/r-devel/2014-March/068448.html)
+                                 ## ... to ensure real copying
+                                 ## forceCopy() does **NOT** work here, but +0 does
+                                 ## we can get away with this because all fields other than Ptr are numeric
+                                 assign(field, current+0, envir = vEnv)
                              }
                          }
-                         do.call(new, c(as.list(vEnv), n=nrow(vEnv$V), Class=def))
+                         do.call(merPredD$new, c(as.list(vEnv), n=nrow(vEnv$V), Class=def))
                      },
                      ldL2         = function() {
                          'twice the log determinant of the sparse Cholesky factor'
@@ -366,10 +377,11 @@ lmResp <-                               # base class for response modules
                                 current <- get(field, envir = selfEnv)
                                 if (is(current, "envRefClass"))
                                     current <- current$copy(FALSE)
-                                assign(field, current, envir = vEnv)
+                                ## deep-copy hack +0
+                                assign(field, forceCopy(current), envir = vEnv)
                             }
                         }
-                        do.call(new, c(as.list(vEnv), Class=def))
+                        do.call("new", c(as.list(vEnv), Class=def))
                     },
                     initializePtr = function() {
                         Ptr <<- .Call(lm_Create, y, weights, offset, mu, sqrtXwt,
@@ -793,29 +805,10 @@ golden <-
 ##'
 NULL
 
-##' Generator object for the Nelder-Mead optimizer class.
-##'
-##' The generator objects for the \code{\linkS4class{NelderMead}} class of
-##' optimizers subject to box constraints and using reverse communications.
-##'
-##' @rdname NelderMead
-##' @param \dots Argument list (see Note below).
-##' @section Methods:
-##'     \describe{\code{NelderMead$new(lower, upper, xst, x0, xt)}}{Create a new
-##'          \code{\linkS4class{NelderMead}} object}
-##' @seealso \code{\linkS4class{NelderMead}}
-##' @note Arguments to the \code{new} method must be named arguments:
-##' \describe{
-##' \item{lower}{numeric vector of lower bounds - elements may be \code{-Inf}.}
-##' \item{upper}{numeric vector of upper bounds - elements may be \code{Inf}.}
-##' \item{xst}{numeric vector of initial step sizes to establish the simplex -
-##'     all elements must be non-zero.}
-##' \item{x0}{numeric vector of starting values for the parameters.}
-##' \item{xt}{numeric vector of tolerances on the parameters.}
-##' }
-
-##' @keywords classes
-##' @export
+## Generator object for the Nelder-Mead optimizer class  "NelderMead"
+##
+## A reference class for a Nelder-Mead simplex optimizer allowing box
+## constraints on the parameters and using reverse communication.
 NelderMead <-
     setRefClass("NelderMead", # Reverse communication implementation of Nelder-Mead simplex optimizer
                 fields =
@@ -867,25 +860,7 @@ NelderMead <-
                      xpos         = function()         .Call(NelderMead_xpos, ptr())
                      )
             )
-##' Class \code{"NelderMead"}
-##'
-##' A reference class for a Nelder-Mead simplex optimizer allowing box
-##' constraints on the parameters and using reverse communication.
-##'
-##' @docType class
-##' @name NelderMead-class
-##' @note This is the default optimizer for the second stage of
-##' \code{\link{glmer}} and \code{\link{nlmer}} fits.  We found that it was more
-##' reliable and often faster than more sophisticated optimizers.
-##' @section Extends: All reference classes extend and inherit methods from
-##' \code{"\linkS4class{envRefClass}"}.
-##' @seealso \code{\link{glmer}}, \code{\link{nlmer}}
-##' @references Based on code in the NLopt collection.
-##' @keywords classes
-##' @examples
-##'
-##' showClass("NelderMead")
-NULL
+
 
 ##' Class "merMod" of Fitted Mixed-Effect Models
 ##'
@@ -962,17 +937,19 @@ rePos <-
     setRefClass("rePos",
                 fields =
                 list(
-                     cnms    = "list",
-                     flist   = "list",
-                     ncols   = "integer",
-                     nctot   = "integer",
-                     nlevs   = "integer",
-                     offsets = "integer",
-                     terms   = "list"
+                     cnms    = "list", # component names (components are terms within a RE term)
+                     flist   = "list", # list of grouping factors used in the random-effects terms
+                     ncols   = "integer", # number of components for each RE term
+                     nctot   = "integer", # total number of components per factor
+                     nlevs   = "integer", # number of levels for each unique factor
+                     offsets = "integer", # points to where each term starts
+                     terms   = "list" # list with one element per factor, indicating corresponding term
                      ),
                 methods =
                 list(
                      initialize = function(mer, ...) {
+                         ##' asgn indicates unique elements of flist
+                         ##' 
                          stopifnot((ntrms <- length(Cnms <- mer@cnms)) > 0L,
                                    (length(Flist <- mer@flist)) > 0L,
                                    length(asgn  <- as.integer(attr(Flist, "assign"))) == ntrms)
@@ -981,6 +958,7 @@ rePos <-
                          ncols   <<- unname(vapply(cnms, length, 0L))
                          nctot   <<- unname(as.vector(tapply(ncols, asgn, sum)))
                          nlevs   <<- unname(vapply(flist, function(el) length(levels(el)), 0L))
+                         # why not replace the sapply with ncols*nlevs[asgn] ??
                          offsets <<- c(0L, cumsum(sapply(seq_along(asgn),
                                                          function(i) ncols[i] * nlevs[asgn[i]])))
                          terms   <<- lapply(seq_along(flist), function(i) which(asgn == i))
