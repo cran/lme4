@@ -1,5 +1,5 @@
 2e5b726f280690ac96aa8279ec72c848 *ChangeLog
-f024e3d55146a7982cab7e5d92b74250 *DESCRIPTION
+dbdb09b0bc406404bcd8e56f297009d3 *DESCRIPTION
 57a604831473f328caccee17f95af7dc *NAMESPACE
 4556f42fc2e50bc994e001deb8611f27 *R/AllClass.R
 ce761b8d1b64bee1a1e0a148f80a8997 *R/AllGeneric.R
@@ -23,6 +23,7 @@ e665ee771e1d6cbf4fac29de9d0c3393 *R/sparsegrid.R
 c9b36e30d3d18ec9f5ae689d1bf262ac *R/vcconv.R
 a78dfc13733312b9d3b0ed2938594ce0 *README.md
 d5c218fd9ffcb288bb236f782b63c58a *ToDo
+fcc469400d231556008dd443d55e2572 *build/vignette.rds
 8cf70603a6660d10c170d9e7159c2951 *data/Dyestuff.rda
 2f1c751f7de40daa241601f64726c9e0 *data/Dyestuff2.rda
 6f9f4c6883f291d09a1ac4c5919e4f76 *data/GQN.rda
@@ -34,10 +35,13 @@ c80348b333f026d7fe927398894c6f34 *data/cake.rda
 09bbd2170531a7256a2cf743f4bec399 *data/cbpp.rda
 28d1ffd0a450108d274431f7335e859d *data/grouseticks.rda
 3eb17ae1551f7a264c4214460041908c *data/sleepstudy.rda
-a10c8d13d67b563c8e24754628926c51 *inst/NEWS.Rd
+1cbc4eddd85da79ff71496001f97c0ae *inst/NEWS.Rd
+440f0c324b010ab7f670b82ad9286fab *inst/NEWS.Rd~
 a1f824867c6c98ebe87a82f8ce95e3f6 *inst/doc/Doxyfile
 c06c14d1201e4f7721460e1da335c97a *inst/doc/PB_mcmcsamp.pdf
+f84eeec527edf425f54bb4754e23da61 *inst/doc/PLSvGLS.Rnw
 141dc0cd885775eb2c2c4bffe1e9201d *inst/doc/PLSvGLS.pdf
+7c875a8319567904fc041726e990d6fe *inst/doc/Theory.Rnw
 987874eb98097eda3d2bcf0ad39d3dce *inst/doc/Theory.pdf
 bde845b3a5d0655c1a6c2ad59bfb4f75 *inst/doc/lme4-extras.pdf
 9b03c01f1b80eb945edbbaf7ee658049 *inst/doc/profiling.txt
@@ -78,7 +82,7 @@ f46f778a130c48c88532577f0319891b *inst/tests/test-doubleVertNotation.R
 e35e77e6b29924f0c5fb59e9a85225ed *inst/tests/test-factors.R
 a676c4653696f2aac2193bc9fc13c417 *inst/tests/test-formulaEval.R
 395f9404b07243b4777b977cdba1519e *inst/tests/test-glmFamily.R
-4297333b0b0a4cb6b9712b62e0ab2ed8 *inst/tests/test-glmer.R
+d736b6ab261170df26341573dbc8feb4 *inst/tests/test-glmer.R
 969dab36e89b1174d56c6fc84cd42217 *inst/tests/test-glmer.Rout
 f6f1b8146adca7fcdf1af2119d71ebdd *inst/tests/test-glmmFail.R
 ce6ef0f1e35b330411d97ded4aecf6d3 *inst/tests/test-lmer.R
@@ -110,7 +114,7 @@ f6191a9e9dbe98f609eeb90f8ca19133 *man/cake.Rd
 fd93f2971f3ebf948961188570e94b82 *man/cbpp.Rd
 b1828c928cfb396c8c688abdaf470d71 *man/confint.merMod.Rd
 ca5d619637f766872600f92b39531c1f *man/devcomp.Rd
-b76ec3a8f676dde8cc6251c93aa687ff *man/drop1.merMod.Rd
+4387831c1db6d08a62c36ccf6b058732 *man/drop1.merMod.Rd
 0ffadf84fce25e56463e86ccf165e04b *man/dummy.Rd
 81a5d38865b4ef44d28997364ae991bf *man/expandDoubleVerts.Rd
 472a991d46db81ac25e4b19223931795 *man/findbars.Rd
@@ -228,13 +232,13 @@ d43a3e94c09040bc3ea42155f9ac3e11 *tests/prLogistic.R
 044cbc0e9d3c53406a5a8b56b6d7c886 *tests/predict_basis.Rout
 0497b197ec37224e61ab023c78e562fd *tests/predsim.R
 957359f1e0142fe4f9e87c5efd9ab979 *tests/predsim.Rout
-df8681c4f074f26b5f6dbd2b6b08bc8b *tests/priorWeights.R
+c4f8f5dbe900743b4236ee80f077ec76 *tests/priorWeights.R
 3bf355b6ea88ff815b11cd8460a889da *tests/priorWeightsModComp.R
-2bd8795cc96b358d154c09713aa09b77 *tests/profile-tst.R
+5d319508c46b51792791d8fe07d446b8 *tests/profile-tst.R
 d55cb5caba66c7e1528c67f200ce7cc0 *tests/refit.R
 f41d72b2048efd5d4aee555f78e1292f *tests/resids.R
 71936dde95ed77155e38f49177119801 *tests/respiratory.R
-ed2f13f0baff63c8fb645fbf758c0db6 *tests/simulate.R
+0b43db4cb3c5958aedf540de577c19ff *tests/simulate.R
 f9f746963a905227459b6d86598ee78d *tests/testOptControl.R
 304b26b3344af0ec8c65b59449dd0f8f *tests/test_times.R
 c01f9cfa35d54301d5ddf216832170a0 *tests/test_timings.RData
@@ -246,7 +250,5 @@ dfcdecc1050494017ef3f0e79bed0484 *tests/utils.R
 a2ae9d9d7482182d85626ebdf6cab6de *tests/varcorr.R
 d1c1e68d2de2348e33aa8985121df4f5 *tests/vcov-etc.R
 f84eeec527edf425f54bb4754e23da61 *vignettes/PLSvGLS.Rnw
-141dc0cd885775eb2c2c4bffe1e9201d *vignettes/PLSvGLS.pdf
 7c875a8319567904fc041726e990d6fe *vignettes/Theory.Rnw
-987874eb98097eda3d2bcf0ad39d3dce *vignettes/Theory.pdf
 9c40378d0fbc0a8a8709908391461f5b *vignettes/lme4.bib

@@ -96,17 +96,19 @@ stopifnot(do.call(all.equal, sleepComp))
 sleepComp$tolerance <- 0
 do.call(all.equal, sleepComp)
 
-library(mlmRev)
-n <- nrow(Chem97)
-v <- rpois(n,1) + 1
-w <- 1/v
-Chem97Lme <- lme(score ~ 1, random = ~ 1|lea/school, Chem97)
-Chem97Lmer <- lmer(score ~ (1|lea/school), Chem97)
-Chem97Comp <- compFunc(Chem97Lme, Chem97Lmer)
-stopifnot(do.call(all.equal, Chem97Comp))
-## look at relative differences:
-Chem97Comp$tolerance <- 0
-do.call(all.equal, Chem97Comp)
+if(require("mlmRev")) {
+    data(Chem97, package = "mlmRev")
+    n <- nrow(Chem97)
+    v <- rpois(n,1) + 1
+    w <- 1/v
+    Chem97Lme <- lme(score ~ 1, random = ~ 1|lea/school, Chem97)
+    Chem97Lmer <- lmer(score ~ (1|lea/school), Chem97)
+    Chem97Comp <- compFunc(Chem97Lme, Chem97Lmer)
+    stopifnot(do.call(all.equal, Chem97Comp))
+    ## look at relative differences:
+    Chem97Comp$tolerance <- 0
+    do.call(all.equal, Chem97Comp)
+}
 
 ## library("lme4")
 
