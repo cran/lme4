@@ -113,17 +113,20 @@ test_that("lmer", {
                    data = sleepstudy, subset = (Days == 1 | Days == 9),
                    control=lmerControl(check.nobs.vs.rankZ="ignore",
                    check.nobs.vs.nRE="ignore",
-                   check.conv.hess="ignore")),
+                   check.conv.hess="ignore",
+                   ## need to ignore relative gradient check too;
+                   ## surface is flat so *relative* gradient gets large
+                   check.conv.grad="ignore")),
               "merMod")
-    expect_error(lmer(Reaction ~ 1 + Days + (1|obs),
-                      data = transform(sleepstudy,obs=seq(nrow(sleepstudy))),
-                      "number of levels of each grouping factor"))
     expect_is(lmer(Reaction ~ 1 + Days + (1|obs),
                    data = transform(sleepstudy,obs=seq(nrow(sleepstudy))),
                    control=lmerControl(check.nobs.vs.nlev="ignore",
                    check.nobs.vs.nRE="ignore",
                    check.nobs.vs.rankZ="ignore")),
               "merMod")
+    expect_error(lmer(Reaction ~ 1 + Days + (1|obs),
+                      data = transform(sleepstudy,obs=seq(nrow(sleepstudy))),
+                      "number of levels of each grouping factor"))
 
     ## check for errors with illegal input checking options
     flags <- lme4:::.get.checkingOpts(names(formals(lmerControl)))
@@ -143,8 +146,14 @@ test_that("lmer", {
 			  subset(sleepstudy,Subject %in% levels(Subject)[1:4])), "merMod")
     expect_is(lmer(Reaction ~ 1 + Days + (1 + Days | Subject),
                    data = sleepstudy, subset = (Days == 1 | Days == 9),
-                   control=lmerControl(check.conv.hess="ignore")),
+                   control=lmerControl(check.conv.hess="ignore",
+                   check.conv.grad="ignore")),
               "merMod")
+    options(lmerControl=NULL)
+    ## check for when ignored options are set
+    options(lmerControl=list(junk=1,check.conv.grad="ignore"))
+    expect_warning(lmer(Reaction ~ Days + (1|Subject),sleepstudy),
+                   "some options")
     options(lmerControl=NULL)
     options(warn=0)
     expect_warning(lmer(Yield ~ 1|Batch, Dyestuff, junkArg=TRUE),"extra argument.*disregarded")
@@ -175,6 +184,10 @@ if(FALSE) ## Hadley broke this
     new <- "foo"
     expect_is(refit(fm1),"merMod")
     rm("new")
+
+    ## test subset-with-( printing from summary
+    fm1 <- lmer(z~1|f,d,subset=(z<1e9))
+    expect_equal(sum(grepl("Subset: \\(",capture.output(summary(fm1)))),1)
 
 }) ## test_that(..)
 

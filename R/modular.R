@@ -16,7 +16,8 @@ RHSForm <- function(formula) {
     formula
 }
 
-LHSForm <- function(formula) {
+##' Original formula, minus response ( = '~ <RHS>') :
+noLHSform <- function(formula) {
     if (length(formula)==2) formula else formula[-2]
 }
 
@@ -34,11 +35,11 @@ checkCtrlLevels <- function(cstr, val, smallOK=FALSE) {
 ## general identifiability checker, used both in checkZdim and checkZrank
 wmsg <- function(n,cmp.val,allow.n,msg1="",msg2="",msg3="") {
     if (allow.n) {
-        unident <- n<cmp.val
+        unident <- n < cmp.val
         cmp <- "<"
         rstr <- ""
     } else {
-        unident <- n<=cmp.val
+        unident <- n <= cmp.val
         cmp <- "<="
         rstr <- " and the residual variance (or scale parameter)"
     }
@@ -70,8 +71,8 @@ checkZdims <- function(Ztlist, n, ctrl, allow.n=FALSE) {
                        sprintf(" for term (%s)",term.names[i]))
             if(ww$unident) {
             switch(cc,
-                   "warning" = warning(ww$wstr),
-                   "stop" = stop(ww$wstr),
+                   "warning" = warning(ww$wstr,call.=FALSE),
+                   "stop" = stop(ww$wstr,call.=FALSE),
                    stop(gettextf("unknown check level for '%s'", cstr), domain=NA))
             }
         }
@@ -90,17 +91,11 @@ checkZrank <- function(Zt, n, ctrl, nonSmall = 1e6, allow.n=FALSE)
 	if(!(grepl("Small",cc) && prod(d) > nonSmall)) {
             rankZ <- rankMatrix(if(doTr) t(Zt) else Zt, method="qr",
                                 sval = numeric(min(d)))
-            ## FIXME: should probably trap this earlier ...
-            if (is.na(rankZ)) stop("NA in Z (random-effects model matrix): ",
-                                   "please use ",
-                                   shQuote("na.action='na.omit'"),
-                                   " or ",
-                                   shQuote("na.action='na.exclude'"))
             ww <- wmsg(n,rankZ,allow.n,"number of observations","rank(Z)")
             if (ww$unident) {
                 switch(cc,
-                       "warningSmall" =, "warning" = warning(ww$wstr),
-                       "stopSmall" =, "stop" = stop(ww$wstr),
+                       "warningSmall" =, "warning" = warning(ww$wstr,call.=FALSE),
+                       "stopSmall" =, "stop" = stop(ww$wstr,call.=FALSE),
                        stop(gettextf("unknown check level for '%s'", cstr),
                             domain=NA))
             }
@@ -111,21 +106,35 @@ checkZrank <- function(Zt, n, ctrl, nonSmall = 1e6, allow.n=FALSE)
 ## check scale of non-dummy columns of X, both
 ## against each other and against 1 (implicit scale of theta parameters)?
 ## (shouldn't matter for lmer models?)
-checkScaleX <- function(X, tol=1e4, ctrl) {
+## TODO: check for badly centred models?
+## TODO: check scale of Z columns?
+## What should the rules be?  try to find problematic columns
+##   and rescale them?  scale+center?  Just scale or scale+center
+##   all numeric columns?
+## 
+checkScaleX <- function(X,  kind="warning", tol=1e3) {
     cstr <- "check.scaleX"
-    checkCtrlLevels(cstr, cc <- ctrl[[cstr]])
-    if (doCheck(cc)) { ## not NULL or "ignore"
-        cont.cols <- apply(X,2,function(z) !all(z %in% c(0,1)))
-        col.sd <- apply(X[,cont.cols, drop=FALSE],2,sd)
-        sdcomp <- outer(col.sd,col.sd,"/")
-        logcomp <- abs(log(sdcomp[lower.tri(sdcomp)]))
-        logsd <- abs(log(col.sd))
-        wmsg <- "Some predictor variables are on very different scales: consider rescaling"
-        if (any(c(logcomp,logsd)>log(tol))) {
-            switch(cc, "warning" = warning(wmsg),
-                   "stop" = stop(wmsg),
-                   stop(gettextf("unknown check level for '%s'", cstr),
-                        domain=NA))
+    kinds <- eval(formals(lmerControl)[["check.scaleX"]])
+    if (!kind %in% kinds) stop(sprintf("unknown check-scale option: %s",kind))
+    if (is.null(kind) || kind == "ignore") return(X)
+    ## else :
+    cont.cols <- apply(X,2,function(z) !all(z %in% c(0,1)))
+    col.sd <- apply(X[,cont.cols, drop=FALSE],2,sd)
+    sdcomp <- outer(col.sd,col.sd,"/")
+    logcomp <- abs(log(sdcomp[lower.tri(sdcomp)]))
+    logsd <- abs(log(col.sd))
+    wmsg <- "Some predictor variables are on very different scales: consider rescaling"
+    if (any(c(logcomp,logsd) > log(tol))) {
+        if (kind %in% c("warning","stop")) {
+            switch(kind, "warning" = warning(wmsg, call.=FALSE),
+                   "stop" = stop(wmsg, call.=FALSE))
+        } else {
+            ## mimic scale() because we don't want to make a copy in
+            ##  order to retrieve the center/scale
+            X[,cont.cols] <- sweep(X[,cont.cols,drop=FALSE],2,col.sd,"/")
+            attr(X,"scaled:scale") <- setNames(col.sd,colnames(X)[cont.cols])
+            wmsg <- "Some predictor variables on very different scales: auto-rescaled (results NOT adjusted)"
+            if (kind=="warn+rescale") warning(wmsg,call.=FALSE)
         }
     }
     X
@@ -141,8 +150,8 @@ checkNlevels <- function(flist, n, ctrl, allow.n=FALSE)
     if (doCheck(cc) && any(nlevelVec < 2)) {
 	wstr <- "grouping factors must have > 1 sampled level"
 	switch(cc,
-	       "warning" = warning(wstr),
-	       "stop" = stop(wstr),
+	       "warning" = warning(wstr,call.=FALSE),
+	       "stop" = stop(wstr,call.=FALSE),
 	       stop(gettextf("unknown check level for '%s'", cstr), domain=NA))
     }
     ## Part 2 ----------------
@@ -161,8 +170,8 @@ checkNlevels <- function(flist, n, ctrl, allow.n=FALSE)
     if (doCheck(cc) && any(nlevelVec < 5)) {
 	wstr <- "grouping factors with < 5 sampled levels may give unreliable estimates"
 	switch(cc,
-	       "warning" = warning(wstr),
-	       "stop" = stop(wstr),
+	       "warning" = warning(wstr,call.=FALSE),
+	       "stop" = stop(wstr,call.=FALSE),
 	       stop(gettextf("unknown check level for '%s'", cstr), domain=NA))
     }
 }
@@ -309,6 +318,13 @@ lFormula <- function(formula, data=NULL, REML = TRUE,
     reTrms <- mkReTrms(findbars(RHSForm(formula)), fr)
     checkNlevels(reTrms$flist, n=n, control)
     checkZdims(reTrms$Ztlist, n=n, control, allow.n=FALSE)
+    if (any(is.na(reTrms$Zt))) {
+        stop("NA in Z (random-effects model matrix): ",
+             "please use ",
+             shQuote("na.action='na.omit'"),
+             " or ",
+             shQuote("na.action='na.exclude'"))
+    }
     checkZrank(reTrms$Zt, n=n, control, nonSmall = 1e6)
 
     ## fixed-effects model matrix X - remove random effect parts from formula:
@@ -324,7 +340,9 @@ lFormula <- function(formula, data=NULL, REML = TRUE,
     if(is.null(rankX.chk <- control[["check.rankX"]]))
         rankX.chk <- eval(formals(lmerControl)[["check.rankX"]])[[1]]
     X <- chkRank.drop.cols(X, kind=rankX.chk, tol = 1e-7)
-    X <- checkScaleX(X, ctrl= control)
+    if(is.null(scaleX.chk <- control[["check.scaleX"]]))
+        scaleX.chk <- eval(formals(lmerControl)[["check.scaleX"]])[[1]]
+    X <- checkScaleX(X, kind=scaleX.chk)
 
     list(fr = fr, X = X, reTrms = reTrms, REML = REML, formula = formula)
 }
@@ -341,11 +359,22 @@ getStart <- function(start,lower,pred,returnVal=c("theta","all")) {
         } else {
             if (!is.list(start)) stop("start must be a list or a numeric vector")
             if (!all(sapply(start,is.numeric))) stop("all elements of start must be numeric")
-            if (length((badComp <- setdiff(names(start),c("theta","fixef"))))>0) {
+            if (length((badComp <- setdiff(names(start),c("theta","fixef")))) > 0) {
                 stop("incorrect components in start list: ",badComp)
             }
             if (!is.null(start$theta)) theta <- start$theta
-            if (!is.null(start$fixef)) fixef <- start$fixef
+            noFixef <- is.null(start$fixef)
+            noBeta <- is.null(start$beta)
+            if (!noFixef) {
+                fixef <- start$fixef
+                if (!noBeta) {
+                    message("Starting values for fixed effects coefficients",
+                            "specified through both 'fixef' and 'beta',",
+                            "only 'fixef' used")
+                }
+            } else if(!noBeta) {
+                fixef <- start$beta
+            }
         }
     }
     if (length(theta)!=length(pred$theta))
@@ -401,12 +430,14 @@ mkLmerDevfun <- function(fr, X, reTrms, REML = TRUE, start = NULL, verbose=0, co
     REMLpass <- if(REML) p else 0L
     if(missing(fr)) rho$resp <- mkRespMod(REML = REMLpass, ...)
     else rho$resp <- mkRespMod(fr, REML = REMLpass)
-    ## note:  REML does double duty as rank of X and a flag for using REML
-    ## maybe this should be mentioned in the help file for mkRespMod??
-    ## currently that help file says REML is logical
+    ## note: REML does double duty as rank of X and a flag for using
+    ## REML maybe this should be mentioned in the help file for
+    ## mkRespMod??  currently that help file says REML is logical.  a
+    ## consequence of this double duty is that it is impossible to fit
+    ## a model with no fixed effects using REML.
     devfun <- mkdevfun(rho, 0L, verbose, control)
     theta <- getStart(start,reTrms$lower,rho$pp)
-    if (length(rho$resp$y)>0)  ## only if non-trivial y
+    if (length(rho$resp$y) > 0)  ## only if non-trivial y
         devfun(rho$pp$theta) # one evaluation to ensure all values are set
     rho$lower <- reTrms$lower # SCW:  in order to be more consistent with mkLmerDevfun
     return(devfun) # this should pass the rho environment implicitly
@@ -438,7 +469,7 @@ optimizeLmer <- function(devfun,
         ## FIXME: should we be looking at rho$pp$theta or opt$par
         ##  at this point???  in koller example (for getData(13)) we have
         ##   rho$pp$theta=0, opt$par=0.08
-        if (length(bvals <- which(rho$pp$theta==rho$lower))>0) {
+        if (length(bvals <- which(rho$pp$theta==rho$lower)) > 0) {
             ## *don't* use numDeriv -- cruder but fewer dependencies, no worries
             ##  about keeping to the interior of the allowed space
             theta0 <- new("numeric",rho$pp$theta) ## 'deep' copy ...
@@ -454,7 +485,7 @@ optimizeLmer <- function(devfun,
             ## what do I need to do to reset rho$pp$theta to original value???
             devfun(theta0) ## reset rho$pp$theta after tests
             ## FIXME: allow user to specify ALWAYS restart if on boundary?
-            if (any(bgrad<0)) {
+            if (any(bgrad < 0)) {
                 if (verbose) message("some theta parameters on the boundary, restarting")
                 opt <- optwrap(optimizer,
                                devfun,
@@ -465,7 +496,7 @@ optimizeLmer <- function(devfun,
             }
         }
     }
-    if (boundary.tol>0) {
+    if (boundary.tol > 0) {
         opt <- check.boundary(rho,opt,devfun,boundary.tol)
     }
     return(opt)
@@ -555,7 +586,9 @@ glFormula <- function(formula, data=NULL, family = gaussian,
     if(is.null(rankX.chk <- control[["check.rankX"]]))
         rankX.chk <- eval(formals(lmerControl)[["check.rankX"]])[[1]]
     X <- chkRank.drop.cols(X, kind=rankX.chk, tol = 1e-7)
-    X <- checkScaleX(X, ctrl=control)
+    if(is.null(scaleX.chk <- control[["check.scaleX"]]))
+        scaleX.chk <- eval(formals(lmerControl)[["check.scaleX"]])[[1]]
+    X <- checkScaleX(X, kind=scaleX.chk)
 
     list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula)
 }
@@ -577,7 +610,7 @@ mkGlmerDevfun <- function(fr, X, reTrms, family, nAGQ = 1L, verbose = 0L,
     if (missing(fr)) rho$resp <- mkRespMod(family=family, ...)
     else rho$resp             <- mkRespMod(fr, family=family)
     ## allow trivial y
-    if (length(y <- rho$resp$y)>0) {
+    if (length(y <- rho$resp$y) > 0) {
         if (length(unique(y)) < 2L)
             stop("Response is constant - cannot fit the model")
         rho$verbose     <- as.integer(verbose)
@@ -631,7 +664,7 @@ optimizeGlmer <- function(devfun,
     }
     ## FIXME: implement this ...
     if (restart_edge) stop("restart_edge not implemented for optimizeGlmer yet")
-    if (boundary.tol>0) {
+    if (boundary.tol > 0) {
         opt <- check.boundary(rho,opt,devfun,boundary.tol)
     }
     return(opt)
@@ -639,14 +672,14 @@ optimizeGlmer <- function(devfun,
 
 check.boundary <- function(rho,opt,devfun,boundary.tol) {
     bdiff <- rho$pp$theta-rho$lower[seq_along(rho$pp$theta)]
-    if (any(edgevals <- bdiff>0 & bdiff<boundary.tol)) {
+    if (any(edgevals <- 0 < bdiff & bdiff < boundary.tol)) {
         ## try sucessive "close-to-edge parameters" to see
         ## if we can improve by setting them equal to the boundary
         pp <- opt$par
         for (i in which(edgevals)) {
             tmppar <- pp
             tmppar[i] <- rho$lower[i]
-            if (devfun(tmppar)<opt$fval) pp[i] <- tmppar[i]
+            if (devfun(tmppar) < opt$fval) pp[i] <- tmppar[i]
         }
         opt$par <- pp
         opt$fval <- devfun(opt$par)

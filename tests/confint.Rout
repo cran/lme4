@@ -1,0 +1,88 @@
+
+R Under development (unstable) (2014-04-26 r65503) -- "Unsuffered Consequences"
+Copyright (C) 2014 The R Foundation for Statistical Computing
+Platform: i686-pc-linux-gnu (32-bit)
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library("lme4")
+Loading required package: Matrix
+Loading required package: Rcpp
+> library("testthat")
+> 
+> fm1 <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy)
+> c0  <- confint(fm1, method="Wald")
+> c0B <- confint(fm1, method="Wald",parm="Days")
+> expect_equal(c0[2,],c0B[1,])
+> expect_equal(c(c0B),c(7.437592,13.496980),tolerance=1e-6)
+> set.seed(101)
+> 
+> for (bt in c("norm","basic", "perc")) {
++     confint(fm1, method="boot", boot.type=bt, nsim=10)
++ }
+Computing bootstrap confidence intervals ...
+Computing bootstrap confidence intervals ...
+Computing bootstrap confidence intervals ...
+There were 12 warnings (use warnings() to see them)
+> for (bt in c("stud","bca","junk")) {
++     expect_error(confint(fm1, method="boot", boot.type=bt, nsim=10),
++                  "should be one of")
++ }
+> if((testLevel <- lme4:::testLevel()) > 1) {
++     c1 <- confint(fm1,method="profile",parm=5:6)
++     expect_error(confint(fm1,method="profile",parm="Days"),
++                  "must be specified as an integer")
++     expect_equal(c0,c1,tolerance=2e-3)  ## expect Wald and profile _reasonably_ close
++     print(c1,digits=3)
++     c2  <- confint(fm1,method="boot",nsim=50,parm=5:6)
++     expect_error(confint(fm1,method="boot",nsim=50,parm="Days"),
++                  "must be specified as an integer")
++     expect_equal(c1,c2,tolerance=2e-2)
++     print(c2,digits=3)
++ }
+Computing profile confidence intervals ...
+             2.5 % 97.5 %
+(Intercept) 237.68  265.1
+Days          7.36   13.6
+Computing bootstrap confidence intervals ...
+             2.5 % 97.5 %
+(Intercept) 241.08  264.3
+Days          7.46   13.3
+> if (testLevel > 10) {
++     print(c1B <- confint(fm1, method="profile"))
++     print(c2B <- confint(fm1, method="boot"))
++     expect_equal(unname(c1B), unname(c2B), tolerance=2e-2)
++ }
+Computing profile confidence intervals ...
+                  2.5 %     97.5 %
+.sig01       14.3815203  37.715996
+.sig02       -0.4815007   0.684986
+.sig03        3.8011641   8.753383
+.sigma       22.8982669  28.857997
+(Intercept) 237.6806955 265.129515
+Days          7.3586533  13.575919
+Computing bootstrap confidence intervals ...
+                                  2.5 %     97.5 %
+sd_(Intercept)|Subject        10.739086  35.415804
+cor_Days.(Intercept)|Subject  -0.497454   1.000000
+sd_Days|Subject                3.185475   8.264059
+sigma                         22.346226  28.170764
+(Intercept)                  236.759268 264.136156
+Days                           7.626653  13.786402
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 57.411   4.452  84.682 

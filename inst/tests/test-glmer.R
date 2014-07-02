@@ -4,6 +4,35 @@ library("lme4")
 testLevel <- if (nzchar(s <- Sys.getenv("LME4_TEST_LEVEL")))
                  as.numeric(s) else 1
 
+gives_error_or_warning <- function (regexp = NULL, all = FALSE, ...) 
+{
+    function(expr) {
+        res <- try(evaluate_promise(expr),silent=TRUE)
+        no_error <- !inherits(res, "try-error")
+        if (no_error) {
+            warnings <- res$warnings
+
+            if (!is.null(regexp) && length(warnings) > 0) {
+                return(matches(regexp, all = FALSE, ...)(warnings))
+            } else {
+                return(expectation(length(warnings) > 0, "no warnings or errors given", 
+                            paste0(length(warnings), " warnings created")))
+            }
+        }
+        if (!is.null(regexp)) {
+            return(matches(regexp, ...)(res))
+        }
+        else {
+            expectation(TRUE, "no error thrown", "threw an error")
+        }
+    }
+}
+    ## expect_that(stop("foo"),gives_error_or_warning("foo"))
+    ## expect_that(warning("foo"),gives_error_or_warning("foo"))
+    ## expect_that(TRUE,gives_error_or_warning("foo"))
+    ## expect_that(stop("bar"),gives_error_or_warning("foo"))
+    ## expect_that(warning("bar"),gives_error_or_warning("foo"))
+
 context("fitting glmer models")
 test_that("glmer", {
     set.seed(101)
@@ -45,6 +74,10 @@ test_that("glmer", {
     expect_warning(fm1. <- glmer(Reaction ~ Days + (Days|Subject), sleepstudy),
                    regexp="calling .* with family=gaussian .* as a shortcut")
     options(warn=2)
+    options(glmerControl=list(junk=1,check.conv.grad="ignore"))
+    expect_warning(glmer(z~ 1|f, d, family=binomial),
+                   "some options")
+    options(glmerControl=NULL)
     cbppX <- transform(cbpp,prop=incidence/size)
     expect_is(glmer(prop ~ period + (1 | herd),
 		      data = cbppX, family = binomial, weights=size),
@@ -104,15 +137,19 @@ if(FALSE) { ## Hadley broke this
                     x=runif(1000),
                     f=factor(rep(1:20,each=50)),
                     x2=rep(0:1,c(999,1)))
-    mod2 <- glmer(y~x+x2+(1|f),data=d,family=binomial)
+    mod2 <- glmer(y~x+x2+(1|f),data=d,family=binomial,
+                                   control=glmerControl(check.conv.hess="ignore",
+                                                        check.conv.grad="ignore"))
     expect_equal(unname(fixef(mod2))[1:2],
-                 c(-0.10036244,0.03548523),tolerance=1e-4)
-    expect_true(unname(fixef(mod2)[3]<(-10)))
-    mod3 <- update(mod2,family=binomial(link="probit"))
-    expect_equal(unname(fixef(mod3))[1:2],
-                 c(-0.06288878,0.02224270),tolerance=1e-4)
-    expect_true(unname(fixef(mod3)[3]<(-4)))
-    mod4 <- update(mod2,family=binomial(link="cauchit"))
+                 c(-0.10036244,0.03548523), tolerance=1e-4)
+    expect_true(unname(fixef(mod2)[3] < -10))
+    mod3 <- update(mod2, family=binomial(link="probit"))
+    # singular Hessian warning
+    expect_equal(unname(fixef(mod3))[1:2], c(-0.062889, 0.022241), tolerance=1e-4)
+    expect_true(fixef(mod3)[3] < -4)
+    mod4 <- update(mod2, family=binomial(link="cauchit"),
+                   control=glmerControl(check.conv.hess="ignore",
+                                        check.conv.grad="ignore"))#--> singular Hessian warning
 
     ## on-the-fly creation of index variables
     if (FALSE) {
@@ -128,14 +165,16 @@ if(FALSE) { ## Hadley broke this
     }
 
     ##
-    if (testLevel>1) {
+    if(testLevel > 1) {
         load(system.file("testdata","mastitis.rda",package="lme4"))
         t1 <- system.time(g1 <-
-                          glmer(NCM ~ birth + calvingYear + (1|sire) +
-                     (1|herd),mastitis,poisson))
+                          glmer(NCM ~ birth + calvingYear + (1|sire) + (1|herd),
+                                mastitis, poisson,
+                                ## current (2014-04-24) default:
+                                control=glmerControl(optimizer=c("bobyqa","Nelder_Mead"))))
         t2 <- system.time(g2 <- update(g1,
                          control=glmerControl(optimizer="bobyqa")))
-        ## 20 seconds N-M vs 8 seconds bobyqa ...
+        ## 20 (then 13.0) seconds N-M vs 8 (then 4.8) seconds bobyqa ...
         ## problem is fairly ill-conditioned so parameters
         ##  are relatively far apart even though likelihoods are OK
         expect_equal(logLik(g1),logLik(g2),tolerance=1e-7)
@@ -168,10 +207,46 @@ if(FALSE) { ## Hadley broke this
                  c(0.3840921, 0.3768747), tolerance=1e-7)
     expect_equal(sd3, unname(coef(summary(gm3))[,"Std. Error"]))
     ## test non-pos-def finite-difference Hessian ...
-    if (getRversion()>"3.0.0") {
+    if(getRversion() > "3.0.0") {
         ## saved fits are not safe with old R versions
         L <- load(system.file("testdata","polytomous_vcov_ex.RData",
                               package="lme4", mustWork=TRUE))
         expect_warning(vcov(polytomous_vcov_ex),"falling back to var-cov")
     }
+
+    ## test convergence warnings
+    L <- load(system.file("testdata","gopherdat2.RData",
+                          package="lme4", mustWork=TRUE))
+    g0 <- glmer(shells~prev + (1|Site)+offset(log(Area)),
+                family=poisson, data=Gdat)
+    ## fit year as factor: OK
+    gc <- glmerControl(check.conv.grad="stop")
+    expect_is(update(g0,.~.+factor(year), control=gc), "glmerMod")
+    ## error/warning with year as numeric:
+    ## don't have full knowledge of which platforms lead to which
+    ##     results, and can't detect whether we're running on valgrind,
+    ##     which changes the result on 32-bit linux ...
+    ## SEGFAULT on MacOS? why?
+    if (FALSE) {
+       expect_that(update(g0,.~.+year),
+         gives_error_or_warning("(failed to converge|pwrssUpdate did not converge)"))
+    }
+    ## ("(failed to converge|pwrssUpdate did not converge in)"))
+    ## if (sessionInfo()$platform=="i686-pc-linux-gnu (32-bit)") {
+    ##     expect_warning(update(g0, .~. +year), "failed to converge")
+    ## } else {
+    ##     ## MacOS x86_64-apple-darwin10.8.0 (64-bit)
+    ##     ## MM's platform
+    ##     ## "pwrssUpdate did not converge in (maxit) iterations"
+    ##     expect_error(update(g0, .~. +year), "pwrssUpdate did not converge in")
+    ## }
+    ## OK if we scale & center it
+    expect_is(update(g0,.~. + scale(year), control=gc), "glmerMod")
+    ## not OK if we scale and don't center
+    expect_warning(update(g0,.~. + scale(year,center=FALSE)),
+                   "failed to converge with max|grad|")
+    ## OK if center and don't scale
+    expect_is(update(g0,.~. + scale(year,center=TRUE,scale=FALSE),
+                     control=gc),
+              "glmerMod")
 })

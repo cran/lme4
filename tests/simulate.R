@@ -97,7 +97,6 @@ if(require("mlmRev")) {
     gm5 <- glmer(use ~ urban+age+livch+(1|district), Contraception, binomial)
     s3 <- simulate(gm5)
 }
-    
 d$y <- rpois(nrow(d),exp(d$eta))
 gm6 <- glmer(y~x+(1|f),data=d,family="poisson")
 s4 <- simulate(gm6)

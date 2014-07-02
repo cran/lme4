@@ -19,6 +19,15 @@ test_that("naming", {
     expect_equal(length((s2 <- simulate(fm2,1))[[1]]),177)
     expect_equal(head(rownames(s1)),paste0("a",1:6))
     expect_equal(head(rownames(s2)),paste0("a",4:9))
+
+    ## test simulation
+    expect_is(attr(simulate(fm2),"na.action"),"omit")
+    expect_is(refit(fm2,simulate(fm2)),"merMod")
+    expect_equal(fixef(fm2),fixef(refit(fm2,sleepstudyNA$Reaction)))
+    fm2ex <- update(fm2,na.action=na.exclude)
+    expect_equal(nrow(ss2 <- simulate(fm2ex)),180)
+    expect_is(refit(fm2,ss2[[1]]),"merMod")
+
     ## na.pass (pretty messed up)
     fm3 <- update(fm1,data=sleepstudyNA,
                   control=lmerControl(check.conv.grad="ignore"),
@@ -28,7 +37,8 @@ test_that("naming", {
     expect_error(fm4 <- update(fm1,data=sleepstudyNA2,
                                control=lmerControl(check.conv.grad="ignore"),
                                na.action=na.pass),"NA in Z")
-    expect_is(suppressWarnings(confint(fm2,method="boot",nsim=3)),"matrix")
+    expect_is(suppressWarnings(confint(fm2,method="boot",nsim=3,
+                                       quiet=TRUE)),"matrix")
 })
 test_that("other_NA", {
     cake2 <- rbind(cake,tail(cake,1))
@@ -48,13 +58,12 @@ test_that("other_NA", {
     fm1_exclude <- update(fm1,na.action=na.exclude)
     expect_equal(length(fitted(fm1_omit)),270)
     expect_equal(length(fitted(fm1_exclude)),271)
-    ## FIXME:  fails on Windows (not on Linux!)
     expect_true(is.na(tail(predict(fm1_exclude),1)))
     ## test predict.lm
     d <- data.frame(x=1:10,y=c(rnorm(9),NA))
     lm1 <- lm(y~x,data=d,na.action=na.exclude)
-    predict(lm1)
-    predict(lm1,newdata=data.frame(x=c(1:4,NA)))
+    expect_is(predict(lm1),"numeric")
+    expect_equal(sum(is.na(predict(lm1,newdata=data.frame(x=c(1:4,NA))))),1)
     ## Triq examples ...
     m.lmer <- lmer (angle ~ temp + (1 | recipe) + (1 | replicate),
                     data=cake)

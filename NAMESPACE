@@ -2,6 +2,7 @@ useDynLib(lme4,.registration=TRUE)
 
 ## base packages
 importFrom("graphics", plot)
+importFrom("grid", gpar,viewport)
 importFrom("splines", backSpline,interpSpline,periodicSpline)
 importFrom("methods", show)
 importFrom("stats",
@@ -11,7 +12,6 @@ importFrom("stats",
            update, vcov, weights)
 ## Recommended packages
 importClassesFrom("Matrix", corMatrix, dgCMatrix, dpoMatrix, dCHMsimpl)
-importFrom("grid", gpar,viewport)
 importFrom("lattice",
            bwplot,
            current.panel.limits,
@@ -29,9 +29,9 @@ importFrom("Matrix", drop0, rankMatrix, rBind, sparseMatrix)
 importFrom("nlme", fixef,ranef,VarCorr)
 importMethodsFrom("Matrix", "%*%",coerce,crossprod,diag,t,tcrossprod,solve,chol2inv)
 ## other CRAN packages:
-import(RcppEigen)
 importFrom("Rcpp", evalCpp)
 importFrom("minqa", bobyqa)
+importFrom("nloptr", nloptr)
 
 export(bootMer)
 export(devcomp)
@@ -62,6 +62,7 @@ export(lmerControl, glmerControl, nlmerControl,
 export(lmerResp)
 export(lmList)
 export(lmResp)
+export(logProf)
 export(merPredD)
 export(mkGlmerDevfun)
 export(mkLmerDevfun)
@@ -74,6 +75,7 @@ export(NelderMead)
 export(ngrps)
 export(nlformula)
 export(nlmer)
+export(nloptwrap)
 export(nlsResp)
 export(nobars)
 export(optimizeGlmer)
@@ -82,6 +84,7 @@ export(ranef)
 export(refit)
 export(refitML)
 export(rePos)
+export(REMLcrit)
 export(sigma)
 export(.simulateFun)
 export(subbars)

@@ -57,7 +57,7 @@ namespace lme4 {
         setTheta(d_theta);          // starting values into Lambda
         d_L.cholmod().final_ll = 1; // force an LL' decomposition
         updateLamtUt();
-        d_L.analyzePattern(d_LamtUt); // perform symbolic analysis
+        d_L.analyzePattern(d_LamtUt * d_LamtUt.transpose()); // perform symbolic analysis
         if (d_L.info() != Eigen::Success)
             throw runtime_error("CholeskyDecomposition.analyzePattern failed");
     }
@@ -249,12 +249,30 @@ namespace lme4 {
     
     // using a point so as to detect NULL
     void merPredD::updateDecomp(const MatrixXd* xPenalty) {  // update L, RZX and RX
+	int debug=0;
+	
+	if (debug) Rcpp::Rcout << "start updateDecomp" << std::endl;
         updateL();
+	if (debug) {
+	    Rcpp::Rcout << "updateDecomp 2: " << 
+		d_RZX.cols() << " " << d_RZX.rows() << " " <<
+		d_LamtUt.cols() << " " << d_LamtUt.rows() << " " <<
+		d_V.cols() << " " << d_V.rows() << " " <<
+		std::endl;
+	}
+	if (d_LamtUt.cols() != d_V.rows()) {
+	    ::Rf_warning("dimension mismatch in updateDecomp()");
+	    // Rcpp::Rcout << "WARNING: dimension mismatch in updateDecomp(): " <<
+	    // " LamtUt=" << d_LamtUt.rows() << "x" << d_LamtUt.cols() << 
+	    // "; V=" << d_V.rows() << "x" << d_V.cols() << " " <<
+	    // std::endl;
+	}
         d_RZX         = d_LamtUt * d_V;
+	if (debug) Rcpp::Rcout << "updateDecomp 3" << std::endl;
         if (d_p > 0) {
             d_L.solveInPlace(d_RZX, CHOLMOD_P);
             d_L.solveInPlace(d_RZX, CHOLMOD_L);
-            
+	    if (debug) Rcpp::Rcout << "updateDecomp 4" << std::endl;
             MatrixXd      VtVdown(d_VtV);
             
             if (xPenalty == NULL)
@@ -262,9 +280,11 @@ namespace lme4 {
             else {
                 d_RX.compute(VtVdown.selfadjointView<Eigen::Upper>().rankUpdate(d_RZX.adjoint(), -1).rankUpdate(*xPenalty, 1));
             }
+	    if (debug) Rcpp::Rcout << "updateDecomp 5" << std::endl;
             if (d_RX.info() != Eigen::Success)
                 ::Rf_error("Downdated VtV is not positive definite");
             d_ldRX2         = 2. * d_RX.matrixLLT().diagonal().array().abs().log().sum();
+	    if (debug) Rcpp::Rcout << "updateDecomp 6" << std::endl;
         }
     }
 

@@ -3,7 +3,51 @@
 \name{NEWS}
 \title{lme4 News}
 \encoding{UTF-8}
+\section{CHANGES IN VERSION 1.1-7}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item the \code{nloptr} package is now imported;
+      a wrapper function (\code{nloptwrap}) is provided so that
+      \code{lmerControl(optimizer="nloptwrap")} is all that's necessary
+      to use \code{nloptr} optimizers in the nonlinear optimization
+      stage (the default algorithm is NLopt's implementation
+      of BOBYQA: see \code{?nloptwrap} for examples)
+      \item preliminary implementation of checks for scaling
+      of model matrix columns (see \code{check.scaleX} in
+      \code{?lmerControl})
+      \item \code{beta} is now allowed as a synonym for \code{fixef}
+      when specifying starting parameters (Github #194)
+    }
+  }
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item the use of \code{deviance} to return the REML criterion
+      is now deprecated; users should use \code{REMLcrit()} instead
+      (Github #211)
+    \item changed the default value of \code{check.nobs.vs.rankZ} to
+    \code{"ignore"} (Github #214)
+    }
+  }
+    \subsection{BUG FIXES}{
+    \itemize{
+      \item change gradient testing from absolute to relative
+      \item fix \code{confint(.,method="boot")} to allow/work
+      properly with \code{boot.type} values other than \code{"perc"}
+      (reported by Alan Zaslavsky)
+      \item allow \code{plot()} to work when data are specified in a different
+      environment (reported by Dieter Menne)
+      \item \code{predict} and \code{simulate} work for matrix-valued
+      predictors (Github #201)
+      \item other \code{simulate} bugs (Github #212)
+      \item \code{predict} no longer warns spuriously when
+      original response was a factor (Github #205)
+      \item fix memory access issues (Github #200)
+    }
+  }
+}
 \section{CHANGES IN VERSION 1.1-6}{
+  This version incorporates no changes in functionality, just
+  modifications to testing and dependencies for CRAN/backward compatibility.
   \subsection{BUG FIXES}{
     \itemize{
       \item change \code{drop1} example to prevent use of old/incompatible
@@ -18,6 +62,7 @@
 \section{CHANGES IN VERSION 1.1-5}{
   \subsection{BUG FIXES}{
     \itemize{
+      \item improved NA handling in \code{simulate} and \code{refit}
       \item made internal handling of \code{weights}/\code{offset}
       arguments slightly more robust (Github #191)
       \item handle non-positive-definite estimated fixed effect

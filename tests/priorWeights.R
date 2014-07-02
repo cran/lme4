@@ -96,8 +96,7 @@ stopifnot(do.call(all.equal, sleepComp))
 sleepComp$tolerance <- 0
 do.call(all.equal, sleepComp)
 
-if(require("mlmRev")) {
-    data(Chem97, package = "mlmRev")
+if (require("mlmRev")) {
     n <- nrow(Chem97)
     v <- rpois(n,1) + 1
     w <- 1/v
@@ -109,8 +108,6 @@ if(require("mlmRev")) {
     Chem97Comp$tolerance <- 0
     do.call(all.equal, Chem97Comp)
 }
-
-## library("lme4")
 
 set.seed(2)
 n <- 40
