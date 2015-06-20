@@ -1,8 +1,8 @@
 namedList <- function(...) {
     L <- list(...)
-    snm <- sapply(substitute(list(...)),deparse)[-1]
+    snm <- sapply(substitute(list(...)), deparse)[-1]
     if (is.null(nm <- names(L))) nm <- snm
-    if (any(nonames <- nm=="")) nm[nonames] <- snm[nonames]
+    if (any(nonames <- nm == "")) nm[nonames] <- snm[nonames]
     setNames(L,nm)
 }
 
@@ -148,6 +148,7 @@ glmerControl <-
 	     sparseX=FALSE,
 	     tolPwrss = 1e-7,
 	     compDev = TRUE,
+             nAGQ0initStep = TRUE,
 	     ## input checking options
 	     check.nobs.vs.rankZ="ignore", ## "warningSmall",
 	     check.nobs.vs.nlev="stop",
@@ -159,6 +160,7 @@ glmerControl <-
 	     "stop.deficient", "ignore"),
 	     check.scaleX = "warning",
 	     check.formula.LHS="stop",
+	     check.response.not.const = "stop",
 	     ## convergence checking options
 	     check.conv.grad	 = .makeCC("warning", tol = 1e-3, relTol = NULL),
 	     check.conv.singular = .makeCC(action = "ignore",  tol = 1e-4),
@@ -208,6 +210,7 @@ glmerControl <-
                         boundary.tol,
 			tolPwrss,
 			compDev,
+                        nAGQ0initStep,
 			checkControl=
 			namedList(check.nobs.vs.rankZ,
                                   check.nobs.vs.nlev,
@@ -216,7 +219,8 @@ glmerControl <-
                                   check.nobs.vs.nRE,
 				  check.rankX,
                                   check.scaleX,
-                                  check.formula.LHS),
+                                  check.formula.LHS,
+				                          check.response.not.const),
                         checkConv=
                         namedList(check.conv.grad,
                                   check.conv.singular,

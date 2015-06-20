@@ -25,7 +25,7 @@ noLHSform <- function(formula) {
 ##' @param val value of control being set
 checkCtrlLevels <- function(cstr, val, smallOK=FALSE) {
     bvals <- c("stop","warning","ignore")
-    if (smallOK) bvals <- outer(bvals,c("","Small"),paste0)
+    if (smallOK) bvals <- outer(bvals, c("","Small"), paste0)
     if (!is.null(val) && !val %in% bvals)
         stop("invalid control level ",sQuote(val)," in ",cstr,": valid options are {",
              paste(sapply(bvals,sQuote),collapse=","),"}")
@@ -45,38 +45,42 @@ wmsg <- function(n,cmp.val,allow.n,msg1="",msg2="",msg3="") {
     }
     ## %s without spaces intentional (don't want an extra space if the
     ## message component is empty)
-    wstr <- sprintf("%s (=%d) %s %s (=%d)%s; the random-effects parameters%s are probably unidentifiable",msg1,n,cmp,msg2,cmp.val,msg3,rstr)
-    list(unident=unident,wstr=wstr)
+    wstr <- sprintf("%s (=%d) %s %s (=%d)%s; the random-effects parameters%s are probably unidentifiable",
+                    msg1, n, cmp,msg2,cmp.val, msg3, rstr)
+    list(unident=unident, wstr=wstr)
 }
 
+##' For each r.e. term, test if Z has more columns than rows to detect
+##' unidentifiability:
+##' @title
+##' @param Ztlist list of Zt matrices - one for each r.e. term
+##' @param n no. observations
+##' @param ctrl
+##' @param allow.n allow as many random-effects as there are observations
+##' for each term?
+##' @return possibly empty character string with warning messages
 checkZdims <- function(Ztlist, n, ctrl, allow.n=FALSE) {
-    ## Ztlist: list of Zt matrices - one for each r.e. term
-    ## n: no. observations
-    ## allow.n: allow as many random-effects as there are observations
-    ## for each term?
-    ##
-    ## For each r.e. term, test if Z has more columns than rows to detect
-    ## unidentifiability:
     stopifnot(is.list(Ztlist), is.numeric(n))
     cstr <- "check.nobs.vs.nRE"
     checkCtrlLevels(cstr, cc <- ctrl[[cstr]])
     term.names <- names(Ztlist)
-    rows <- vapply(Ztlist, nrow, numeric(1L))
-    cols <- vapply(Ztlist, ncol, numeric(1L))
+    rows <- vapply(Ztlist, nrow, 1L)
+    cols <- vapply(Ztlist, ncol, 1L)
     stopifnot(all(cols == n))
     if (doCheck(cc)) {
-        for(i in seq_along(Ztlist)) {
-            ww <- wmsg(cols[i],rows[i],allow.n,"number of observations",
+        unique(unlist(lapply(seq_along(Ztlist), function(i) {
+            ww <- wmsg(cols[i], rows[i], allow.n, "number of observations",
                        "number of random effects",
-                       sprintf(" for term (%s)",term.names[i]))
+                       sprintf(" for term (%s)", term.names[i]))
             if(ww$unident) {
-            switch(cc,
-                   "warning" = warning(ww$wstr,call.=FALSE),
-                   "stop" = stop(ww$wstr,call.=FALSE),
-                   stop(gettextf("unknown check level for '%s'", cstr), domain=NA))
-            }
-        }
-    }
+                switch(cc,
+                       "warning" = warning(ww$wstr, call.=FALSE),
+                       "stop"    = stop   (ww$wstr, call.=FALSE),
+                       stop(gettextf("unknown check level for '%s'", cstr), domain=NA))
+                ww$wstr
+            } else character()
+        }))) ## -> possibly empty vector of error messages
+    } else character()
 }
 
 
@@ -98,9 +102,10 @@ checkZrank <- function(Zt, n, ctrl, nonSmall = 1e6, allow.n=FALSE)
                        "stopSmall" =, "stop" = stop(ww$wstr,call.=FALSE),
                        stop(gettextf("unknown check level for '%s'", cstr),
                             domain=NA))
-            }
-        }
-    }
+                ww$wstr
+            } else character()
+        } else character()
+    } else character()
 }
 
 ## check scale of non-dummy columns of X, both
@@ -111,35 +116,45 @@ checkZrank <- function(Zt, n, ctrl, nonSmall = 1e6, allow.n=FALSE)
 ## What should the rules be?  try to find problematic columns
 ##   and rescale them?  scale+center?  Just scale or scale+center
 ##   all numeric columns?
-## 
+##
 checkScaleX <- function(X,  kind="warning", tol=1e3) {
-    cstr <- "check.scaleX"
+    ## cstr <- "check.scaleX"
     kinds <- eval(formals(lmerControl)[["check.scaleX"]])
-    if (!kind %in% kinds) stop(sprintf("unknown check-scale option: %s",kind))
+    if (!kind %in% kinds) stop(gettextf("unknown check-scale option: %s",kind))
     if (is.null(kind) || kind == "ignore") return(X)
     ## else :
     cont.cols <- apply(X,2,function(z) !all(z %in% c(0,1)))
-    col.sd <- apply(X[,cont.cols, drop=FALSE],2,sd)
+    col.sd <- apply(X[,cont.cols, drop=FALSE], 2L, sd)
     sdcomp <- outer(col.sd,col.sd,"/")
     logcomp <- abs(log(sdcomp[lower.tri(sdcomp)]))
     logsd <- abs(log(col.sd))
-    wmsg <- "Some predictor variables are on very different scales: consider rescaling"
     if (any(c(logcomp,logsd) > log(tol))) {
+        wmsg <- "Some predictor variables are on very different scales:"
         if (kind %in% c("warning","stop")) {
-            switch(kind, "warning" = warning(wmsg, call.=FALSE),
+            wmsg <- paste(wmsg, "consider rescaling")
+            switch(kind,
+                   "warning" = warning(wmsg, call.=FALSE),
                    "stop" = stop(wmsg, call.=FALSE))
         } else {
+            wmsg <- paste(wmsg, "auto-rescaled (results NOT adjusted)")
             ## mimic scale() because we don't want to make a copy in
             ##  order to retrieve the center/scale
             X[,cont.cols] <- sweep(X[,cont.cols,drop=FALSE],2,col.sd,"/")
             attr(X,"scaled:scale") <- setNames(col.sd,colnames(X)[cont.cols])
-            wmsg <- "Some predictor variables on very different scales: auto-rescaled (results NOT adjusted)"
-            if (kind=="warn+rescale") warning(wmsg,call.=FALSE)
+            if (kind == "warn+rescale") warning(wmsg, call.=FALSE)
         }
-    }
-    X
+    } else
+	wmsg <- character()
+    structure(X, msgScaleX = wmsg)
 }
 
+
+##' @title Check that grouping factors have at least 2 and </<= nobs(.) levels
+##' @param flist mkReTrms(.)$flist
+##' @param n
+##' @param ctrl
+##' @param allow.n
+##' @return
 checkNlevels <- function(flist, n, ctrl, allow.n=FALSE)
 {
     stopifnot(is.list(ctrl), is.numeric(n))
@@ -151,29 +166,36 @@ checkNlevels <- function(flist, n, ctrl, allow.n=FALSE)
 	wstr <- "grouping factors must have > 1 sampled level"
 	switch(cc,
 	       "warning" = warning(wstr,call.=FALSE),
-	       "stop" = stop(wstr,call.=FALSE),
+	       "stop"	 =    stop(wstr,call.=FALSE),
+               ## FIXME: should never get here since we have checkCtrLevels test above?
 	       stop(gettextf("unknown check level for '%s'", cstr), domain=NA))
-    }
+    } else wstr <- character()
     ## Part 2 ----------------
     cstr <- "check.nobs.vs.nlev"
     checkCtrlLevels(cstr, cc <- ctrl[[cstr]])
-    if (doCheck(cc)) {
-        if (any(if(allow.n) nlevelVec > n else nlevelVec >= n))
-            stop(gettextf(
-                "number of levels of each grouping factor must be %s number of observations",
-                if(allow.n) "<=" else "<"), domain=NA)
-    }
+    if (doCheck(cc) && any(if(allow.n) nlevelVec > n else nlevelVec >= n)) {
+	wst2 <- gettextf(
+	    "number of levels of each grouping factor must be %s number of observations",
+	    if(allow.n) "<=" else "<")
+	switch(cc,
+	       "warning" = warning(wst2, call.=FALSE),
+	       "stop"    =    stop(wst2, call.=FALSE)
+	       ## shouldn't reach here
+	       )
+    } else wst2 <- character()
 
     ## Part 3 ----------------
     cstr <- "check.nlev.gtreq.5"
     checkCtrlLevels(cstr, cc <- ctrl[[cstr]])
     if (doCheck(cc) && any(nlevelVec < 5)) {
-	wstr <- "grouping factors with < 5 sampled levels may give unreliable estimates"
+	wst3 <- "grouping factors with < 5 sampled levels may give unreliable estimates"
 	switch(cc,
-	       "warning" = warning(wstr,call.=FALSE),
-	       "stop" = stop(wstr,call.=FALSE),
+	       "warning" = warning(wst3, call.=FALSE),
+	       "stop"	 = stop	  (wst3, call.=FALSE),
 	       stop(gettextf("unknown check level for '%s'", cstr), domain=NA))
-    }
+    } else wst3 <- character()
+    ## return:
+    c(wstr, wst2, wst3) ## possibly == character(0)
 }
 
 ##' Coefficients (columns) are dropped from a design matrix to
@@ -200,6 +222,7 @@ chkRank.drop.cols <- function(X, kind, tol = 1e-7, method = "qr.R") {
     ## Test and match arguments:
     stopifnot(is.matrix(X))
     kinds <- eval(formals(lmerControl)[["check.rankX"]])
+    if (!kind %in% kinds) stop(gettextf("undefined option for 'kind': %s", kind))
     ## c("message+drop.cols", "ignore",
     ##   "silent.drop.cols", "warn+drop.cols", "stop.deficient"),
 
@@ -208,9 +231,10 @@ chkRank.drop.cols <- function(X, kind, tol = 1e-7, method = "qr.R") {
     p <- ncol(X)
     if (kind == "stop.deficient") {
         if ((rX <- rankMatrix(X, tol=tol, method=method)) < p)
-            stop(gettextf("the fixed-effects model matrix is column rank deficient (rank(X) = %d < %d = p); the fixed effects will be jointly unidentifiable",
-                          rX, p),
-                 call. = FALSE)
+            stop(gettextf(sub("\n +", "\n",
+		  "the fixed-effects model matrix is column rank deficient (rank(X) = %d < %d = p);
+                   the fixed effects will be jointly unidentifiable"),
+                          rX, p), call. = FALSE)
     } else {
         ## kind is one of "message+drop.cols", "silent.drop.cols", "warn+drop.cols"
         ## --> consider to drop extraneous columns: "drop.cols":
@@ -222,13 +246,15 @@ chkRank.drop.cols <- function(X, kind, tol = 1e-7, method = "qr.R") {
         rnkX <- qr.X$rank
         if (rnkX == p)
             return(X) ## return X if X has full column rank
-        if (kind != "silent.drop.cols") { ## message about no. dropped columns:
-	    msg <- sprintf(ngettext(p - rnkX,
-			"fixed-effect model matrix is rank deficient so dropping %d column / coefficient",
-			"fixed-effect model matrix is rank deficient so dropping %d columns / coefficients"),
-			   p - rnkX)
+        ## else:
+
+        ## message about no. dropped columns:
+        msg <- sprintf(ngettext(p - rnkX,
+		"fixed-effect model matrix is rank deficient so dropping %d column / coefficient",
+		"fixed-effect model matrix is rank deficient so dropping %d columns / coefficients"),
+                       p - rnkX)
+        if (kind != "silent.drop.cols")
             (if(kind == "warn+drop.cols") warning else message)(msg, domain = NA)
-        }
         ## Save properties of X
         contr <- attr(X, "contrasts")
         asgn <- attr(X, "assign")
@@ -236,6 +262,7 @@ chkRank.drop.cols <- function(X, kind, tol = 1e-7, method = "qr.R") {
         ## Return the columns correponding to the first qr.x$rank pivot
         ## elements of X:
         keep <- qr.X$pivot[seq_len(rnkX)]
+        dropped.names <- colnames(X[,-keep,drop=FALSE])
         X <- X[, keep, drop = FALSE]
 	if (rankMatrix(X, tol=tol, method=method) < ncol(X))
             stop(gettextf("Dropping columns failed to produce full column rank design matrix"),
@@ -244,14 +271,43 @@ chkRank.drop.cols <- function(X, kind, tol = 1e-7, method = "qr.R") {
         ## Re-assign relevant attributes:
         if(!is.null(contr)) attr(X, "contrasts") <- contr
         if(!is.null(asgn))  attr(X, "assign")    <- asgn[keep]
+	attr(X, "msgRankdrop") <- msg
+	attr(X, "col.dropped") <- setNames(qr.X$pivot[(rnkX+1L):p],
+                                           dropped.names)
     }
     X
 }
 
-## NA predict and restore rownames of original data if necessary
-napredictx <- function(x,...) {
-    res <- napredict(x)
+# check that response is not constant
+checkResponse <- function(y, ctrl) {
+  stopifnot(is.list(ctrl))
+  cstr <- "check.response.not.const"
+  checkCtrlLevels(cstr, cc <- ctrl[[cstr]])
+  if (doCheck(cc) && length(unique(y)) < 2L) {
+    wstr <- "Response is constant"
+    switch(cc,
+           "warning" = warning(wstr, call.=FALSE),
+           "stop"   =    stop(wstr, call.=FALSE),
+           stop(gettextf("unknown check level for '%s'", cstr), domain=NA))
+  } else character()
 }
+
+##' Extract all warning msgs from a merMod object
+.merMod.msgs <- function(x) {
+    ## currently only those found with 'X' :
+    aX <- attributes(x@pp$X)
+    wmsgs <- grep("^msg", names(aX))
+    if(any(has.msg <- nchar(Xwmsgs <- unlist(aX[wmsgs])) > 0))
+	Xwmsgs[has.msg]
+    else
+	character()
+}
+
+
+## NA predict and restore rownames of original data if necessary
+## napredictx <- function(x,...) {
+##     res <- napredict(x)
+## }
 
 ##' @rdname modular
 ##' @param control a list giving (for \code{[g]lFormula}) all options (see \code{\link{lmerControl}} for running the model;
@@ -274,7 +330,7 @@ lFormula <- function(formula, data=NULL, REML = TRUE,
     ignoreArgs <- c("start","verbose","devFunOnly","control")
     l... <- list(...)
     l... <- l...[!names(l...) %in% ignoreArgs]
-    do.call("checkArgs",c(list("lmer"),l...))
+    do.call("checkArgs", c(list("lmer"),l...))
     if (!is.null(list(...)[["family"]])) {
         ## lmer(...,family=...); warning issued within checkArgs
         mc[[1]] <- quote(lme4::glFormula)
@@ -284,23 +340,24 @@ lFormula <- function(formula, data=NULL, REML = TRUE,
 
     cstr <- "check.formula.LHS"
     checkCtrlLevels(cstr,control[[cstr]])
-    denv <- checkFormulaData(formula,data,checkLHS=(control$check.formula.LHS=="stop"))
+    denv <- checkFormulaData(formula, data,
+                             checkLHS = control$check.formula.LHS == "stop")
     #mc$formula <- formula <- as.formula(formula,env=denv) ## substitute evaluated call
-    formula <- as.formula(formula,env=denv)
+    formula <- as.formula(formula, env=denv)
     ## as.formula ONLY sets environment if not already explicitly set ...
     ## ?? environment(formula) <- denv
     # get rid of || terms so update() works as expected
     RHSForm(formula) <- expandDoubleVerts(RHSForm(formula))
     mc$formula <- formula
 
+    ## (DRY! copied from glFormula)
     m <- match(c("data", "subset", "weights", "na.action", "offset"),
-               names(mf), 0)
-    mf <- mf[c(1, m)]
+               names(mf), 0L)
+    mf <- mf[c(1L, m)]
     mf$drop.unused.levels <- TRUE
     mf[[1]] <- as.name("model.frame")
     fr.form <- subbars(formula) # substitute "|" by "+"
     environment(fr.form) <- environment(formula)
-    ## (DRY! copied from glFormula)
     ## model.frame.default looks for these objects in the environment
     ## of the *formula* (see 'extras', which is anything passed in ...),
     ## so they have to be put there ...
@@ -310,31 +367,33 @@ lFormula <- function(formula, data=NULL, REML = TRUE,
     }
     mf$formula <- fr.form
     fr <- eval(mf, parent.frame())
+    ## convert character vectors to factor (defensive)
+    fr <- factorize(fr.form, fr, char.only=TRUE)
     ## store full, original formula & offset
     attr(fr,"formula") <- formula
     attr(fr,"offset") <- mf$offset
     n <- nrow(fr)
     ## random effects and terms modules
     reTrms <- mkReTrms(findbars(RHSForm(formula)), fr)
-    checkNlevels(reTrms$flist, n=n, control)
-    checkZdims(reTrms$Ztlist, n=n, control, allow.n=FALSE)
-    if (any(is.na(reTrms$Zt))) {
+    wmsgNlev <- checkNlevels(reTrms$flist, n=n, control)
+    wmsgZdims <- checkZdims(reTrms$Ztlist, n=n, control, allow.n=FALSE)
+    if (anyNA(reTrms$Zt)) {
         stop("NA in Z (random-effects model matrix): ",
              "please use ",
              shQuote("na.action='na.omit'"),
              " or ",
              shQuote("na.action='na.exclude'"))
     }
-    checkZrank(reTrms$Zt, n=n, control, nonSmall = 1e6)
+    wmsgZrank <- checkZrank(reTrms$Zt, n=n, control, nonSmall = 1e6)
 
     ## fixed-effects model matrix X - remove random effect parts from formula:
     fixedform <- formula
-    RHSForm(fixedform) <- if(is.null(nb <- nobars(RHSForm(fixedform)))) 1 else nb
+    RHSForm(fixedform) <- nobars(RHSForm(fixedform))
     mf$formula <- fixedform
     ## re-evaluate model frame to extract predvars component
     fixedfr <- eval(mf, parent.frame())
-    attr(attr(fr,"terms"),"predvars.fixed") <-
-        attr(attr(fixedfr,"terms"),"predvars")
+    attr(attr(fr,"terms"), "predvars.fixed") <-
+        attr(attr(fixedfr,"terms"), "predvars")
     X <- model.matrix(fixedform, fr, contrasts)#, sparse = FALSE, row.names = FALSE) ## sparseX not yet
     ## backward compatibility (keep no longer than ~2015):
     if(is.null(rankX.chk <- control[["check.rankX"]]))
@@ -344,7 +403,8 @@ lFormula <- function(formula, data=NULL, REML = TRUE,
         scaleX.chk <- eval(formals(lmerControl)[["check.scaleX"]])[[1]]
     X <- checkScaleX(X, kind=scaleX.chk)
 
-    list(fr = fr, X = X, reTrms = reTrms, REML = REML, formula = formula)
+    list(fr = fr, X = X, reTrms = reTrms, REML = REML, formula = formula,
+	 wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 }
 
 ## utility f'n for checking starting values
@@ -416,8 +476,9 @@ updateStart <- function(start,theta) {
 ##' \cr
 ##' \cr
 ##' @export
-mkLmerDevfun <- function(fr, X, reTrms, REML = TRUE, start = NULL, verbose=0, control=lmerControl(), ...) {
-
+mkLmerDevfun <- function(fr, X, reTrms, REML = TRUE, start = NULL,
+                         verbose = 0, control = lmerControl(), ...)
+{
     ## FIXME: make sure verbose gets handled properly
     #if (missing(fr)) {
     ## reconstitute frame
@@ -428,19 +489,37 @@ mkLmerDevfun <- function(fr, X, reTrms, REML = TRUE, start = NULL, verbose=0, co
     rho$pp <- do.call(merPredD$new, c(reTrms[c("Zt","theta","Lambdat","Lind")],
                                       n=nrow(X), list(X=X)))
     REMLpass <- if(REML) p else 0L
-    if(missing(fr)) rho$resp <- mkRespMod(REML = REMLpass, ...)
-    else rho$resp <- mkRespMod(fr, REML = REMLpass)
+    rho$resp <-
+        if(missing(fr)) mkRespMod(REML = REMLpass, ...) else mkRespMod(fr, REML = REMLpass)
     ## note: REML does double duty as rank of X and a flag for using
     ## REML maybe this should be mentioned in the help file for
     ## mkRespMod??  currently that help file says REML is logical.  a
     ## consequence of this double duty is that it is impossible to fit
     ## a model with no fixed effects using REML.
-    devfun <- mkdevfun(rho, 0L, verbose, control)
-    theta <- getStart(start,reTrms$lower,rho$pp)
+    devfun <- mkdevfun(rho, 0L, verbose=verbose, control=control)
+
+    # if all random effects are of the form 1|f and starting values not
+    # otherwise provided (and response variable is present, i.e. not doing
+    # a simulation) then compute starting values
+    if (is.null(start) &&
+	all(reTrms$cnms == "(Intercept)") &&
+	length(reTrms$flist) == length(reTrms$lower) &&
+        !is.null(y <- model.response(fr))) {
+        v <- sapply(reTrms$flist, function(f) var(ave(y, f)))
+        v.e <- var(y) - sum(v)
+        if (!is.na(v.e) && v.e > 0) {
+            v.rel <- v / v.e
+            if (all(v.rel >= reTrms$lower^2)) rho$pp$setTheta(sqrt(v.rel))
+        }
+    }
+
+    ## theta <- getStart(start, reTrms$lower, rho$pp)
+    ## ^^^^^ unused / obfuscation? should the above be rho$pp$setTheta(.) ?
+    ## MM: commenting it did not break any of our checks
     if (length(rho$resp$y) > 0)  ## only if non-trivial y
         devfun(rho$pp$theta) # one evaluation to ensure all values are set
     rho$lower <- reTrms$lower # SCW:  in order to be more consistent with mkLmerDevfun
-    return(devfun) # this should pass the rho environment implicitly
+    devfun # this should pass the rho environment implicitly
 }
 
 
@@ -510,7 +589,7 @@ optimizeLmer <- function(devfun,
 glFormula <- function(formula, data=NULL, family = gaussian,
                       subset, weights, na.action, offset,
                       contrasts = NULL, mustart, etastart,
-                      control=glmerControl(), ...) {
+                      control = glmerControl(), ...) {
     ## FIXME: does start= do anything? test & fix
 
     control <- control$checkControl ## this is all we really need
@@ -530,18 +609,19 @@ glFormula <- function(formula, data=NULL, family = gaussian,
     ignoreArgs <- c("start","verbose","devFunOnly","optimizer", "control", "nAGQ")
     l... <- list(...)
     l... <- l...[!names(l...) %in% ignoreArgs]
-    do.call("checkArgs",c(list("glmer"),l...))
+    do.call("checkArgs", c(list("glmer"), l...))
 
     cstr <- "check.formula.LHS"
-    checkCtrlLevels(cstr,control[[cstr]])
+    checkCtrlLevels(cstr, control[[cstr]])
 
     denv <- checkFormulaData(formula, data,
-			     checkLHS = (control$check.formula.LHS=="stop"))
-    mc$formula <- formula <- as.formula(formula,env=denv)    ## substitute evaluated version
+			     checkLHS = control$check.formula.LHS == "stop")
+    mc$formula <- formula <- as.formula(formula, env = denv)    ## substitute evaluated version
 
+    ## DRY ...
     m <- match(c("data", "subset", "weights", "na.action", "offset",
-                 "mustart", "etastart"), names(mf), 0)
-    mf <- mf[c(1, m)]
+                 "mustart", "etastart"), names(mf), 0L)
+    mf <- mf[c(1L, m)]
     mf$drop.unused.levels <- TRUE
     mf[[1]] <- as.name("model.frame")
     fr.form <- subbars(formula) # substitute "|" by "+"
@@ -551,10 +631,12 @@ glFormula <- function(formula, data=NULL, family = gaussian,
     ## so they have to be put there ...
     for (i in c("weights", "offset")) {
         if (!eval(bquote(missing(x=.(i)))))
-            assign(i,get(i,parent.frame()),environment(fr.form))
+            assign(i, get(i, parent.frame()), environment(fr.form))
     }
     mf$formula <- fr.form
     fr <- eval(mf, parent.frame())
+    ## convert character vectors to factor (defensive)
+    fr <- factorize(fr.form, fr, char.only = TRUE)
     ## store full, original formula & offset
     attr(fr,"formula") <- formula
     attr(fr,"offset") <- mf$offset
@@ -562,9 +644,9 @@ glFormula <- function(formula, data=NULL, family = gaussian,
     ## random effects and terms modules
     reTrms <- mkReTrms(findbars(RHSForm(formula)), fr)
     ## TODO: allow.n = !useSc {see FIXME below}
-    checkNlevels(reTrms$ flist, n=n, control, allow.n=TRUE)
-    checkZdims(reTrms$Ztlist, n=n, control, allow.n=TRUE)
-    checkZrank(reTrms$ Zt, n=n, control, nonSmall = 1e6, allow.n=TRUE)
+    wmsgNlev <- checkNlevels(reTrms$ flist, n = n, control, allow.n = TRUE)
+    wmsgZdims <- checkZdims(reTrms$Ztlist, n = n, control, allow.n = TRUE)
+    wmsgZrank <- checkZrank(reTrms$ Zt, n = n, control, nonSmall = 1e6, allow.n = TRUE)
 
     ## FIXME: adjust test for families with estimated scale parameter:
     ##   useSc is not defined yet/not defined properly?
@@ -574,8 +656,7 @@ glFormula <- function(formula, data=NULL, family = gaussian,
 
     ## fixed-effects model matrix X - remove random effect parts from formula:
     fixedform <- formula
-    RHSForm(fixedform) <- if(is.null(nb <- nobars(RHSForm(fixedform))))
-        1 else nb
+    RHSForm(fixedform) <- nobars(RHSForm(fixedform))
     mf$formula <- fixedform
     ## re-evaluate model frame to extract predvars component
     fixedfr <- eval(mf, parent.frame())
@@ -590,40 +671,44 @@ glFormula <- function(formula, data=NULL, family = gaussian,
         scaleX.chk <- eval(formals(lmerControl)[["check.scaleX"]])[[1]]
     X <- checkScaleX(X, kind=scaleX.chk)
 
-    list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula)
+    list(fr = fr, X = X, reTrms = reTrms, family = family, formula = formula,
+	 wmsgs = c(Nlev = wmsgNlev, Zdims = wmsgZdims, Zrank = wmsgZrank))
 }
 
 ##' @rdname modular
 ##' @export
-mkGlmerDevfun <- function(fr, X, reTrms, family, nAGQ = 1L, verbose = 0L,
-                          control=glmerControl(), ...){
+mkGlmerDevfun <- function(fr, X, reTrms, family, nAGQ = 1L, verbose = 0L, maxit = 100L,
+                          control=glmerControl(), ...) {
     stopifnot(length(nAGQ <- as.integer(nAGQ)) == 1L,
-            nAGQ >= 0L,
-            nAGQ <= 25L)
+              0L <= nAGQ, nAGQ <= 25L)
     verbose <- as.integer(verbose)
-    rho             <- as.environment(list(verbose=verbose, tolPwrss=control$tolPwrss,
-                                           compDev=control$compDev))
-    parent.env(rho) <- parent.frame()
-    rho$pp          <- do.call(merPredD$new,
-                               c(reTrms[c("Zt","theta","Lambdat","Lind")],
-                                 n=nrow(X), list(X=X)))
-    if (missing(fr)) rho$resp <- mkRespMod(family=family, ...)
-    else rho$resp             <- mkRespMod(fr, family=family)
+    maxit   <- as.integer(maxit)
+    rho <- list2env(list(verbose=verbose, maxit=maxit,
+                         tolPwrss= control$tolPwrss,
+                         compDev = control$compDev),
+                    parent = parent.frame())
+    rho$pp <- do.call(merPredD$new,
+                      c(reTrms[c("Zt","theta","Lambdat","Lind")],
+                        n=nrow(X), list(X=X)))
+    rho$resp <- if (missing(fr))
+        mkRespMod(family=family, ...)
+    else
+        mkRespMod(fr, family=family)
+    nAGQinit <- if(control$nAGQ0initStep) 0L else 1L
     ## allow trivial y
     if (length(y <- rho$resp$y) > 0) {
-        if (length(unique(y)) < 2L)
-            stop("Response is constant - cannot fit the model")
-        rho$verbose     <- as.integer(verbose)
+        checkResponse(y, control$checkControl)
+        rho$verbose <- as.integer(verbose)
 
         ## initialize (from mustart)
-        .Call(glmerLaplace, rho$pp$ptr(), rho$resp$ptr(), 0L, control$tolPwrss, verbose)
+        .Call(glmerLaplace, rho$pp$ptr(), rho$resp$ptr(), nAGQinit,
+              control$tolPwrss, maxit, verbose)
         rho$lp0         <- rho$pp$linPred(1) # each pwrss opt begins at this eta
         rho$pwrssUpdate <- glmerPwrssUpdate
     }
-    rho$lower       <- reTrms$lower     # not needed in rho?
-    devfun <- mkdevfun(rho, 0L, verbose, control)
-                                        #if (devFunOnly && !nAGQ) return(devfun)
-    return(devfun) # this should pass the rho environment implicitly
+    rho$lower <- reTrms$lower     # not needed in rho?
+    mkdevfun(rho, nAGQinit, maxit=maxit, verbose=verbose, control=control)
+    ## this should pass the rho environment implicitly
 }
 
 
@@ -662,12 +747,12 @@ optimizeGlmer <- function(devfun,
     } else {  ## stage == 2
         rho$resp$setOffset(rho$baseOffset)
     }
-    ## FIXME: implement this ...
-    if (restart_edge) stop("restart_edge not implemented for optimizeGlmer yet")
-    if (boundary.tol > 0) {
-        opt <- check.boundary(rho,opt,devfun,boundary.tol)
-    }
-    return(opt)
+    if (restart_edge) ## FIXME: implement this ...
+        stop("restart_edge not implemented for optimizeGlmer yet")
+    if (boundary.tol > 0)
+        check.boundary(rho, opt, devfun, boundary.tol)
+    else
+        opt
 }
 
 check.boundary <- function(rho,opt,devfun,boundary.tol) {
@@ -694,6 +779,10 @@ check.boundary <- function(rho,opt,devfun,boundary.tol) {
 ##' @rdname modular
 ##' @export
 updateGlmerDevfun <- function(devfun, reTrms, nAGQ = 1L){
+    if (nAGQ > 1L) {
+        if (length(reTrms$flist) != 1L || length(reTrms$cnms[[1]]) != 1L)
+            stop("nAGQ > 1 is only available for models with a single, scalar random-effects term")
+    }
     rho <- environment(devfun)
     rho$nAGQ       <- nAGQ
     rho$lower      <- c(rho$lower, rep.int(-Inf, length(rho$pp$beta0)))
@@ -702,10 +791,5 @@ updateGlmerDevfun <- function(devfun, reTrms, nAGQ = 1L){
     rho$baseOffset <- rho$resp$offset + 0 # forcing a copy (!)
     rho$GQmat      <- GHrule(nAGQ)
     rho$fac        <- reTrms$flist[[1]]
-    if (nAGQ > 1L) {
-        if (length(reTrms$flist) != 1L || length(reTrms$cnms[[1]]) != 1L)
-            stop("nAGQ > 1 is only available for models with a single, scalar random-effects term")
-    }
-    devfun <- mkdevfun(rho, nAGQ)  # does this attach rho to devfun??
-    return(devfun)
+    mkdevfun(rho, nAGQ)  # does this attach rho to devfun??
 }

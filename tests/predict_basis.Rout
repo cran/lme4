@@ -1,6 +1,6 @@
 
-R Under development (unstable) (2013-10-24 r64106) -- "Unsuffered Consequences"
-Copyright (C) 2013 The R Foundation for Statistical Computing
+R Under development (unstable) (2014-09-02 r66512) -- "Unsuffered Consequences"
+Copyright (C) 2014 The R Foundation for Statistical Computing
 Platform: i686-pc-linux-gnu (32-bit)
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -38,27 +38,37 @@ Type 'q()' to quit R.
 > 
 > library(lme4)
 Loading required package: Matrix
-> library(testthat)
+Loading required package: Rcpp
 > fm1 <- lmer(Reaction ~ ns(Days,2) + (1|Subject), sleepstudy)
 > fm2 <- lmer(Reaction ~ poly(Days,2) + (1|Subject), sleepstudy)
 > fm3 <- lmer(Reaction ~ poly(Days,2,raw=TRUE) + (1|Subject), sleepstudy)
 > 
-> newdat0 <- data.frame(Days=unique(sleepstudy$Days))
-> newdat <- data.frame(Days=5:12)
+> newdat0 <- data.frame(Days = unique(sleepstudy$Days))
+> newdat  <- data.frame(Days = 5:12)
 > tmpf <- function(fit) {
-+     with(sleepstudy,plot(Reaction~Days,xlim=c(0,12)))
-+     with(sleepstudy,points(Days,predict(fit),col=2))
-+     with(newdat0,lines(Days,predict(fit,ReForm=NA,newdata=newdat0),col=4))
-+     with(newdat,lines(Days,predict(fit,ReForm=NA,newdata=newdat),col=5))
++     with(sleepstudy, {
++         plot  (Reaction~Days, xlim=c(0,12))
++         points(Days, predict(fit), col=2)
++     })
++     lines(newdat0$ Days, predict(fit,ReForm=NA,newdata=newdat0), col=4)
++     lines(newdat $ Days, predict(fit,ReForm=NA,newdata=newdat ), col=5)
 + }
 > 
 > stopifnot(all.equal(predict(fm2,newdat,ReForm=NA),
 +                     predict(fm3,newdat,ReForm=NA)))
+'re.form' is now preferred to 'ReForm'
+'re.form' is now preferred to 'ReForm'
 > 
 > ## pictures
 > tmpf(fm1)
+'re.form' is now preferred to 'ReForm'
+'re.form' is now preferred to 'ReForm'
 > tmpf(fm2)
+'re.form' is now preferred to 'ReForm'
+'re.form' is now preferred to 'ReForm'
 > tmpf(fm3)
+'re.form' is now preferred to 'ReForm'
+'re.form' is now preferred to 'ReForm'
 > 
 > ## test for GLMMs
 > set.seed(101)
@@ -70,9 +80,11 @@ Loading required package: Matrix
 > 
 > newdat <- data.frame(x=c(1,4,6))
 > stopifnot(all.equal(predict(gm1,newdat,ReForm=NA),
-+                     predict(gm2,newdat,ReForm=NA),tol=3e-6))
++                     predict(gm2,newdat,ReForm=NA),tolerance=3e-6))
+'re.form' is now preferred to 'ReForm'
+'re.form' is now preferred to 'ReForm'
 > 
 > 
 > proc.time()
    user  system elapsed 
-  4.516   2.716   7.945 
+  3.128   0.072   3.201 

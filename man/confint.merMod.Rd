@@ -9,35 +9,43 @@
 \method{confint}{merMod}(object, parm, level = 0.95,
 	method = c("profile", "Wald", "boot"), zeta,
 	nsim = 500,
-        boot.type = c("perc","basic","norm"), quiet = FALSE,
+        boot.type = c("perc","basic","norm"),
+        FUN = NULL, quiet = FALSE,
 	oldNames = TRUE, ...)
 }
 \arguments{
   \item{object}{a fitted [ng]lmer model}
-  \item{parm}{parameters of which intervals are sought. Specified by
-    integer position, or for \code{method = "profile"}, e.g., via a
-    \code{\link{character}} vector, see Note below, and
-    \code{\link[=profile.merMod]{profile}}.}
+  \item{parm}{parameters for which intervals are sought. Specified by an
+    integer vector of positions, \code{\link{character}} vector of
+    parameter names, or (unless doing parametric bootstrapping with a
+    user-specified bootstrap function) \code{"theta_"} or \code{"beta_"}
+    to specify variance-covariance or fixed effects parameters only: see the
+    \code{which} parameter of \code{\link[=profile.merMod]{profile}}.}
   \item{level}{confidence level \eqn{< 1}, typically above 0.90.}
   \item{method}{a \code{\link{character}} string determining the method
     for computing the confidence intervals.}
   \item{zeta}{(for \code{method = "profile"} only:) likelihood cutoff
     (if not specified, as by default, computed from \code{level}).}
   \item{nsim}{number of simulations for parametric bootstrap intervals.}
+  \item{FUN}{bootstrap function; if \code{NULL}, an internal function
+    that returns the fixed-effect parameters as well as the
+    random-effect parameters on the standard deviation/correlation scale
+    will be used. See \code{\link{bootMer}} for details.}
   \item{boot.type}{bootstrap confidence interval type, as described
     in \code{\link{boot.ci}}. (Methods \sQuote{stud} and \sQuote{bca}
     are unavailable because they require additional components to be
     calculated.)}
   \item{quiet}{(logical) suppress messages about computationally intensive profiling?}
-  \item{oldNames}{(logical) use old-style names for
-    \code{method="profile"}? (See \code{signames} argument to
-    \code{\link{profile}}).}
+  \item{oldNames}{(logical) use old-style names for variance-covariance
+    parameters, e.g. \code{".sig01"}, rather than newer (more informative) names such as
+    \code{"sd_(Intercept)|Subject"}? (See \code{signames} argument to \code{\link{profile}}).}
   \item{\dots}{additional parameters to be passed to
     \code{\link{profile.merMod}} or \code{\link{bootMer}}, respectively.}
 }
 \value{
   a numeric table (\code{\link{matrix}} with column and row names) of
-  confidence intervals.
+  confidence intervals; the confidence intervals are computed on the
+  standard deviation scale.
 }
 \note{
   The default method \code{"profile"} amounts to \preformatted{
@@ -56,14 +64,16 @@
     \item{\code{"profile"}:}{computing a
       likelihood profile and finding the appropriate cutoffs
       based on the likelihood ratio test;}
-    \item{\code{"Wald"}:}{approximate
+    \item{\code{"Wald"}:}{approximating
       the confidence intervals (of fixed-effect parameters
-      only) based on the estimated local curvature of the
+      only; all variance-covariance parameters
+      CIs will be returned as \code{NA})
+      based on the estimated local curvature of the
       likelihood surface;}
-    \item{\code{"boot"}:}{perform parametric
+    \item{\code{"boot"}:}{performing parametric
       bootstrapping with confidence intervals computed from the
       bootstrap distribution according to \code{boot.type} (see
-      \code{\link[boot]{boot.ci}}).}
+      \code{\link{bootMer}}, \code{\link[boot]{boot.ci}}).}
   }
 }
 \examples{

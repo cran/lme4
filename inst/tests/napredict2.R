@@ -1,10 +1,11 @@
-## refit with mising
+## refit with missing
 library(lme4)
 library(testthat)
 ## baseline model
-rownames(sleepstudy) <- paste0("a",rownames(sleepstudy))
-fm1 <- lmer(Reaction~Days+(Days|Subject),sleepstudy)
-sleepstudyNA <- sleepstudy
+sleepstudy2 <- sleepstudy
+rownames(sleepstudy2) <- paste0("a",rownames(sleepstudy2))
+fm1 <- lmer(Reaction~Days+(Days|Subject),sleepstudy2)
+sleepstudyNA <- sleepstudy2
 sleepstudyNA$Reaction[1:3] = NA
 ## na.omit
 fm2 <- update(fm1,data=sleepstudyNA,
@@ -23,19 +24,17 @@ expect_equal(head(rownames(s2)),paste0("a",4:9))
 fm3 <- update(fm1,data=sleepstudyNA,
               control=lmerControl(check.conv.grad="ignore"),
               na.action=na.pass)
-sleepstudyNA2 <- sleepstudy
+sleepstudyNA2 <- sleepstudy2
 sleepstudyNA2$Days[1:3] = NA
 library(testthat)
 expect_error(fm4 <- update(fm1,data=sleepstudyNA2,
               control=lmerControl(check.conv.grad="ignore"),
-              na.action=na.pass),"NA in Z matrix")
+              na.action=na.pass),"NA in Z")
 expect_is(suppressWarnings(confint(fm2,method="boot",nsim=3)),"matrix")
           
 
 ## fit.na.action <- attr(mfnew, "na.action")  ## line 270
 
-library(lme4)
-library(testthat)
 cake2 <- rbind(cake,tail(cake,1))
 cake2[nrow(cake2),"angle"] <- NA
 fm0 <- lmer(angle ~ recipe * temperature + (1|recipe:replicate), cake)

@@ -11,14 +11,17 @@
   models.
 
   The \code{log()} method and the more flexible \code{logProf()}
-  utility transform a lmer profile in one where logarithms of standard deviations
-  are used, see Details.
+  utility transform a lmer profile into one where logarithms of standard deviations
+  are used; see Details.
 }
 \usage{
-\method{profile}{merMod}(fitted, which = 1:nptot, alphamax = 0.01,
-	maxpts = 100, delta = cutoff/8, verbose = 0, devtol = 1e-09,
-        maxmult = 10, startmethod = "prev", optimizer = "bobyqa",
-	signames = TRUE, ...)
+\method{profile}{merMod}(fitted, which = NULL, alphamax = 0.01,
+	maxpts = 100, delta = NULL,
+        delta.cutoff = 1/8, verbose = 0, devtol = 1e-09,
+        maxmult = 10, startmethod = "prev", optimizer = NULL,
+        control=NULL, signames = TRUE,
+        parallel = c("no", "multicore", "snow"),
+        ncpus = getOption("profile.ncpus", 1L), cl = NULL, \dots)
 \method{as.data.frame}{thpr} (x, ...)
 \method{log}{thpr}(x, base = exp(1))
 logProf(x, base = exp(1), ranef = TRUE,
@@ -26,8 +29,9 @@ logProf(x, base = exp(1), ranef = TRUE,
 }
 \arguments{
   \item{fitted}{a fitted model, e.g., the result of \code{\link{lmer}(..)}.}
-  \item{which}{integer or character vector indicating which parameters
-    to profile: default is all parameters.  For integer, i.e., indexing,
+  \item{which}{NULL value,
+    integer or character vector indicating which parameters
+    to profile: default (NULL) is all parameters.  For integer, i.e., indexing,
     the parameters are ordered as follows:
     \describe{
       \item{(1)}{random effects (theta) parameters; these are ordered as
@@ -35,11 +39,11 @@ logProf(x, base = exp(1), ranef = TRUE,
 	matrix with standard deviations on the diagonal and correlations
 	off the diagonal.}
       \item{(2)}{residual standard deviation (or scale parameter for GLMMs
-        where appropriate);}
+        where appropriate).}
       \item{(3)}{fixed effect (beta) parameters.}
     }
-    In addition, \code{which} may be a character, containing
-    \code{"beta_"} or \code{"theta_"} which means the fixed and random
+    Alternatively, \code{which} may be a character, containing
+    \code{"beta_"} or \code{"theta_"} denoting the fixed or random
     effects parameters, respectively, or also containing parameter
     names, such as \code{".sigma"} or \code{"(Intercept)"}.
   }
@@ -48,7 +52,19 @@ logProf(x, base = exp(1), ranef = TRUE,
     regions; used to establish the range of values to be profiled.}
   \item{maxpts}{maximum number of points (in each direction, for each
     parameter) to evaluate in attempting to construct the profile.}
-  \item{delta}{stepping scale for deciding on next point to profile.}
+  \item{delta}{stepping scale for deciding on next point to profile.
+    The code uses the local derivative of the profile at the current
+    step to establish a change in the focal parameter that will lead
+    to a step of \code{delta} on the square-root-deviance scale.
+    If \code{NULL}, the \code{delta.cutoff} parameter will be used
+    to determine the stepping scale.}
+  \item{delta.cutoff}{stepping scale (see \code{delta})
+    expressed as a fraction of the
+    target maximum value of the profile on the square-root-deviance
+    scale.  Thus a \code{delta.cutoff} setting of \code{1/n} will
+    lead to a profile with approximately \code{2*n} calculated points
+    for each parameter (i.e., \code{n} points in each direction,
+    below and above the estimate for each parameter).}
   \item{verbose}{level of output from internal calculations.}
   \item{devtol}{tolerance for fitted deviances less than
     baseline (supposedly minimum) deviance.}
@@ -57,7 +73,11 @@ logProf(x, base = exp(1), ranef = TRUE,
   \item{startmethod}{method for picking starting conditions for
     optimization (STUB).}
   \item{optimizer}{(character or function) optimizer to use (see
-    \code{\link{lmer}} for details).}
+    \code{\link{lmer}} for details); default is to use the optimizer
+    from the original model fit.}
+  \item{control}{a \code{\link{list}} of options controlling the
+    profiling (see \code{\link{lmerControl}}): default is to use the
+    control settings from the original model fit.}
   \item{signames}{logical indicating if abbreviated names of the form
     \code{.sigNN} should be used; otherwise, names are more meaningful
     (but longer) of the form \code{(sd|cor)_(effects)|(group)}.  Note
@@ -73,28 +93,43 @@ logProf(x, base = exp(1), ranef = TRUE,
     \eqn{\sigma} (standard deviation of errors) is transformed.}
   \item{sigIni}{character string specifying the initial part of the
     sigma parameters to be log transformed.}
+  \item{parallel}{The type of parallel operation to be used (if any).
+    If missing, the
+    default is taken from the option \code{"profile.parallel"} (and if that
+    is not set, \code{"no"}).}
+  \item{ncpus}{integer: number of processes to be used in parallel operation:
+    typically one would choose this to be the number of available CPUs.}
+  \item{cl}{An optional \pkg{parallel} or \pkg{snow} cluster for use if
+    \code{parallel = "snow"}.  If not supplied, a cluster on the
+    local machine is created for the duration of the \code{profile} call.}
 }
 \value{
-  \code{profile(<merMod>)} returns
-  an object of S3 class \code{"thpr"},% = th[eoretical]?? pr[ofile]
-  \code{\link{data.frame}}-like.  Methods for such a profile object
-  are notably \code{\link{confint}()} and the three plotting methods
+  \code{profile(<merMod>)} returns an object of S3 class
+  \code{"thpr"}, %% = th[eta] pr[ofile], now a misnomer, as we also profile beta's
+  which is \code{\link{data.frame}}-like.
+  Notable methods for such a profile object
+  \code{\link{confint}()}, which returns the
+  confidence intervals based on the profile,
+  and three plotting methods
   (which require the \pkg{lattice} package),
   \code{\link[=xyplot.thpr]{xyplot}}, \code{densityplot}, and
   \code{splom}.
 
-  Further, \code{\link{log}()} (see above) and \code{\link{as.data.frame}()}.
+  In addition, the
+  \code{\link{log}()} (see above) and \code{\link{as.data.frame}()}
+  methods can transform \code{"thpr"} objects in useful ways.
 }
 \details{
   The \code{\link{log}} method and the more flexible \code{logProf()}
   function transform the profile into one where \eqn{\log(\sigma)} is
   used instead of \eqn{\sigma}.
-  By default all sigmas, including the standard deviations of the random
-  effects are transformed, i.e., it returns a profile with all the .sigNN
-  parameters replaced by .lsigNN.  If \code{ranef} is false, only
+  By default all sigmas including the standard deviations of the random
+  effects are transformed i.e., the methods return a profile with all
+  of the \code{.sigNN}
+  parameters replaced by \code{.lsigNN}.  If \code{ranef} is false, only
   \code{".sigma"}, the standard deviation of the errors, is transformed
-  as it should never be zero, whereas a random effect .sigNN is zero,
-  when the corresponding random effect is entirely absent.
+  (as it should never be zero, whereas random effect standard
+  deviations (\code{.sigNN}) can be reasonably be zero).
   \cr
   The forward and backward splines for the log-transformed parameters
   are recalculated.
@@ -124,21 +159,18 @@ system.time( tpr  <- profile(fm01ML))
 ## ~1s, + possible warning about bobyqa convergence
 (confint(tpr) -> CIpr)
 \donttest{% too much precision (etc). but just FYI:
-stopifnot(all.equal(CIpr,
+stopifnot(all.equal(unname(CIpr),
   array(c(12.1985292, 38.2299848, 1486.4515,
-          84.0630513, 67.6576964, 1568.54849), dim = 3:2,
-        dimnames = list(c(".sig01", ".sigma", "(Intercept)"),
-                        c("2.5 \%", "97.5 \%"))),
+          84.0630513, 67.6576964, 1568.54849), dim = 3:2),
                     tol= 1e-07))# 1.37e-9 {64b}
 }
-require(lattice)
+library("lattice")
 xyplot(tpr)
 xyplot(tpr, absVal=TRUE) # easier to see conf.int.s (and check symmetry)
 xyplot(tpr, conf = c(0.95, 0.99), # (instead of all five 50, 80,...)
        main = "95\% and 99\% profile() intervals")
 xyplot(logProf(tpr, ranef=FALSE),
        main = expression("lmer profile()s"~~ log(sigma)*" (only log)"))
-
 densityplot(tpr, main="densityplot( profile(lmer(..)) )")
 densityplot(varianceProf(tpr), main=" varianceProf( profile(lmer(..)) )")
 splom(tpr)
@@ -154,14 +186,18 @@ if(doMore) { ## not typically, for time constraint reasons
  ## GLMM example
  gm1 <- glmer(cbind(incidence, size - incidence) ~ period + (1 | herd),
 	     data = cbpp, family = binomial)
- ## running time ~9 seconds on a modern machine:
- print( system.time(pr4 <- profile(gm1)) )
- print( xyplot(pr4,layout=c(5,1),as.table=TRUE) )
+ ## running ~ 10-12 seconds on a modern machine {-> "verbose" while you wait}:
+ print( system.time(pr4 <- profile(gm1, verbose=TRUE)) )
+ print( xyplot(pr4, layout=c(5,1), as.table=TRUE) )
  print( xyplot(log(pr4), absVal=TRUE) ) # log(sigma_1)
  print( splom(pr4) )
  print( system.time( # quicker: only sig01 and one fixed effect
      pr2 <- profile(gm1, which=c("theta_", "period2"))))
  print( confint(pr2) )
+ ## delta..: higher underlying resolution, only for 'sigma_1':
+ print( system.time(
+     pr4.hr <- profile(gm1, which="theta_", delta.cutoff=1/16)))
+ print( xyplot(pr4.hr) )
 }% doMore
 }
 \keyword{methods}

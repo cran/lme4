@@ -8,6 +8,7 @@
 #include "predModule.h"
 #include "respModule.h"
 #include "optimizer.h"
+// #include "merPhylo.h"  // not included yet in main branch!
 
 extern "C" {
     typedef   Eigen::VectorXi        iVec;
@@ -71,6 +72,12 @@ extern "C" {
         return wrap(Eigen::SimdInstructionSetsInUse());
         END_RCPP;
     }
+
+
+    SEXP deepcopy(SEXP x) {
+        return(Rf_duplicate(x));
+    }
+
 
     // generalized linear model (and generalized linear mixed model) response
 
@@ -293,13 +300,11 @@ extern "C" {
     //       >> length(delb) ...
     //
     // FIXME: sufficient to print just before/after update?
-    //
-    // FIXME: allow user-set maxit
     static void pwrssUpdate(glmResp *rp, merPredD *pp, bool uOnly,
-			    double tol, int verbose) {
+			    double tol, int maxit, int verbose) {
 	double oldpdev=std::numeric_limits<double>::max();
 	double pdev;
-	int maxit = 30, maxstephalfit = 10;
+	int maxstephalfit = 10;
 	bool   cvgd = false, verb = verbose > 2, moreverb = verbose > 10;
 
 	pdev = oldpdev; // define so debugging statements work on first step
@@ -366,7 +371,7 @@ extern "C" {
 	    throw runtime_error("pwrssUpdate did not converge in (maxit) iterations");
     }
 
-    SEXP glmerLaplace(SEXP pp_, SEXP rp_, SEXP nAGQ_, SEXP tol_, SEXP verbose_) {
+    SEXP glmerLaplace(SEXP pp_, SEXP rp_, SEXP nAGQ_, SEXP tol_, SEXP maxit_, SEXP verbose_) {
         BEGIN_RCPP;
         XPtr<glmResp>  rp(rp_);
         XPtr<merPredD> pp(pp_);
@@ -375,33 +380,56 @@ extern "C" {
 	    Rcpp::Rcout << "\nglmerLaplace resDev:  " << rp->resDev() << std::endl;
 	    Rcpp::Rcout << "\ndelb 1:  " << pp->delb() << std::endl;
 	}
-	pwrssUpdate(rp, pp, ::Rf_asInteger(nAGQ_), ::Rf_asReal(tol_), ::Rf_asInteger(verbose_));
+	pwrssUpdate(rp, pp, ::Rf_asInteger(nAGQ_), ::Rf_asReal(tol_), 
+		    ::Rf_asInteger(maxit_), ::Rf_asInteger(verbose_));
         return ::Rf_ScalarReal(rp->Laplace(pp->ldL2(), pp->ldRX2(), pp->sqrL(1.)));
         END_RCPP;
     }
 
+    // function used below in glmerAGQ
+    //
+    // fac: mapped integer vector indicating the factor levels
+    // u: current conditional modes
+    // devRes: current deviance residuals (i.e. similar to results of 
+    // family()$dev.resid, but computed in glmFamily.cpp)
     static Ar1 devcCol(const MiVec& fac, const Ar1& u, const Ar1& devRes) {
         Ar1  ans(u.square());
         for (int i = 0; i < devRes.size(); ++i) ans[fac[i] - 1] += devRes[i];
+        // return: vector the size of u (i.e. length = number of
+        // grouping factor levels), containing the squared conditional
+        // modes plus the sum of the deviance residuals associated
+        // with each level
         return ans;
     }
 
     static double sqrt2pi = std::sqrt(2. * PI);
 
-    SEXP glmerAGQ(SEXP pp_, SEXP rp_, SEXP tol_, SEXP GQmat_, SEXP fac_, SEXP verbose_) {
+    // tol: tolerance for pirls
+    // maxit: maximum number of pirls iterations
+    // GQmat: matrix of quadrature weights
+    // fac: grouping factor (gets converted to mapped integer below)
+    SEXP glmerAGQ(SEXP pp_, SEXP rp_, SEXP tol_, SEXP maxit_, SEXP GQmat_, SEXP fac_, SEXP verbose_) {
         BEGIN_RCPP;
 
         XPtr<glmResp>     rp(rp_);
         XPtr<merPredD>    pp(pp_);
-        const MiVec      fac(as<MiVec>(fac_));
+        const MiVec      fac(as<MiVec>(fac_)); // convert grouping
+                                               // factor to mapped
+                                               // integer
         double           tol(::Rf_asReal(tol_));
+	int            maxit(::Rf_asInteger(maxit_));
         double          verb(::Rf_asReal(verbose_));
         if (fac.size() != rp->mu().size())
             throw std::invalid_argument("size of fac must match dimension of response vector");
 
-        pwrssUpdate(rp, pp, true, tol, verb); // should be a no-op
-        const Ar1      devc0(devcCol(fac, pp->u(1.), rp->devResid()));
+        pwrssUpdate(rp, pp, true, tol, maxit, verb); // should be a
+                                                     // no-op
 
+                    // devc0: vector with one element per grouping
+                    // factor level containing the the squared
+                    // conditional modes plus the sum of the deviance
+                    // residuals associated with each level
+        const Ar1      devc0(devcCol(fac, pp->u(1.), rp->devResid())); 
         const unsigned int q(pp->u0().size());
         if (pp->L().factor()->nzmax !=  q)
             throw std::invalid_argument("AGQ only defined for a single scalar random-effects term");
@@ -657,6 +685,13 @@ extern "C" {
         END_RCPP;
     }
 
+    SEXP merPredDsetZt(SEXP ptr, SEXP ZtNonZero) {
+        BEGIN_RCPP;
+        XPtr<merPredD>(ptr)->setZt(as<MVec>(ZtNonZero));
+        return ZtNonZero;
+        END_RCPP;
+    }
+
     SEXP merPredDsetBeta0(SEXP ptr, SEXP beta0) {
         BEGIN_RCPP;
         XPtr<merPredD>(ptr)->setBeta0(as<MVec>(beta0));
@@ -823,7 +858,7 @@ extern "C" {
 
     SEXP NelderMead_Create(SEXP lb_, SEXP ub_, SEXP xstep0_, SEXP x_, SEXP xtol_) {
         BEGIN_RCPP;
-        MVec  lb(as<MVec>(lb_)), ub(as<MVec>(ub_)), xstep0(as<MVec>(xstep0_)), x(as<MVec>(x_)), xtol(as<MVec>(xtol_));
+        MVec  lb(as<MVec>(lb_)), ub(as<MVec>(ub_)), xstep0(as<MVec>(xstep0_)), x(as<MVec>(x_));
         Nelder_Mead *ans =
             new Nelder_Mead(lb, ub, xstep0, x, optimizer::nl_stop(as<MVec>(xtol_)));
         return wrap(XPtr<Nelder_Mead>(ans, true));
@@ -976,6 +1011,8 @@ static R_CallMethodDef CallEntries[] = {
 
     CALLDEF(allPerm_int, 1),
 
+    CALLDEF(deepcopy, 1),
+
     CALLDEF(glm_Create, 10),    // generate external pointer
 
     CALLDEF(glm_setN, 2),       // setters
@@ -1009,8 +1046,8 @@ static R_CallMethodDef CallEntries[] = {
     CALLDEF(glmFamily_theta,    1),
     CALLDEF(glmFamily_variance, 2),
 
-    CALLDEF(glmerAGQ,           6),
-    CALLDEF(glmerLaplace,       5),
+    CALLDEF(glmerAGQ,           7),
+    CALLDEF(glmerLaplace,       6),
 
     CALLDEF(golden_Create,      2),
     CALLDEF(golden_newf,        2),
@@ -1042,6 +1079,7 @@ static R_CallMethodDef CallEntries[] = {
     CALLDEF(merPredDCreate,    17), // generate external pointer
 
     CALLDEF(merPredDsetTheta,   2), // setters
+    CALLDEF(merPredDsetZt,      2), 
     CALLDEF(merPredDsetBeta0,   2), 
 
     CALLDEF(merPredDsetDelu,    2), // setters

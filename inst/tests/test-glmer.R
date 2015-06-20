@@ -4,7 +4,7 @@ library("lme4")
 testLevel <- if (nzchar(s <- Sys.getenv("LME4_TEST_LEVEL")))
                  as.numeric(s) else 1
 
-gives_error_or_warning <- function (regexp = NULL, all = FALSE, ...) 
+gives_error_or_warning <- function (regexp = NULL, all = FALSE, ...)
 {
     function(expr) {
         res <- try(evaluate_promise(expr),silent=TRUE)
@@ -15,7 +15,7 @@ gives_error_or_warning <- function (regexp = NULL, all = FALSE, ...)
             if (!is.null(regexp) && length(warnings) > 0) {
                 return(matches(regexp, all = FALSE, ...)(warnings))
             } else {
-                return(expectation(length(warnings) > 0, "no warnings or errors given", 
+                return(expectation(length(warnings) > 0, "no warnings or errors given",
                             paste0(length(warnings), " warnings created")))
             }
         }
@@ -51,7 +51,8 @@ test_that("glmer", {
     expect_equal(c(VarCorr(gm1)[[1]]),                  0.41245527438386, tolerance=6e-4)
 ### expect_that(family(gm1),                            equals(binomial()))
 ### ?? binomial() has an 'initialize' component ... and the order is different
-    expect_equal(deviance(gm1),                         184.052674598026, tolerance=1e-5)
+    expect_equal(deviance(gm1),                         73.47428, tolerance=1e-5)
+    ## was -2L = 184.05267459802
     expect_equal(sigma(gm1),                            1)
     expect_equal(extractAIC(gm1),                       c(5, 194.052674598026), tolerance=1e-5)
 
@@ -63,6 +64,12 @@ test_that("glmer", {
     expect_equal(Zt@x,                                  rep.int(1, 56L))
     expect_that(Lambdat <- getME(gm1, "Lambdat"),       is_a("dgCMatrix"))
     expect_equivalent(as(Lambdat, "matrix"),            diag(theta, 15L, 15L))
+
+    expect_is(gm1_probit <- update(gm1,family=binomial(link="probit")),"merMod")
+    expect_equal(family(gm1_probit)$link,"probit")
+
+    ## FIXME: test user-specified/custom family?
+
     expect_error(glFormula(cbind(incidence, size - incidence) ~ period + (1 | herd),
                              data = subset(cbpp, herd==levels(herd)[1]), family = binomial),
                  "must have > 1")
@@ -181,6 +188,7 @@ if(FALSE) { ## Hadley broke this
     }
     ## test bootstrap/refit with nAGQ>1
     gm1AGQ <- update(gm1,nAGQ=2)
+    s1 <- simulate(gm1AGQ)
     expect_equal(attr(bootMer(gm1AGQ,fixef),"bootFail"),0)
 
     ## do.call(new,...) bug
@@ -213,6 +221,12 @@ if(FALSE) { ## Hadley broke this
                               package="lme4", mustWork=TRUE))
         expect_warning(vcov(polytomous_vcov_ex),"falling back to var-cov")
     }
+
+    ## damage Hessian to make it singular
+    ## (example thanks to J. Dushoff)
+    gm1H <- gm1
+    gm1H@optinfo$derivs$Hessian[5,] <- 0
+    expect_warning(vcov(gm1H),"falling back to var-cov")
 
     ## test convergence warnings
     L <- load(system.file("testdata","gopherdat2.RData",
@@ -249,4 +263,34 @@ if(FALSE) { ## Hadley broke this
     expect_is(update(g0,.~. + scale(year,center=TRUE,scale=FALSE),
                      control=gc),
               "glmerMod")
+
+    ## try higher-order AGQ
+    expect_is(update(gm1,nAGQ=90),"glmerMod")
+    expect_error(update(gm1,nAGQ=101),"ord < 101L")
+
+    ## non-numeric response variables
+    ss <- transform(sleepstudy, Reaction = as.character(Reaction))
+    expect_error(glmer(Reaction~(1|Days), family="poisson", data=ss),
+                 "response must be numeric")
+    expect_error(glmer(Reaction~(1|Days), family="binomial", data=ss),
+                 "response must be numeric or factor")
+    ss2 <- transform(ss,rr=rep(c(TRUE,FALSE),length.out=nrow(ss)))
+    ## should work OK with logical too
+    expect_is(glmer(rr~(1|Days),family="binomial",data=ss2),"merMod")
+
+    ## starting values with log(.) link -- thanks to Eric Weese @ Yale:
+    grp <- rep(letters[1:5], 20); set.seed(1); x <- rnorm(100)
+    expect_error(glmer(x ~ 1 + (1|grp), family=gaussian(link="log")),
+		 "valid starting values")
+
+    ## related to GH 231
+    ## fails on some platforms, skip for now
+    if (FALSE) {
+        rr <- gm1@resp$copy()
+        ff <- setdiff(ls(gm1@resp),c("copy","initialize","initialize#lmResp","ptr",
+                                     "updateMu","updateWts","resDev","setOffset","wrss"))
+        for (i in ff) {
+            expect_equal(gm1@resp[[i]],rr[[i]])
+        }
+    }
 })

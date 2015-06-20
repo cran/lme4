@@ -1,8 +1,8 @@
 stopifnot(require("testthat"), require("lme4"))
 
 context("fitting lmer models")
-## is "Nelder_Mead" default optimizer?
-isNM <- formals(lmerControl)$optimizer == "Nelder_Mead"
+## is "Nelder_Mead" default optimizer? -- no longer
+(isNM <- formals(lmerControl)$optimizer == "Nelder_Mead")
 
 test_that("lmer", {
     set.seed(101)
@@ -33,7 +33,7 @@ test_that("lmer", {
     expect_that(REMLfun(0),                             equals(326.023232155879))
     expect_that(family(fm1),                            equals(gaussian()))
     expect_that(isREML(fm1ML <- refitML(fm1)),          equals(FALSE))
-    expect_that(deviance(fm1),                		equals(319.654276842342))
+    expect_that(REMLcrit(fm1),                		equals(319.654276842342))
     expect_that(deviance(fm1ML),                        equals(327.327059881135))
     ##						"bobyqa":      49.51009984775
     expect_that(sigma(fm1),                             equals(49.5101272946856, tolerance=1e-6))
@@ -54,6 +54,9 @@ test_that("lmer", {
     expect_is(Zt <- getME(fm1, "Zt"),		"dgCMatrix")
     expect_that(dim(Zt),                                equals(c(6L, 30L)))
     expect_that(Zt@x,                                   equals(rep.int(1, 30L)))
+    expect_equal(dimnames(Zt),
+                  list(levels(Dyestuff$Batch),
+                       rownames(Dyestuff)))
     ##						"bobyqa":      0.8483237982
     expect_that(theta <- getME(fm1, "theta"),           equals(0.84832031, tolerance=6e-6, check.attributes=FALSE))
     if(isNM) expect_that(getME(fm1.old, "theta"),	is_equivalent_to(0.848330078))
@@ -81,16 +84,16 @@ test_that("lmer", {
                  "number of observations \\(=36\\) <= number of random effects \\(=36\\)")
     ## with most recent Matrix (1.1-1), should *not* flag this
     ## for insufficient rank
-    load(system.file("testdata","rankMatrix.rda",package="lme4"))
-    expect_is(lFormula(y ~ (1|sample)+(1|day)+(1|operator)+
-                       (1|day:sample)+(1|day:operator)+(1|sample:operator)+
-                       (1|day:sample:operator),
-                       data=dat,
-                       control=lmerControl(check.nobs.vs.rankZ="stop")),
+    dat <- readRDS(system.file("testdata", "rankMatrix.rds", package="lme4"))
+    expect_is(lFormula(y ~ (1|sample) + (1|day) + (1|day:sample) +
+                           (1|operator) + (1|day:operator) + (1|sample:operator) +
+                           (1|day:sample:operator),
+                       data = dat,
+                       control = lmerControl(check.nobs.vs.rankZ = "stop")),
                        "list")
     ## check scale
-    ss <- transform(sleepstudy,Days=Days*1e6)
-    expect_warning(lmer(Reaction~Days+(1|Subject),ss),
+    ss <- within(sleepstudy, Days <- Days*1e6)
+    expect_warning(lmer(Reaction ~ Days + (1|Subject), data=ss),
                  "predictor variables are on very different scales")
 
     ## Promote warning to error so that warnings or errors will stop the test:
@@ -159,9 +162,15 @@ test_that("lmer", {
     expect_warning(lmer(Yield ~ 1|Batch, Dyestuff, junkArg=TRUE),"extra argument.*disregarded")
     expect_warning(lmer(Yield ~ 1|Batch, Dyestuff, control=list()),
                     "passing control as list is deprecated")
-if(FALSE) ## Hadley broke this
-    expect_warning(lmer(Yield ~ 1|Batch, Dyestuff, control=glmerControl()),
-                   "passing control as list is deprecated")
+    if(FALSE) ## Hadley broke this
+        expect_warning(lmer(Yield ~ 1|Batch, Dyestuff, control=glmerControl()),
+                       "passing control as list is deprecated")
+
+    ss <- transform(sleepstudy,obs=factor(seq(nrow(sleepstudy))))
+    expect_warning(lmer(Reaction ~ 1 + (1|obs), data=ss,
+         control=lmerControl(check.nobs.vs.nlev="warning",
+                             check.nobs.vs.nRE="ignore")),
+                   "number of levels of each grouping factor")
 
     ## test deparsing of very long terms inside mkReTrms
     set.seed(101)
@@ -189,6 +198,13 @@ if(FALSE) ## Hadley broke this
     fm1 <- lmer(z~1|f,d,subset=(z<1e9))
     expect_equal(sum(grepl("Subset: \\(",capture.output(summary(fm1)))),1)
 
+    ## test messed-up Hessian
+    fm1 <- lmer(z~ as.numeric(f) + 1|f, d)
+    fm1@optinfo$derivs$Hessian[2,2] <- NA
+    expect_warning(lme4:::checkConv(fm1@optinfo$derivs,
+                     coefs=c(1,1),
+                     ctrl=lmerControl()$checkConv,lbound=0),
+                   "Problem with Hessian check")
 }) ## test_that(..)
 
 

@@ -3,6 +3,80 @@
 \name{NEWS}
 \title{lme4 News}
 \encoding{UTF-8}
+\section{CHANGES IN VERSION 1.1-8}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item \code{getME} gains a \code{"Tlist"} option
+      (returns a vector of template matrices from which the blocks of
+      \code{Lambda} are generated)
+      \item \code{hatvalues} method returns the diagonal of the hat
+      matrix of LMMs
+      \item \code{nlminbwrap} convenience function allows use of
+      \code{nlminb} without going through the \code{optimx} package
+      \item \code{as.data.frame.VarCorr.merMod} gains an \code{order}
+      option that allows the results to be sorted with variances first
+      and covariances last (default) or in lower-triangle order
+      \item allow more flexibility in \code{scales} for
+      \code{xyplot.thpr} method (John Maindonald)
+      \item models with only random effects of the form \code{1|f} have
+      better starting values for \code{lmer} optimization (Gabor
+      Grothendieck)
+      \item \code{glmer} now allows a logical vector as the response
+      for binomial models
+      \item \code{anova} will now do (sequential) likelihood ratio
+      tests for two or more models including both \code{merMod} and
+      \code{glm} or \code{lm} models (at present, only for GLMMs
+      fitted with the Laplace approximation)
+    }
+  }
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item \code{deviance()} now returns the deviance, rather than half the
+      negative log-likelihood, for GLMMs fitted with Laplace
+      (the behaviour for LMMs and GLMMs fitted with \code{nAGQ>1} has
+      not changed)
+      \item convergence warning and diagnostic test issues are now
+      reported in \code{print} and \code{summary} methods
+      \item \code{update} now (attempts to) re-evaluate the original fit
+      in the environment of its formula (as is done with \code{drop1})
+      \item \code{refit} of a nonlinear mixed model fit now throws an
+      error, but this will hopefully change in future releases (related
+      to bug fixes for Github #231)
+      \item \code{lmList} now returns objects of class \code{lmList4},
+      to avoid overwriting \code{lmList} methods from the recommended
+      \code{nlme} package
+      \item names of random effects parameters in \code{confint}
+      changed (modified for consistency across methods);
+      \code{oldNames=TRUE} (default) gives \code{".sig01"}-style names,
+      \code{oldNames=FALSE} gives \code{"sd_(Intercept)|Subject"}-style names
+      \item \code{confint(.,method="Wald")} result now contains rows
+      for random effects parameters (values set to \code{NA})
+      as well as for fixed-effect parameters
+    }
+  }
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{simulate} and \code{predict} now work more
+      consistently with different-length data, differing
+      factor levels, and \code{NA} values (Github #153, #197, #246, #275)
+      \item \code{refit} now works correctly for \code{glmer}
+      fits (Github #231)
+      \item fixed bug in \code{family.merMod}; non-default links
+      were not retrieved correctly (Alessandro Moscatelli)
+      \item fixed \code{bootMer} bug for \code{type=="parametric"},
+      \code{use.u=TRUE} (Mark Lai)
+      \item gradient scaling for convergence checks now uses the Cholesky factor of the
+      Hessian; while it is more correct, this will lead to some additional (probably
+      false-positive) convergence warnings
+      \item As with \code{lm()}, users now get an error for non-finite
+      (\code{Inf}, \code{NA}, or \code{NaN})
+      values in the response unless \code{na.action} is set to
+      exclude or omit them. Github #310
+
+    }
+  }
+}
+
 \section{CHANGES IN VERSION 1.1-7}{
   \subsection{NEW FEATURES}{
     \itemize{
@@ -71,7 +145,7 @@
       if finite-difference Hessian
       is non-PD; return \code{NA} matrix if RX approximation is
       also bad)
-    } 
+    }
   }
   \subsection{MINOR USER-VISIBLE CHANGES}{
     \itemize{
@@ -216,7 +290,7 @@
   \subsection{BUG FIXES}{
     \itemize{
       \item in a previous development version, \code{ranef} returned
-      incorrect conditional variances (github issue #148). this is 
+      incorrect conditional variances (github issue #148). this is
       now fixed
     }
   }

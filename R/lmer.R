@@ -29,30 +29,33 @@ lmer <- function(formula, data=NULL, REML = TRUE,
     ## https://github.com/lme4/lme4/issues/50
     ## parse data and formula
     mc[[1]] <- quote(lme4::lFormula)
-    lmod <- eval(mc, parent.frame(1L))  ## parse data and formula
+    lmod <- eval(mc, parent.frame(1L))
     mcout$formula <- lmod$formula
     lmod$formula <- NULL
 
     ## create deviance function for covariance parameters (theta)
     devfun <- do.call(mkLmerDevfun,
 		      c(lmod,
-			list(start=start,verbose=verbose,control=control)))
+			list(start=start, verbose=verbose, control=control)))
     if (devFunOnly) return(devfun)
     ## optimize deviance function over covariance parameters
-    opt <- optimizeLmer(devfun,
-                        optimizer=control$optimizer,
-                        restart_edge=control$restart_edge,
-                        boundary.tol=control$boundary.tol,
-                        control=control$optCtrl,
-                        verbose=verbose,
-                        start=start,
-                        calc.derivs=control$calc.derivs,
-                        use.last.params=control$use.last.params)
+    opt <- if (control$optimizer=="none")
+        list(par=NA,fval=NA,conv=1000,message="no optimization")
+    else {
+        optimizeLmer(devfun, optimizer = control$optimizer,
+                     restart_edge = control$restart_edge,
+                     boundary.tol = control$boundary.tol,
+                     control = control$optCtrl,
+                     verbose=verbose,
+                     start=start,
+                     calc.derivs=control$calc.derivs,
+                     use.last.params=control$use.last.params)
+    }
     cc <- checkConv(attr(opt,"derivs"), opt$par,
                     ctrl = control$checkConv,
                     lbound=environment(devfun)$lower)
-    mkMerMod(environment(devfun), opt, lmod$reTrms, fr = lmod$fr, mcout,
-             lme4conv=cc) ## prepare output
+    mkMerMod(environment(devfun), opt, lmod$reTrms, fr = lmod$fr,
+             mc = mcout, lme4conv=cc) ## prepare output
 }## { lmer }
 
 
@@ -96,26 +99,39 @@ glmer <- function(formula, data=NULL, family = gaussian,
 
     ## create deviance function for covariance parameters (theta)
 
-    devfun <- do.call(mkGlmerDevfun, c(glmod, list(verbose=verbose,
-                                                   control=control,
-                                                   nAGQ = 0)))
+    nAGQinit <- if(control$nAGQ0initStep) 0L else 1L
+    devfun <- do.call(mkGlmerDevfun, c(glmod, list(verbose = verbose,
+                                                   control = control,
+                                                   nAGQ = nAGQinit)))
     if (nAGQ==0 && devFunOnly) return(devfun)
     ## optimize deviance function over covariance parameters
 
-    if (is.list(start) && !is.null(start$fixef))
-        if (nAGQ==0) stop("should not specify both start$fixef and nAGQ==0")
+    ## FIXME: perhaps should be in glFormula instead??
+    if (is.list(start)) {
+        start.bad <- setdiff(names(start),c("theta","fixef"))
+        if (length(start.bad)>0) {
+            stop(sprintf("bad name(s) for start vector (%s); should be %s and/or %s",
+                         paste(start.bad,collapse=", "),
+                         shQuote("theta"),
+                         shQuote("fixef")),call.=FALSE)
+        }
+        if (!is.null(start$fixef) && nAGQ==0)
+            stop("should not specify both start$fixef and nAGQ==0")
+    }
 
     ## FIX ME: allow calc.derivs, use.last.params etc. if nAGQ=0
-    opt <- optimizeGlmer(devfun,
-                   optimizer = control$optimizer[[1]],
-                   ## DON'T try fancy edge tricks unless nAGQ=0 explicitly set
-                   restart_edge=if (nAGQ==0) control$restart_edge else FALSE,
-                   boundary.tol=if (nAGQ==0) control$boundary.tol else 0,
-                   control = control$optCtrl,
-                   start=start,
-                   nAGQ = 0,
-                   verbose=verbose,
-                   calc.derivs=FALSE)
+    if(control$nAGQ0initStep) {
+        opt <- optimizeGlmer(devfun,
+                             optimizer = control$optimizer[[1]],
+                             ## DON'T try fancy edge tricks unless nAGQ=0 explicitly set
+                             restart_edge=if (nAGQ==0) control$restart_edge else FALSE,
+                             boundary.tol=if (nAGQ==0) control$boundary.tol else 0,
+                             control = control$optCtrl,
+                             start=start,
+                             nAGQ = 0,
+                             verbose=verbose,
+                             calc.derivs=FALSE)
+    }
 
     if(nAGQ > 0L) {
 
@@ -146,8 +162,8 @@ glmer <- function(formula, data=NULL, family = gaussian,
     }
 
     ## prepare output
-    mkMerMod(environment(devfun), opt, glmod$reTrms, fr = glmod$fr, mcout,
-             lme4conv=cc)
+    mkMerMod(environment(devfun), opt, glmod$reTrms, fr = glmod$fr,
+             mc = mcout, lme4conv=cc)
 
 }## {glmer}
 
@@ -174,14 +190,15 @@ nlmer <- function(formula, data=NULL, control = nlmerControl(), start = NULL, ve
                              envir = rho$resp$nlenv))))))
     rho$u0 <- rho$pp$u0
     rho$beta0 <- rho$pp$beta0
-    devfun <- mkdevfun(rho, 0L, verbose, control) # deviance as a function of theta only
+    ## deviance as a function of theta only :
+    devfun <- mkdevfun(rho, 0L, verbose=verbose, control=control)
     if (devFunOnly && !nAGQ) return(devfun)
     devfun(rho$pp$theta) # initial coarse evaluation to get u0 and beta0
     rho$u0 <- rho$pp$u0
     rho$beta0 <- rho$pp$beta0
     rho$tolPwrss <- control$tolPwrss # Reset control parameter (the initial optimization is coarse)
 
-    opt <- optwrap(control$optimizer[[1]], devfun, rho$pp$theta, rho$lower,
+    opt <- optwrap(control$optimizer[[1]], devfun, rho$pp$theta, lower=rho$lower,
                    control=control$optCtrl, adj=FALSE)
     rho$control <- attr(opt,"control")
 
@@ -195,16 +212,16 @@ nlmer <- function(formula, data=NULL, control = nlmerControl(), start = NULL, ve
                 stop("nAGQ > 1 is only available for models with a single, scalar random-effects term")
             rho$fac <- vals$reTrms$flist[[1]]
         }
-        devfun <- mkdevfun(rho, nAGQ, verbose, control)
+        devfun <- mkdevfun(rho, nAGQ, verbose=verbose, control=control)
         if (devFunOnly) return(devfun)
 
         opt <- optwrap(control$optimizer[[2]], devfun,
-                       par=c(rho$pp$theta, rho$beta0),
-                       lower=rho$lower, control=control$optCtrl,
-                       adj=TRUE, verbose=verbose)
+                       par = c(rho$pp$theta, rho$beta0),
+                       lower = rho$lower, control = control$optCtrl,
+                       adj = TRUE, verbose=verbose)
 
     }
-    mkMerMod(environment(devfun), opt, vals$reTrms, vals$frame, mc)
+    mkMerMod(environment(devfun), opt, vals$reTrms, fr = vals$frame, mc = mc)
 }## {nlmer}
 
 ## R 3.1.0 devel [2013-08-05]: This does not help yet
@@ -212,7 +229,7 @@ if(getRversion() >= "3.1.0") utils::suppressForeignCheck("nlmerAGQ")
 if(getRversion() < "3.1.0") dontCheck <- identity
 
 ##' Create a deviance evaluation function from a predictor and a response module
-mkdevfun <- function(rho, nAGQ=1L, verbose=0, control=list()) {
+mkdevfun <- function(rho, nAGQ=1L, maxit=100L, verbose=0, control=list()) {
     ## FIXME: should nAGQ be automatically embedded in rho?
     stopifnot(is.environment(rho), is(rho$resp, "lmResp"))
 
@@ -230,18 +247,17 @@ mkdevfun <- function(rho, nAGQ=1L, verbose=0, control=list()) {
     } else if (is(rho$resp, "glmResp")) {
         ## control values will override rho values *if present*
         if (!is.null(tp <- control$tolPwrss)) rho$tolPwrss <- tp
-        if (!is.null(cd <- control$compDev)) rho$compDev <- cd
+        if (!is.null(cd <- control$ compDev)) rho$compDev <- cd
 	if (nAGQ == 0L)
 	    function(theta) {
 		resp$updateMu(lp0)
 		pp$setTheta(theta)
-		p <- pwrssUpdate(pp, resp, tolPwrss, GHrule(0L),
-                            compDev, verbose)
+		p <- pwrssUpdate(pp, resp, tol=tolPwrss, GQmat=GHrule(0L),
+                                 compDev=compDev, maxit=maxit, verbose=verbose)
                 resp$updateWts()
                 p
-
             }
-	else
+	else  ## nAGQ > 0
 	    function(pars) {
                 ## pp$setDelu(rep(0, length(pp$delu)))
                 resp$setOffset(baseOffset)
@@ -250,8 +266,8 @@ mkdevfun <- function(rho, nAGQ=1L, verbose=0, control=list()) {
                 spars <- as.numeric(pars[-dpars])
                 offset <- if (length(spars)==0) baseOffset else baseOffset + pp$X %*% spars
 		resp$setOffset(offset)
-		p <- pwrssUpdate(pp, resp, tolPwrss, GQmat,
-                            compDev, fac, verbose)
+		p <- pwrssUpdate(pp, resp, tol=tolPwrss, GQmat=GQmat,
+                                 compDev=compDev, grpFac=fac, maxit=maxit, verbose=verbose)
                 resp$updateWts()
                 p
 	    }
@@ -260,12 +276,12 @@ mkdevfun <- function(rho, nAGQ=1L, verbose=0, control=list()) {
 	    rho$nlmerLaplace <- nlmerLaplace
             rho$tolPwrss <- control$tolPwrss
 	    switch(nAGQ + 1L,
-			 function(theta)
-			 .Call(nlmerLaplace, pp$ptr(), resp$ptr(), as.double(theta),
-			       as.double(u0), beta0, verbose, FALSE, tolPwrss),
-			 function(pars)
-			 .Call(nlmerLaplace, pp$ptr(), resp$ptr(), pars[dpars], u0,
-			       pars[-dpars], verbose, TRUE, tolPwrss))
+                   function(theta)
+                       .Call(nlmerLaplace, pp$ptr(), resp$ptr(), as.double(theta),
+                             as.double(u0), beta0, verbose, FALSE, tolPwrss),
+                   function(pars)
+                       .Call(nlmerLaplace, pp$ptr(), resp$ptr(), pars[dpars],
+                             u0,  pars[-dpars], verbose, TRUE, tolPwrss))
 	} else {
             stop("AGQ>1 not yet implemented for nlmer models")
 	    rho$nlmerAGQ <- nlmerAGQ
@@ -322,12 +338,23 @@ RglmerWrkIter <- function(pp, resp, uOnly=FALSE) {
     resp$resDev() + pp$sqrL(1)
 }
 
-glmerPwrssUpdate <- function(pp, resp, tol, GQmat, compDev=TRUE, grpFac=NULL, verbose=0) {
+##' @param pp pred module
+##' @param resp resp module
+##' @param tol numeric tolerance
+##' @param GQmat matrix of Gauss-Hermite quad info
+##' @param compDev compute in C++ (as opposed to doing as much as possible in R)
+##' @param grpFac grouping factor (normally found in environment ...)
+##' @param verbose verbosity, of course
+glmerPwrssUpdate <- function(pp, resp, tol, GQmat, compDev=TRUE, grpFac=NULL, maxit = 70L, verbose=0) {
     nAGQ <- nrow(GQmat)
     if (compDev) {
         if (nAGQ < 2L)
-            return(.Call(glmerLaplace, pp$ptr(), resp$ptr(), nAGQ, tol, verbose))
-        return(.Call(glmerAGQ, pp$ptr(), resp$ptr(), tol, GQmat, grpFac, verbose))
+            return(.Call(glmerLaplace, pp$ptr(), resp$ptr(),
+                         nAGQ, tol, as.integer(maxit),
+                         verbose))
+        return(.Call(glmerAGQ, pp$ptr(), resp$ptr(),
+                     tol, as.integer(maxit),
+                     GQmat, grpFac, verbose))
     }
     oldpdev <- .Machine$double.xmax
     uOnly   <- nAGQ == 0L
@@ -401,13 +428,16 @@ anovaLmer <- function(object, ..., refit = TRUE, model.names=NULL) {
     modp <- (as.logical(vapply(dots, is, NA, "merMod")) |
              as.logical(vapply(dots, is, NA, "lm")))
     if (any(modp)) {			# multiple models - form table
-	opts <- dots[!modp]
+	## opts <- dots[!modp]
 	mods <- c(list(object), dots[modp])
+        nobs.vec <- vapply(mods, nobs, 1L)
+        if (var(nobs.vec) > 0)
+            stop("models were not all fitted to the same size of dataset")
+
 	## model names
-        if (is.null(mNms <- model.names)) {
-            mNms <- .sapply(as.list(mCall)[c(FALSE, TRUE, modp)],
-                            function(x) paste(deparse(x),collapse=" "))
-        }
+        if (is.null(mNms <- model.names))
+            mNms <- vapply(as.list(mCall)[c(FALSE, TRUE, modp)], safeDeparse, "")
+
         ## HACK to try to identify model names in situations such as
         ## 'do.call(anova,list(model1,model2))' where the model names
         ## are lost in the call stack ... this doesn't quite work but might
@@ -428,40 +458,41 @@ anovaLmer <- function(object, ..., refit = TRUE, model.names=NULL) {
         if (length(mNms) != length(mods))
             stop("model names vector and model list have different lengths")
 	names(mods) <- sub("@env$", '', mNms) # <- hack
-  # only refit if refit == TRUE
-  # else: check if models are consistent (all REML or all ML)
-	models.reml <- vapply(mods, isREML, NA)
-  if (refit) {
-    # message only if at least one models is REML:
-    if (any(models.reml)) message("refitting model(s) with ML (instead of REML)")
-    mods <- lapply(mods, refitML)
-  } else {
-    if (any(models.reml) & any(!models.reml)) warning("some models fit with REML = TRUE, some not")
-  }
+	models.reml <- vapply(mods, function(x) is(x,"merMod") && isREML(x), NA)
+        models.GHQ <- vapply(mods, function(x) is(x,"glmerMod") && getME(x,"devcomp")$dims["nAGQ"]>1 , NA)
+        if (any(models.GHQ) && any(vapply(mods, function(x) is(x,"glm"), NA)))
+            stop("GLMMs with nAGQ>1 have log-likelihoods incommensurate with glm() objects")
+	if (refit) {
+	    ## message only if at least one models is REML:
+	    if (any(models.reml)) message("refitting model(s) with ML (instead of REML)")
+	    mods[models.reml] <- lapply(mods[models.reml], refitML)
+	} else { ## check that models are consistent (all REML or all ML)
+	    if(any(models.reml) && any(!models.reml))
+		warning("some models fit with REML = TRUE, some not")
+	}
 	## devs <- sapply(mods, deviance)
 	llks <- lapply(mods, logLik)
-	ii <- order(Df <- .sapply(llks, attr, "df"))
+        ## Order models by increasing degrees of freedom:
+	ii <- order(Df <- vapply(llks, attr, FUN.VALUE=numeric(1), "df"))
 	mods <- mods[ii]
 	llks <- llks[ii]
 	Df   <- Df  [ii]
 	calls <- lapply(mods, getCall)
-	data <- lapply(calls, "[[", "data")
-	if (any(data != data[[1]]))
+	data <- lapply(calls, `[[`, "data")
+	if(!all(vapply(data, identical, NA, data[[1]])))
 	    stop("all models must be fit to the same data object")
-	header <- paste("Data:", data[[1]])
-	subset <- lapply(calls, "[[", "subset")
-	if (any(subset != subset[[1]]))
+	header <- paste("Data:", abbrDeparse(data[[1]]))
+	subset <- lapply(calls, `[[`, "subset")
+	if(!all(vapply(subset, identical, NA, subset[[1]])))
 	    stop("all models must use the same subset")
 	if (!is.null(subset[[1]]))
-	    header <-
-		c(header, paste("Subset", deparse(subset[[1]]),
-				sep = ": "))
+	    header <- c(header, paste("Subset:", abbrDeparse(subset[[1]])))
 	llk <- unlist(llks)
 	chisq <- 2 * pmax(0, c(NA, diff(llk)))
 	dfChisq <- c(NA, diff(Df))
 	val <- data.frame(Df = Df,
-			  AIC = .sapply(llks, AIC),
-			  BIC = .sapply(llks, BIC),
+			  AIC = .sapply(llks, AIC), # FIXME? vapply()
+			  BIC = .sapply(llks, BIC), #  "       "
                           logLik = llk,
 			  deviance = -2*llk,
 			  Chisq = chisq,
@@ -470,18 +501,15 @@ anovaLmer <- function(object, ..., refit = TRUE, model.names=NULL) {
 			  row.names = names(mods), check.names = FALSE)
 	class(val) <- c("anova", class(val))
 	forms <- lapply(lapply(calls, `[[`, "formula"), deparse)
-	attr(val, "heading") <-
-	    c(header, "Models:",
-	      paste(rep(names(mods), times = vapply(forms, length, 1)),
-		    unlist(forms), sep = ": "))
-	return(val)
+	structure(val,
+                  heading = c(header, "Models:",
+                      paste(rep(names(mods), times = vapply(forms, length, 1)),
+                            unlist(forms), sep = ": ")))
     }
     else { ## ------ single model ---------------------
 	dc <- getME(object, "devcomp")
-	# p <- dc$dims[["p"]] # redundant
         X <- getME(object, "X")
-	asgn <- attr(X, "assign")
-	stopifnot(length(asgn) == (p <- dc$dims[["p"]]))
+	stopifnot(length(asgn <- attr(X, "assign")) == dc$dims[["p"]])
 	ss <- as.vector(object@pp$RX() %*% object@beta)^2
 	names(ss) <- colnames(X)
 	terms <- terms(object)
@@ -494,6 +522,8 @@ anovaLmer <- function(object, ..., refit = TRUE, model.names=NULL) {
 	## dfr <- unlist(lapply(split(dfr, asgn), function(x) x[1]))
 	ms <- ss/df
 	f <- ms/(sigma(object)^2)
+        ## No longer provide p-values, but still the F statistic (may not be F distributed):
+        ##
 	## P <- pf(f, df, dfr, lower.tail = FALSE)
 	## table <- data.frame(df, ss, ms, dfr, f, P)
 	table <- data.frame(df, ss, ms, f)
@@ -503,9 +533,8 @@ anovaLmer <- function(object, ..., refit = TRUE, model.names=NULL) {
 		 c("Df", "Sum Sq", "Mean Sq", "F value"))
 	if ("(Intercept)" %in% nmeffects)
 	    table <- table[-match("(Intercept)", nmeffects), ]
-	attr(table, "heading") <- "Analysis of Variance Table"
-	class(table) <- c("anova", "data.frame")
-	table
+        structure(table, heading = "Analysis of Variance Table",
+                  class = c("anova", "data.frame"))
     }
 }## {anovaLmer}
 
@@ -515,11 +544,12 @@ anova.merMod <- anovaLmer
 
 ##' @S3method as.function merMod
 as.function.merMod <- function(x, ...) {
-    rho <- list2env(list(resp=x@resp$copy(),
-                           pp=x@pp$copy(),
-                           beta0=x@beta,
-                           u0=x@u), parent=as.environment("package:lme4"))
-    ## FIXME: extract verbose and control
+    rho <- list2env(list(resp  = x@resp$copy(),
+                         pp    = x@pp$copy(),
+                         beta0 = x@beta,
+                         u0   =  x@u),
+                    parent=as.environment("package:lme4"))
+    ## FIXME: extract verbose [, maxit] and control
     mkdevfun(rho, getME(x, "devcomp")$dims[["nAGQ"]])
 }
 
@@ -562,6 +592,9 @@ coef.merMod <- coefMer
 ##' @importFrom stats deviance
 ##' @S3method deviance merMod
 deviance.merMod <- function(object, REML = NULL, ...) {
+    if (isGLMM(object)) {
+        return(sum(residuals(object,type="deviance")^2))
+    }
     if (isREML(object) && is.null(REML)) {
         warning("deviance() is deprecated for REML fits; use REMLcrit for the REML criterion or deviance(.,REML=FALSE) for deviance calculated at the REML fit")
         return(devCritFun(object, REML=TRUE))
@@ -577,14 +610,14 @@ REMLcrit <- function(object) {
 ## REML=NULL:
 ##    if REML fit return REML criterion
 ##    if ML fit, return deviance
-## REML=TRUE: 
+## REML=TRUE:
 ##    if not LMM, stop.
 ##    if ML fit, compute and return REML criterion
 ##    if REML fit, return REML criterion
 ## REML=FALSE:
 ##    if ML fit, return deviance
 ##    if REML fit, compute and return deviance
-devCritFun <- function(object, REML = NULL) {    
+devCritFun <- function(object, REML = NULL) {
     ## cf. (1) lmerResp::Laplace in respModule.cpp
     ##     (2) section 5.6 of lMMwR, listing lines 34-42
     if (isTRUE(REML) && !isLMM(object))
@@ -657,7 +690,7 @@ drop1.merMod <- function(object, scope, scale = 0, test = c("none", "Chisq", "us
 	tt <- scope[i]
 	if(trace > 1) {
 	    cat("trying -", tt, "\n", sep='')
-	    utils::flush.console()
+	    flush.console()
         }
         ## FIXME: make this more robust, somehow?
         ## three choices explored so far:
@@ -722,9 +755,7 @@ drop1.merMod <- function(object, scope, scale = 0, test = c("none", "Chisq", "us
     if (!is.null(method <- attr(ss,"method"))) {
         head <- c(head,"Method: ",method,"\n")
     }
-    class(aod) <- c("anova", "data.frame")
-    attr(aod, "heading") <- head
-    aod
+    structure(aod, heading = head, class = c("anova", "data.frame"))
 }
 
 ##' @importFrom stats extractAIC
@@ -743,8 +774,12 @@ family.merMod <- function(object, ...) family(object@resp, ...)
 family.glmResp <- function(object, ...) {
                                         # regenerate initialize
                                         # expression if necessary
+
+    ## FIXME: may fail with user-specified/custom family?
+    ## should be obsolete
     if(is.null(object$family$initialize))
-        return(do.call(object$family$family, list()))
+        return(do.call(object$family$family,
+                       list(link=object$family$link)))
 
     object$family
 }
@@ -765,10 +800,10 @@ fitted.merMod <- function(object, ...) {
     }
     if (is.null(nm <- rownames(model.frame(object)))) nm <- seq_along(xx)
     names(xx) <- nm
-    if (!is.null(fit.na.action <- attr(model.frame(object),"na.action"))) {
-        xx <- napredict(fit.na.action,xx)
-    }
-    xx
+    if (!is.null(fit.na.action <- attr(model.frame(object),"na.action")))
+        napredict(fit.na.action, xx)
+    else
+        xx
 }
 
 ##' Extract the fixed-effects estimates
@@ -790,11 +825,28 @@ fitted.merMod <- function(object, ...) {
 ##' @export fixef
 ##' @method fixef merMod
 ##' @export
-fixef.merMod <- function(object, ...)
-    structure(object@beta, names = dimnames(object@pp$X)[[2]])
+fixef.merMod <- function(object, add.dropped=FALSE, ...) {
+    X <- getME(object,"X")
+    ff <- structure(object@beta, names = dimnames(X)[[2]])
+    if (add.dropped) {
+        if (!is.null(dd <- attr(X,"col.dropped"))) {
+            ## restore positions dropped for rank deficiency
+            vv <- numeric(length(ff)+length(dd))
+            all.pos <- seq_along(vv)
+            kept.pos <- all.pos[-dd]
+            vv[kept.pos] <- ff
+            names(vv)[kept.pos] <- names(ff)
+            vv[dd] <- NA
+            names(vv)[dd] <- names(dd)
+            ff <- vv
+        }
+    }
+    return(ff)
+}
+
 
 getFixedFormula <- function(form) {
-    RHSForm(form) <- if (is.null(nb <- nobars(RHSForm(form)))) 1 else nb
+    RHSForm(form) <- nobars(RHSForm(form))
     form
 }
 
@@ -845,14 +897,13 @@ logLik.merMod <- function(object, REML = NULL, ...) {
     if (is.null(REML) || is.na(REML[1]))
         REML <- isREML(object)
     val <- -devCritFun(object, REML = REML)/2
-    dc <- object@devcomp
-    dims <- dc$dims
+    ## dc <- object@devcomp
     nobs <- nobs.merMod(object)
     structure(val,
 	      nobs = nobs,
 	      nall = nobs,
 	      df = npar.merMod(object),
-              ## length(object@beta) + length(object@theta) + dims[["useSc"]],
+              ## length(object@beta) + length(object@theta) + dc$dims[["useSc"]],
 	      class = "logLik")
 }
 
@@ -873,7 +924,7 @@ model.frame.merMod <- function(formula, fixed.only=FALSE, ...) {
     fr <- formula@frame
     if (fixed.only) {
         ff <- formula(formula,fixed.only=TRUE)
-        ## thanks to Thomas Leeper and Roman Luštrik, Stack Overflow
+        ## thanks to Thomas Leeper and Roman Lustrik, Stack Overflow
         vars <- rownames(attr(terms.formula(ff), "factors"))
         fr <- fr[vars]
     }
@@ -882,10 +933,9 @@ model.frame.merMod <- function(formula, fixed.only=FALSE, ...) {
 
 ##' @importFrom stats model.matrix
 ##' @S3method model.matrix merMod
-model.matrix.merMod <- function(object, type = c(
-                                            "fixed",
-                                            "random",
-                                            "randomListRaw"), ...) {
+model.matrix.merMod <-
+    function(object,
+             type = c("fixed", "random", "randomListRaw"), ...) {
     switch(type[1],
            "fixed" = object@pp$X,
            "random" = getME(object, "Z"),
@@ -926,6 +976,7 @@ dummy <- function(f, levelsToKeep){
 ##' @S3method nobs merMod
 nobs.merMod <- function(object, ...) nrow(object@frame)
 
+## used in  summary.merMod():
 ngrps <- function(object, ...) UseMethod("ngrps")
 
 ngrps.default <- function(object, ...) stop("Cannot extract the number of groups from this object")
@@ -1018,7 +1069,7 @@ ranef.merMod <- function(object, condVar = FALSE, drop = FALSE,
 	asgn <- attr(fl, "assign")
 	cnms <- object@cnms
 	nc <- vapply(cnms, length, 1L)
-	nb <- nc * (nl <- vapply(levs, length, 1L)[asgn])
+	nb <- nc * vapply(levs, length, 1L)[asgn]
 	nbseq <- rep.int(seq_along(nb), nb)
 	ml <- split(ans, nbseq)
 	for (i in seq_along(ml))
@@ -1073,14 +1124,11 @@ print.ranef.mer <- function(x, ...) {
     invisible(x)
 }
 
-##' @method refit merMod
-##' @rdname refit
-##' @export
-refit.merMod <- function(object, newresp=NULL, rename.response=FALSE, ...)
+## FIXME DRY: much of copy'n'paste from lmer() etc .. ==> become more modular (?)
+refit.merMod <- function(object, newresp=NULL, rename.response=FALSE, maxit = 100L, ...)
 {
 
     newControl <- NULL
-    
     if (ll <- length(l... <- list(...)) > 0) {
         if ((ll == 1L) &&  (names(l...)[1] == "control")) {
             newControl <- l...$control
@@ -1102,39 +1150,72 @@ refit.merMod <- function(object, newresp=NULL, rename.response=FALSE, ...)
             newresp <- newresp[[1]]
             attr(newresp,"na.action") <- na.action
         } else {
-            stop("refit not implemented for lists with length>1: ",
-                 "consider ",sQuote("lapply(object,refit)"))
+            stop("refit not implemented for 'newresp' lists of length > 1: ",
+                 "consider ", sQuote("lapply(object,refit)"))
         }
     }
 
-    rr <- object@resp$copy()
+    ## oldresp <- object@resp$y # need to set this before deep copy,
+    ##                          # otherwise it gets reset with the call
+    ##                          # to setResp below
 
+    ## somewhat repeated from profile.merMod, but sufficiently
+    ##  different that refactoring is slightly non-trivial
+    ## "three minutes' thought would suffice ..."
+    ignore.pars <- c("xst", "xt")
+    control.internal <- object@optinfo$control
+    if (length(ign <- which(names(control.internal) %in% ignore.pars)) > 0)
+        control.internal <- control.internal[-ign]
+    if (!is.null(newControl)) {
+        control <- newControl
+        if (length(control$optCtrl)==0)
+            control$optCtrl <- control.internal
+    } else {
+        control <- if (isGLMM(object)) glmerControl() else lmerControl()
+    }
+
+    ## we need this stuff defined before we call .glmerLaplace below ...
+    pp      <- object@pp$copy()
+    dc      <- object@devcomp
+    nAGQ    <- dc$dims["nAGQ"] # possibly NA
+    nth     <- dc$dims[["nth"]]
+    verbose <- l...$verbose; if (is.null(verbose)) verbose <- 0L
     if (!is.null(newresp)) {
-
         ## update call and model frame with new response
-        rcol <- attr(attr(mf <- model.frame(object),"terms"),"response")
+	rcol <- attr(attr(model.frame(object), "terms"), "response")
         if (rename.response) {
             attr(object@frame,"formula")[[2]] <- object@call$formula[[2]] <-
                 newrespSub
             names(object@frame)[rcol] <- deparse(newrespSub)
         }
-
         if (!is.null(na.act <- attr(object@frame,"na.action")) &&
             is.null(attr(newresp,"na.action"))) {
             ## will only get here if na.action is 'na.omit' or 'na.exclude'
             ## *and* newresp does not have an 'na.action' attribute
             ## indicating that NAs have already been filtered
-            if (is.matrix(newresp)) {
-                newresp <- newresp[-na.act,]
-            } else newresp <- newresp[-na.act]
+            newresp <- if (is.matrix(newresp))
+                newresp[-na.act, ]
+            else newresp[-na.act]
         }
-
         object@frame[,rcol] <- newresp
 
-        if (isGLMM(object) && rr$family$family=="binomial") {
+        ## modFrame <- model.frame(object)
+        ## modFrame[, attr(terms(modFrame), "response")] <- newresp
+    }
+
+    rr <- if(isLMM(object))
+        mkRespMod(model.frame(object), REML = isREML(object))
+    else if(isGLMM(object))
+        mkRespMod(model.frame(object), family = family(object))
+    else
+        stop("refit.merMod not working for nonlinear mixed models.\n",
+             "try update.merMod instead.")
+
+    if(!is.null(newresp)) {
+        if(family(object)$family == "binomial") {
             ## re-do conversion of two-column matrix and factor
             ##  responses to proportion/weights format
-            if (is.matrix(newresp) && ncol(newresp)==2) {
+            if (is.matrix(newresp) && ncol(newresp) == 2) {
                 ntot <- rowSums(newresp)
                 ## FIXME: test what happens for (0,0) rows
                 newresp <- newresp[,1]/ntot
@@ -1146,34 +1227,53 @@ refit.merMod <- function(object, newresp=NULL, rename.response=FALSE, ...)
                 newresp <- as.numeric(newresp)-1
             }
         }
+        ## if (isGLMM(object) && rr$family$family=="binomial") {
 
+        ## }
         stopifnot(length(newresp <- as.numeric(as.vector(newresp))) ==
                   length(rr$y))
 
-        rr$setResp(newresp)
     }
-
-    pp        <- object@pp$copy()
-    dc        <- object@devcomp
-    nAGQ      <- dc$dims["nAGQ"] # possibly NA
-    nth       <- dc$dims[["nth"]]
-    verbose   <- list(...)$verbose
-    if (is.null(verbose)) verbose <- 0L
-    devlist <- list(pp=pp, resp=rr, u0=pp$u0, verbose=verbose, dpars=seq_len(nth))
+    ## hacking around to try to get internals properly set up
+    ##  for refitting.  This helps, but not all the way ...
+    ## oldresp <- rr$y # set this above from before copy
+    ## rr$setResp(newresp)
+    ## rr$setResp(oldresp)
+    ## rr$setResp(newresp)
     if (isGLMM(object)) {
-        baseOffset <- object@resp$offset
-        devlist <- c(list(tolPwrss= dc$cmp [["tolPwrss"]],
-                          compDev = dc$dims[["compDev"]],
-			  nAGQ = unname(nAGQ),
-                          lp0=object@resp$eta - baseOffset,
-                          baseOffset=baseOffset,
-                          pwrssUpdate=glmerPwrssUpdate,
-                          ## save GQmat in the object and use that instead of nAGQ
-                          GQmat=GHrule(nAGQ),
-                          fac=object@flist[[1]]),
-                     devlist)
+        GQmat <- GHrule(nAGQ)
+        if (nAGQ <= 1) {
+            glmerPwrssUpdate(pp,rr, control$tolPwrss, GQmat, maxit=maxit)
+        } else {
+            glmerPwrssUpdate(pp,rr, control$tolPwrss, GQmat, maxit=maxit,
+                             grpFac = object@flist[[1]])
+        }
     }
-    ff <- mkdevfun(list2env(devlist), nAGQ=nAGQ, verbose)
+    ## .Call(glmerLaplace, pp$ptr(), rr$ptr(), nAGQ,
+    ## control$tolPwrss, as.integer(30), verbose)
+    ##              nAGQ,
+    ##              control$tolPwrss, as.integer(30), # maxit = 30
+    ##              verbose)
+    ##        lp0         <- pp$linPred(1) # each pwrss opt begins at this eta
+
+    devlist <-
+	if (isGLMM(object)) {
+	    baseOffset <- object@resp$offset
+
+	    list(tolPwrss= dc$cmp [["tolPwrss"]],
+		 compDev = dc$dims[["compDev"]],
+		 nAGQ = unname(nAGQ),
+		 lp0 = pp$linPred(1), ## object@resp$eta - baseOffset,
+		 baseOffset = baseOffset,
+		 pwrssUpdate = glmerPwrssUpdate,
+		 ## save GQmat in the object and use that instead of nAGQ
+		 GQmat = GHrule(nAGQ),
+		 fac = object@flist[[1]],
+		 pp=pp, resp=rr, u0=pp$u0, verbose=verbose, dpars=seq_len(nth))
+	} else
+	    list(pp=pp, resp=rr, u0=pp$u0, verbose=verbose, dpars=seq_len(nth))
+    ff <- mkdevfun(list2env(devlist), nAGQ=nAGQ, maxit=maxit, verbose=verbose)
+    ## rho <- environment(ff)
     xst       <- rep.int(0.1, nth)
     x0        <- pp$theta
     lower     <- object@lower
@@ -1182,19 +1282,14 @@ refit.merMod <- function(object, newresp=NULL, rename.response=FALSE, ...)
         x0    <- c(x0, unname(fixef(object)))
         lower <- c(lower, rep(-Inf,length(x0)-length(lower)))
     }
-    ## control <- object@optinfo$control
-    if (!is.null(newControl)) {
-        control <- newControl
-        control$optCtrl <- object@optinfo$control
-        ## for (i in names(newControl)) {
-        ##     control[[i]] <- newControl[[i]]
-        ## }
-    } else {
-        control <- lmerControl()
-    }
     ## control <- c(control,list(xst=0.2*xst, xt=xst*0.0001))
     ## FIX ME: allow use.last.params to be passed through
     calc.derivs <- !is.null(object@optinfo$derivs)
+    ## if(isGLMM(object)) {
+    ##     rho$resp$updateWts()
+    ##     rho$pp$updateDecomp()
+    ##     rho$lp0 <- rho$pp$linPred(1)
+    ## }
     opt <- optwrap(object@optinfo$optimizer,
                    ff, x0, lower=lower, control=control$optCtrl,
                    calc.derivs=calc.derivs)
@@ -1213,13 +1308,6 @@ refit.merMod <- function(object, newresp=NULL, rename.response=FALSE, ...)
              object@frame, getCall(object), cc)
 }
 
-##-- BUG in roxygen2: If we use  @S3method instead of @method,
-##-- the \usage{ ... } will have
-##-- refitML.merMod(..) instead of \method{refitML}{mermod}(..)
-##' @param optimizer a string indicating the optimizer to be used.
-##' @method refitML merMod
-##' @rdname refitML
-##' @export
 refitML.merMod <- function (x, optimizer="bobyqa", ...) {
     ## FIXME: optimizer is set to 'bobyqa' for back-compatibility, but that's not
     ##  consistent with lmer (default NM).  Should be based on internally stored 'optimizer' value
@@ -1230,7 +1318,7 @@ refitML.merMod <- function (x, optimizer="bobyqa", ...) {
     xpp <- x@pp$copy()
     rho$pp <- new(class(xpp), X=xpp$X, Zt=xpp$Zt, Lambdat=xpp$Lambdat,
                   Lind=xpp$Lind, theta=xpp$theta, n=nrow(xpp$X))
-    devfun <- mkdevfun(rho, 0L)
+    devfun <- mkdevfun(rho, 0L) # also pass ?? (verbose, maxit, control)
     opt <- optwrap(optimizer, devfun, x@theta, lower=x@lower,
                    calc.derivs=TRUE)
     ## FIXME: smarter calc.derivs rules
@@ -1254,64 +1342,42 @@ refitML.merMod <- function (x, optimizer="bobyqa", ...) {
 	lower=x@lower, devcomp=list(cmp=cmp, dims=dims), pp=pp, resp=rho$resp)
 }
 
-##' residuals of merMod objects
-##' @importFrom stats residuals
-##' @S3method residuals merMod
-##' @method residuals merMod
+##' residuals of merMod objects 		--> ../man/residuals.merMod.Rd
 ##' @param object a fitted [g]lmer (\code{merMod}) object
 ##' @param type type of residuals
 ##' @param scaled scale residuals by residual standard deviation (=scale parameter)?
 ##' @param \dots additional arguments (ignored: for method compatibility)
-##' @details
-##' \itemize{
-##' \item The default residual type
-##' varies between \code{lmerMod} and \code{glmerMod} objects: they try to
-##' mimic \code{\link{residuals.lm}} and \code{\link{residuals.glm}} respectively.
-##' In particular, the default \code{type} is \code{"response"},
-##' i.e. (observed-fitted) for \code{lmerMod} objects
-##' vs. \code{"deviance"} for \code{glmerMod} objects.  \code{type="partial"}
-##' is not yet implemented for either type.
-##' \item Note that the meaning of \code{"pearson"} residuals differs between
-##' \code{\link{residuals.lm}} and \code{\link{residuals.lme}}.  The former
-##' returns values scaled by the square root of user-specified weights (if any),
-##' but \emph{not} by the residual standard deviation,
-##' while the latter returns values scaled by the estimated standard deviation
-##' (which will include the effects of any variance structure specified in
-##' the \code{weights} argument).  To replicate \code{lme} behaviour, use
-##' \code{type="pearson"}, \code{scaled=TRUE}.
-##' }
-residuals.merMod <-
-    function(object,
-             type=if (isGLMM(object)) "deviance" else "response",
-             scaled=FALSE,
-             ...) {
-        r <- residuals(object@resp, type,...)
-        if (is.null(nm <- rownames(model.frame(object)))) nm <- seq_along(r)
-        names(r) <- nm
-        if (scaled) r <- r/sigma(object)
-        if (!is.null(na.action <- attr(model.frame(object),"na.action")))
-            r <- naresid(na.action,r)
+residuals.merMod <- function(object,
+                             type = if(isGLMM(object)) "deviance" else "response",
+                             scaled = FALSE, ...) {
+    r <- residuals(object@resp, type,...)
+    fr <- model.frame(object)
+    if (is.null(nm <- rownames(fr))) nm <- seq_along(r)
+    names(r) <- nm
+    if (scaled) r <- r/sigma(object)
+    if (!is.null(na.action <- attr(fr, "na.action")))
+        naresid(na.action, r)
+    else
         r
-    }
+}
 
 ##' @rdname residuals.merMod
 ##' @S3method residuals lmResp
 ##' @method residuals lmResp
 residuals.lmResp <- function(object,
                              type = c("working", "response", "deviance",
-                             "pearson", "partial"),
-                             ...) {
+                                      "pearson", "partial"), ...) {
     y <- object$y
     r <- object$wtres
     mu <- object$mu
     switch(match.arg(type),
-                    working =,
-                    response = y-mu,
-                    deviance =,
-                    pearson = r,
-                      partial = stop(gettextf("partial residuals are not implemented yet"),
-                    call. = FALSE)
-       )
+           working =,
+           response = y-mu,
+           deviance =,
+           pearson = r,
+           partial = stop(gettextf("partial residuals are not implemented yet"),
+                          call. = FALSE)
+           )
 }
 
 ##' @rdname residuals.merMod
@@ -1337,22 +1403,23 @@ residuals.glmResp <- function(object, type = c("deviance", "pearson",
 
 }
 
-## influence values (new feature)
-hatvalues.merMod <- function(object, ...) {
-    with(getME(object, c("L", "Lambdat", "Zt", "RX", "X", "RZX")), {
-                                        # prior weights
-        sqrtW <- Diagonal(x = sqrt(weights(object, type = "prior")))
-                                        # right factor of the
-                                        # random-effects component of
-                                        # the hat matrix
-        CL <- solve(L, solve(L, Lambdat%*%Zt%*%sqrtW,
+hatvalues.merMod <- function(model, fullHatMatrix = FALSE, ...) {
+    if(isGLMM(model)) warning("the hat matrix may not make sense for GLMMs")
+    ## FIXME:  add restriction for NLMMs?
+
+    ## prior weights, W ^ {1/2} :
+    sqrtW <- Diagonal(x = sqrt(weights(model, type = "prior")))
+    with(getME(model, c("L", "Lambdat", "Zt", "RX", "X", "RZX")), {
+        ## CL:= right factor of the random-effects component of the hat matrix	(64)
+        CL <- solve(L, solve(L, Lambdat %*% Zt %*% sqrtW,
                              system = "P"), system = "L")
-                                        # right factor of the
-                                        # fixed-effects comonent of
-                                        # the hat matrix
-        CR <- solve(t(RX), t(X)%*%sqrtW - t(RZX)%*%CL)
-                                        # diagonal of the hat matrix
-        apply(CR^2, 2, sum) + apply(CL^2, 2, sum)
+	## CR:= right factor of the fixed-effects component of the hat matrix	(65)
+	##	{MM (FIXME Matrix):  t(.) %*% here faster than crossprod()}
+	CR <- solve(t(RX), t(X) %*% sqrtW - crossprod(RZX, CL))
+	if(fullHatMatrix) ## H = (C_L^T C_L + C_R^T C_R)			(63)
+	    crossprod(CL) + crossprod(CR)
+	else ## diagonal of the hat matrix, diag(H) :
+	    colSums(CR^2) + colSums(CL^2)
     })
 }
 
@@ -1364,120 +1431,6 @@ sigma.merMod <- function(object, ...) {
     if(dd[["useSc"]])
         dc$cmp[[if(dd[["REML"]]) "sigmaREML" else "sigmaML"]] else 1.
 }
-
-##' @importFrom stats simulate
-NULL
-##' Simulate responses from the model represented by a fitted model object
-##'
-##' @title Simulate responses from a \code{\linkS4class{merMod}} object
-##' @param object a fitted model object
-##' @param nsim positive integer scalar - the number of responses to simulate
-##' @param seed an optional seed to be used in \code{set.seed} immediately
-##'     before the simulation so as to generate a reproducible sample.
-##' @param use.u (logical) if \code{TRUE}, generate a simulation conditional on the current
-##' random-effects estimates; if \code{FALSE} generate new Normally distributed random-effects values
-##' @param ... optional additional arguments, none are used at present
-##' @examples
-##' ## test whether fitted models are consistent with the
-##' ##  observed number of zeros in CBPP data set:
-##' gm1 <- glmer(cbind(incidence, size - incidence) ~ period + (1 | herd),
-##'              data = cbpp, family = binomial)
-##' gg <- simulate(gm1,1000)
-##' zeros <- sapply(gg,function(x) sum(x[,"incidence"]==0))
-##' plot(table(zeros))
-##' abline(v=sum(cbpp$incidence==0),col=2)
-##' @method simulate merMod
-##' @export
-simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE, ...) {
-    stopifnot((nsim <- as.integer(nsim[1])) > 0,
-	      is(object, "merMod"))
-	      ## i.e. not yet for glmer etc:
-    ## is(object@resp, "lmerResp"))
-    if(!is.null(seed)) set.seed(seed)
-    if(!exists(".Random.seed", envir = .GlobalEnv))
-	runif(1) # initialize the RNG if necessary
-    RNGstate <- .Random.seed
-
-    sigma <- sigma(object)
-    n <- nrow(X <- getME(object, "X"))
-    if (is.null(nm <- names(fitted(object)))) nm <- seq(n)
-    # fixed-effect contribution
-    etasim.fix <- as.vector(X %*% getME(object, "beta"))
-    if (length(offset <- getME(object,"offset")) > 0) {
-      etasim.fix <- etasim.fix+offset
-    }
-    U <- getME(object, "Z") %*% getME(object, "Lambda")
-    u <- if (use.u) {
-        rep(getME(object, "u"), nsim)/sigma  ## ??? u is 'spherical' but not scaled ???
-    } else {
-        rnorm(ncol(U)*nsim)
-    }
-    etasim.reff <- ## UNSCALED random-effects contribution:
-        as(U %*% matrix(u, ncol = nsim), "matrix")
-    if (is(object@resp,"lmerResp")) {
-      ## result will be matrix  n x nsim :
-      val <- etasim.fix + sigma * (etasim.reff +
-        ## residual contribution:
-        matrix(rnorm(n * nsim), ncol = nsim))
-    } else if (is(object@resp,"glmResp")) {
-      ## GLMM
-      ## n.b. DON'T scale random-effects (???)
-      	      etasim <- etasim.fix+etasim.reff
-              ## FIXME:: try to avoid @call ... and DRY on interpreting family() ...
-	      family <- object@call$family
-	      if(is.symbol(family)) family <- as.character(family)
-	      if(is.character(family))
-		  family <- get(family, mode = "function", envir = parent.frame(2))
-	      if(is.function(family)) family <- family()
-              if(is.language(family)) family <- eval(family)
-	      if(is.null(family$family)) stop("'family' not recognized")
-	      musim <- family$linkinv(etasim)
-	      ntot <- length(musim) ## FIXME: or could be dims[["n"]]?
-              ## FIXME: is it possible to leverage family$simulate ... ???
-              val <- switch(family$family,
-			    poisson=rpois(ntot,lambda=musim),
-			    binomial={
-                              w <- weights(object)
-                              Y <- rbinom(ntot,prob=musim,size=w)
-                              resp <- model.response(object@frame)
-                              if (!is.matrix(resp)) {  ## bernoulli, or weights specified
-                                if (is.factor(resp)) {
-                                  if (any(weights(object) != 1))
-                                      stop("non-uniform weights with factor response??")
-                                  f <- factor(levels(resp)[Y+1],levels=levels(resp))
-                                  split(f, rep(seq_len(nsim), each = n))
-                                } else {
-                                  Y/w
-                                }
-                              } else {
-                                ## FIXME: should "N-size" (column 2) be named?
-                                ## copying structures from stats/R/family.R
-                                nresp <- nrow(resp)
-                                YY <- cbind(Y, w - Y)
-                                yy <- lapply(split(YY,gl(nsim,nresp,2*nsim*nresp)),
-                                             matrix, ncol=2,
-                                             dimnames=list(NULL,colnames(resp)))
-                                names(yy) <- paste("sim",seq_along(yy),sep="_")
-                                yy
-                              }
-                            },
-			    stop("simulation not implemented for family",
-				 family$family))
-            } else {
-              stop("simulate method for NLMMs not yet implemented")
-            }
-    ## from src/library/stats/R/lm.R
-    if(!is.list(val)) {
-      dim(val) <- c(n, nsim)
-      val <- as.data.frame(val)
-    }
-    else
-      class(val) <- "data.frame"
-    names(val) <- paste("sim", seq_len(nsim), sep="_")
-    row.names(val) <- nm
-    attr(val, "seed") <- RNGstate
-    val
-  }
 
 ##' @importFrom stats terms
 ##' @S3method terms merMod
@@ -1506,9 +1459,18 @@ update.merMod <- function(object, formula., ..., evaluate = TRUE) {
 	    call <- as.call(call)
 	}
     }
-    if (evaluate)
-	eval(call, parent.frame())
-    else call
+    if (evaluate) {
+        ff <- environment(formula(object))
+        pf <- parent.frame()  ## save parent frame in case we need it
+        sf <- sys.frames()[[1]]
+        tryCatch(eval(call, envir=ff),
+                 error=function(e) {
+                     tryCatch(eval(call, envir=sf),
+                              error=function(e) {
+                                  eval(call, pf)
+                              })
+                 })
+    } else call
 }
 
 ###----- Printing etc ----------------------------
@@ -1566,7 +1528,8 @@ famlink <- function(object, resp = object@resp) {
 
 .prt.resids <- function(resids, digits, title = "Scaled residuals:", ...) {
     cat(title,"\n")
-    rq <- setNames(zapsmall(quantile(resids), digits + 1L),
+    ## FIXME: need testing code
+    rq <- setNames(zapsmall(quantile(resids, na.rm=TRUE), digits + 1L),
                    c("Min", "1Q", "Median", "3Q", "Max"))
     print(rq, digits = digits, ...)
     cat("\n")
@@ -1627,6 +1590,31 @@ getLlikAIC <- function(object, cmp = object@devcomp$cmp) {
     cat(sprintf("Number of obs: %d, groups: ", nobs),
         paste(paste(names(ngrps), ngrps, sep = ", "), collapse = "; "),
         fill = TRUE)
+}
+
+## FIXME: print header ("Warnings:\n") ?
+##  change position in output? comes at the very end, could get lost ...
+.prt.warn <- function(optinfo, summary=FALSE, ...) {
+    ## check all warning slots: print numbers of warnings (if any)
+    cc <- optinfo$conv$opt
+    msgs <- unlist(optinfo$conv$lme4$messages)
+    ## can't put nmsgs/nwarnings compactly into || expression
+    ##   because of short-circuiting
+    nmsgs <- length(msgs)
+    warnings <- optinfo$warnings
+    nwarnings <- length(warnings)
+    if (cc>0 || nmsgs>0 || nwarnings>0) {
+        if (summary) {
+            cat(sprintf("convergence code %d; %d optimizer warnings; %d lme4 warnings",
+                cc,nmsgs,nwarnings),"\n")
+        } else {
+            cat(sprintf("convergence code: %d",cc),
+                msgs,
+                unlist(warnings),
+                sep="\n")
+            cat("\n")
+        }
+    }
 }
 
 .summary.cor.max <- 20
@@ -1697,6 +1685,11 @@ print.summary.merMod <- function(x, digits = max(3, getOption("digits") - 3),
 	    }  ## if (p > 1)
         } ## if (correlation)
     } ## if (p>0)
+
+    if(length(x$fitMsgs) && any(nchar(x$fitMsgs) > 0)) {
+        cat("fit warnings:\n"); writeLines(x$fitMsgs)
+    }
+    .prt.warn(x$optinfo,summary=FALSE)
     invisible(x)
 }## print.summary.merMod
 
@@ -1711,7 +1704,7 @@ print.merMod <- function(x, digits = max(3, getOption("digits") - 3),
     .prt.methTit(methTitle(x, dims = dims), class(x))
     .prt.family(famlink(x, resp = x@resp))
     .prt.call(x@call, long = FALSE)
-    useScale <- as.logical(dims[["useSc"]])
+    ## useScale <- as.logical(dims[["useSc"]])
 
     llAIC <- getLlikAIC(x)
     .prt.aictab(llAIC$AICtab, 4)
@@ -1724,6 +1717,12 @@ print.merMod <- function(x, digits = max(3, getOption("digits") - 3),
 	print.default(format(cf, digits = digits),
 		      print.gap = 2L, quote = FALSE, ...)
     } else cat("No fixed effect coefficients\n")
+
+    fitMsgs <- .merMod.msgs(x)
+    if(any(nchar(fitMsgs) > 0)) {
+        cat("fit warnings:\n"); writeLines(fitMsgs)
+    }
+    .prt.warn(x@optinfo,summary=TRUE)
     invisible(x)
 }
 
@@ -1764,7 +1763,7 @@ mkPfun <- function(diag.only = FALSE, old = TRUE, prefix = NULL){
 
 ##' Construct names of individual theta/sd:cor components
 ##'
-##' @param object a fixed model
+##' @param object a fitted model
 ##' @param diag.only include only diagonal elements?
 ##' @param old (logical) give backward-compatible results?
 ##' @param prefix a character vector with two elements giving the prefix
@@ -1780,18 +1779,21 @@ getME <- function(object,
 		  name = c("X", "Z","Zt", "Ztlist", "mmList",
                   "y", "mu", "u", "b",
 		  "Gp", "Tp",
-		  "L", "Lambda", "Lambdat", "Lind", "A",
+		  "L", "Lambda", "Lambdat", "Lind", "Tlist", "A",
 		  "RX", "RZX", "sigma",
                   "flist",
                   "fixef", "beta", "theta", "ST",
 		  "REML", "is_REML",
                   "n_rtrms", "n_rfacs",
                   "N", "n", "p", "q",
+                  "p_i", "l_i", "q_i", "k", "m_i", "m",
                   "cnms",
-                  "devcomp", "offset", "lower"))
+                  "devcomp", "offset", "lower",
+                  "devfun"))
 {
     if(missing(name)) stop("'name' must not be missing")
     stopifnot(is(object,"merMod"))
+    ## Deal with multiple names -- "FIXME" is inefficiently redoing things
     if (length(name <- as.character(name)) > 1) {
         names(name) <- name
         return(lapply(name, getME, object = object))
@@ -1800,15 +1802,20 @@ getME <- function(object,
     rsp  <- object@resp
     PR   <- object@pp
     dc   <- object@devcomp
-    cmp  <- dc $ cmp
+    th   <- object@theta
+    ## cmp  <- dc $ cmp
     cnms <- object@cnms
     dims <- dc $ dims
     Tpfun <- function(cnms) {
 	ltsize <- function(n) n*(n+1)/2 # lower triangle size
-	cLen <- cumsum(ltsize(vapply(cnms,length, 1L)))
+	cLen <- cumsum(ltsize(vapply(cnms, length, 1L)))
 	setNames(c(0, cLen),
 		 c("beg__", names(cnms))) ## such that diff( Tp ) is well-named
     }
+    ## mmList. <- mmList(object)
+    if(any(name == c("p_i", "q_i", "m_i")))
+	p_i <- vapply(mmList(object), ncol, 1L)
+    ## l_i <- vapply(object@flist, nlevels, 1L)
     switch(name,
 	   "X" = PR$X, ## ok ? - check -- use model.matrix() method instead?
 	   "Z" = t(PR$Zt),
@@ -1825,11 +1832,11 @@ getME <- function(object,
            setNames(lapply(inds,function(i) PR$Zt[i,]),
                     tnames(object,diag.only = TRUE))
        },
-           "mmList" = mmList(object),
+	   "mmList" = mmList.merMod(object),
            "y" = rsp$y,
            "mu" = rsp$mu,
            "u" = object@u,
-           "b" = t(PR$Lambdat) %*% object@u,
+	   "b" = crossprod(PR$Lambdat, object@u), # == Lambda %*% u
 	   "L" = PR$ L(),
 	   "Lambda" = t(PR$ Lambdat),
 	   "Lambdat" = PR$ Lambdat,
@@ -1842,10 +1849,27 @@ getME <- function(object,
            "Tp" = Tpfun(cnms), # "term-wise theta pointer"
            "flist" = object@flist,
            "fixef" = fixef(object),
-	   "beta" = object@beta,
-           "theta" = setNames(object@theta,tnames(object)),
+	   "beta"  = object@beta,
+	   "theta" = setNames(th, tnames(object)),
 	   "ST" = setNames(vec2STlist(object@theta, n = vapply(cnms, length, 0L)),
-			  names(cnms)),
+			   names(cnms)),
+           "Tlist" = {
+               nc <- vapply(cnms, length, 1L) # number of columns per term
+               nt <- length(nc)         # number of random-effects terms
+               ans <- vector("list",nt)
+               names(ans) <- names(nc)
+               pos <- 0L
+               for (i in 1:nt) { # will need modification for more general Lambda
+                   nci <- nc[i]
+                   tt <- matrix(0., nci, nci)
+                   inds <- lower.tri(tt,diag=TRUE)
+                   nthi <- sum(inds)
+                   tt[lower.tri(tt, diag=TRUE)] <- th[pos + (1L:nthi)]
+                   pos <- pos + nthi
+                   ans[[i]] <- tt
+               }
+               ans
+           },
 	   "REML" = dims[["REML"]],
 	   "is_REML" = isREML(object),
            ## number of random-effects terms
@@ -1856,11 +1880,44 @@ getME <- function(object,
            "n" = dims["n"],
            "p" = dims["p"],
            "q" = dims["q"],
+           "p_i" = p_i,
+	   "l_i" = vapply(object@flist, nlevels, 1L),
+	   "q_i" = ## == p_i * l_i
+	       p_i*vapply(object@flist, nlevels, 1L),
+           "k" = length(cnms),
+           "m_i" = choose(p_i + 1, 2),
+           "m" = dc$dims[["nth"]],
            "cnms" = cnms,
            "devcomp" = dc,
            "offset" = rsp$offset,
            "lower" = object@lower,
-            ## FIXME: current version gives lower bounds for theta parameters only -- these must be extended for [GN]LMMs -- give extended value including -Inf values for beta values?
+           "devfun" =
+       {
+           ## copied from refit ... DRY ...
+	   verbose <- getCall(object)$verbose; if (is.null(verbose)) verbose <- 0L
+	   devlist <-
+	       if (isGLMM(object)) {
+		   stop("getME('devfun') not yet working for GLMMs")## FIXME
+		   baseOffset <- rsp$offset
+		   nAGQ <- unname(dc$dims["nAGQ"])
+		   list(tolPwrss= dc$cmp ["tolPwrss"],
+			compDev = dc$dims["compDev"],
+			nAGQ = nAGQ,
+			lp0  = rsp$eta - baseOffset,
+			baseOffset  = baseOffset,
+			pwrssUpdate = glmerPwrssUpdate,
+			GQmat = GHrule(nAGQ),
+			fac = object@flist[[1]],
+			pp=PR, resp=rsp, u0=PR$u0, dpars=seq_along(PR$theta),
+			verbose=verbose)
+	       }
+	       else
+		   list(pp=PR, resp=rsp, u0=PR$u0, dpars=seq_along(PR$theta), verbose=verbose)
+           mkdevfun(rho=list2env(devlist),
+                    ## FIXME: fragile ...
+		    verbose=verbose, control=object@optinfo$control)
+       },
+           ## FIXME: current version gives lower bounds for theta parameters only -- these must be extended for [GN]LMMs -- give extended value including -Inf values for beta values?
 	   "..foo.." = # placeholder!
 	   stop(gettextf("'%s' is not implemented yet",
 			 sprintf("getME(*, \"%s\")", name))),
@@ -1885,50 +1942,60 @@ vcov.merMod <- function(object, correlation = TRUE, sigm = sigma(object),
                                          "=TRUE specified, ",
                                          "but Hessian is unavailable")
     calc.vcov.hess <- function(h) {
-	i <- -seq_len(ntheta)
 	## ~= forceSymmetric(solve(h/2)[i,i]) : solve(h/2) = 2*solve(h)
-	h <- solve(h)[i,i]
+        h <- tryCatch(solve(h),
+                      error=function(e) matrix(NA,nrow=nrow(h),ncol=ncol(h)))
+        i <- -seq_len(ntheta)
+	h <- h[i,i]
 	forceSymmetric(h + t(h))
     }
 
     ## OBSOLETE??  checks for symmetry, but symmetry is now forced
     ## within calc.vcov.hess anyway
-    symmetrize <-  function(v,warnTol = 0,stopTol = sqrt(.Machine$double.eps)) {
-        if(nrow(v) == 1L) return(v)       # 1-by-1 matrices are always symmetrical
-        nonSymm <- max(abs(v[lower.tri(v)]-t(v)[lower.tri(v)]))
-        warnTol <- max(warnTol,stopTol)
-        if (nonSymm > stopTol) stop(sprintf("calculated variance-covariance matrix is non-symmetric (tol=%f)",
-                                          stopTol))
-        if (nonSymm > warnTol) stop(sprintf("calculated variance-covariance matrix is non-symmetric (tol=%f)",
-                                          warnTol))
-        v[upper.tri(v)] <- t(v)[upper.tri(v)]
-        v
-    }
+    ## symmetrize <-  function(v,warnTol = 0,stopTol = sqrt(.Machine$double.eps)) {
+    ##     if(nrow(v) == 1L) return(v)       # 1-by-1 matrices are always symmetrical
+    ##     nonSymm <- max(abs(v[lower.tri(v)]-t(v)[lower.tri(v)]))
+    ##     warnTol <- max(warnTol,stopTol)
+    ##     if (nonSymm > stopTol) stop(sprintf(
+    ##         "calculated variance-covariance matrix is non-symmetric (tol=%f)",
+    ##                                       stopTol))
+    ##     if (nonSymm > warnTol) stop(sprintf(
+    ##         "calculated variance-covariance matrix is non-symmetric (tol=%f)",
+    ##                                       warnTol))
+    ##     v[upper.tri(v)] <- t(v)[upper.tri(v)]
+    ##     v
+    ## }
 
     V <- sigm^2 * object@pp$unsc()
 
-    if (!use.hessian) {
-        if (hess.avail) {
-            ## if hessian is available, go ahead and check
-            ## for similarity with the RX-based estimate
-            ## (inverting the hessian isn't *too* expensive)
-            var.hess.tol <- 1e-4 # FIXME: should var.hess.tol be user controlled?
-            V.hess <- calc.vcov.hess(h)
-            if (any(abs(V-V.hess) > var.hess.tol * V.hess))
-                warning("variance-covariance matrix computed ",
-                        "from finite-difference Hessian\nand ",
-                        "from RX differ by >",var.hess.tol,": ",
-                        "consider ",shQuote("use.hessian=TRUE"))
-        }
-    } else {
+    if (hess.avail) {
         V.hess <- calc.vcov.hess(h)
-        e.hess <- eigen(V.hess,symmetric = TRUE,only.values = TRUE)$values
-        if (min(e.hess) <= 0) {
+        bad.V.hess <- any(is.na(V.hess))
+        if (!bad.V.hess) {
+            e.hess <- eigen(V.hess,symmetric = TRUE,only.values = TRUE)$values
+            if (min(e.hess) <= 0) bad.V.hess <- TRUE
+        }
+    }
+    if (!use.hessian && hess.avail) {
+        ## if hessian is available, go ahead and check
+        ## for similarity with the RX-based estimate
+        ## (inverting the hessian isn't *too* expensive)
+        var.hess.tol <- 1e-4 # FIXME: should var.hess.tol be user controlled?
+        if (!bad.V.hess && any(abs(V-V.hess) > var.hess.tol * V.hess))
+            warning("variance-covariance matrix computed ",
+                    "from finite-difference Hessian\nand ",
+                    "from RX differ by >",var.hess.tol,": ",
+                    "consider ",shQuote("use.hessian=TRUE"))
+    }
+    if (use.hessian) {
+        if (!bad.V.hess) {
+            V <- V.hess
+        } else {
             warning("variance-covariance matrix computed ",
                     "from finite-difference Hessian is\n",
-                    "not positive definite: falling back to ",
+                    "not positive definite or contains NA values: falling back to ",
                     "var-cov estimated from RX")
-        } else V <- V.hess
+        }
     }
 
     ## FIXME: try to catch non-PD matrices
@@ -2006,8 +2073,8 @@ VarCorr.merMod <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
   ## FIXME:: add type=c("varcov","sdcorr","logs" ?)
     if (is.null(cnms <- x@cnms))
 	stop("VarCorr methods require reTrms, not just reModule")
-    if(missing(sigma)) # "bug": fails via default 'sigma=sigma(x)'
-	sigma <- lme4::sigma(x)  ## FIXME: do we still need lme4:: ?
+    if(missing(sigma))
+	sigma <- sigma(x)
     nc <- vapply(cnms, length, 1L) # no. of columns per term
     structure(mkVarCorr(sigma, cnms = cnms, nc = nc, theta = x@theta,
 			nms = { fl <- x@flist; names(fl)[attr(fl, "assign")]}),
@@ -2056,7 +2123,7 @@ formatVC <- function(varc, digits = max(3, getOption("digits") - 2),
 {
     c.nms <- c("Groups", "Name", "Variance", "Std.Dev.")
     avail.c <- c.nms[-(1:2)]
-    if(any(is.na(mcc <- pmatch(comp, avail.c))))
+    if(anyNA(mcc <- pmatch(comp, avail.c)))
 	stop("Illegal 'comp': ", comp[is.na(mcc)])
     nc <- length(colnms <- c(c.nms[1:2], (use.c <- avail.c[mcc])))
     if(length(use.c) == 0)
@@ -2102,9 +2169,13 @@ summary.merMod <- function(object,
                            use.hessian = NULL,
                            ...)
 {
+    if (length(list(...)) > 0) {
+        ## FIXME: need testing code
+        warning("additional arguments ignored")
+    }
     ## se.calc:
     hess.avail <- (!is.null(h <- object@optinfo$derivs$Hessian) &&
-        nrow(h) > (ntheta <- length(getME(object,"theta"))))
+                   nrow(h) > length(getME(object,"theta")))
     if (is.null(use.hessian)) use.hessian <- hess.avail
     if (use.hessian && !hess.avail) stop(shQuote("use.hessian"),
                                          "=TRUE specified, ",
@@ -2113,10 +2184,10 @@ summary.merMod <- function(object,
     resp <- object@resp
     devC <- object@devcomp
     dd <- devC$dims
-    cmp <- devC$cmp
+    ## cmp <- devC$cmp
     useSc <- as.logical(dd[["useSc"]])
     sig <- sigma(object)
-    REML <- isREML(object)
+    ## REML <- isREML(object)
 
     famL <- famlink(resp = resp)
     p <- length(coefs <- fixef(object))
@@ -2148,7 +2219,9 @@ summary.merMod <- function(object,
 		   vcov = vcov(object, correlation = correlation, sigm = sig),
 		   varcor = varcor, # and use formatVC(.) for printing.
 		   AICtab = llAIC[["AICtab"]], call = object@call,
-                   residuals = residuals(object,"pearson",scaled = TRUE)
+                   residuals = residuals(object,"pearson",scaled = TRUE),
+		   fitMsgs = .merMod.msgs(object),
+                   optinfo = object@optinfo
 		   ), class = "summary.merMod")
 }
 
@@ -2311,6 +2384,10 @@ weights.merMod <- function(object, type = c("prior","working"), ...) {
     return(res)
 }
 
+dim.merMod <- function(x) {
+    getME(x, c("n", "p", "q", "p_i", "l_i", "q_i", "k", "m_i", "m"))
+}
+
 ## Internal utility, only used in optwrap() :
 ##' @title Get the optimizer function and check it minimally
 ##' @param optimizer character string ( = function name) *or* function
@@ -2326,7 +2403,7 @@ getOptfun <- function(optimizer) {
     if (is.null(optfun)) stop("couldn't find optimizer function ",optimizer)
     if (!is.function(optfun)) stop("non-function specified as optimizer")
     needArgs <- c("fn","par","lower","control")
-    if (any(is.na(match(needArgs, names(formals(optfun))))))
+    if (anyNA(match(needArgs, names(formals(optfun)))))
 	stop("optimizer function must use (at least) formal parameters ",
 	     paste(sQuote(needArgs), collapse = ", "))
     optfun
@@ -2437,24 +2514,38 @@ optwrap <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
         ##  value, to reset the internal/environment variables in devfun ...
         fn(opt$par)
     }
-
-    ## store all auxiliary information
-    attr(opt,"optimizer") <- optimizer
-    attr(opt,"control") <- control
-    attr(opt,"warnings") <- curWarnings
-    attr(opt,"derivs") <- derivs
-    opt
+    structure(opt, ## store all auxiliary information
+              optimizer = optimizer,
+              control   = control,
+              warnings  = curWarnings,
+              derivs    = derivs)
 }
 
-as.data.frame.VarCorr.merMod <- function(x,row.names = NULL, optional = FALSE, ...)  {
-    tmpf <- function(v,n) {
-        vcov <- c(diag(v),v[lower.tri(v,diag = FALSE)])
+as.data.frame.VarCorr.merMod <- function(x,row.names = NULL,
+                                         optional = FALSE,
+                                         order = c("cov.last", "lower.tri"),
+                                         ...)  {
+    order <- match.arg(order)
+    tmpf <- function(v,grp) {
+        vcov <- c(diag(v), v[lt.v <- lower.tri(v, diag = FALSE)])
         sdcor <- c(attr(v,"stddev"),
-                   attr(v,"correlation")[lower.tri(v,diag = FALSE)])
+                   attr(v,"correlation")[lt.v])
         nm <- rownames(v)
-        var1 <- nm[c(seq(nrow(v)),col(v)[lower.tri(v,diag = FALSE)])]
-        var2 <- c(rep(NA,nrow(v)),nm[row(v)[lower.tri(v,diag = FALSE)]])
-        data.frame(grp = n,var1,var2,vcov,sdcor,stringsAsFactors = FALSE)
+        n <- nrow(v)
+        dd <- data.frame(grp = grp,
+                         var1 = nm[c(seq(n), col(v)[lt.v])],
+                         var2 = c(rep(NA,n), nm[row(v)[lt.v]]),
+                         vcov,
+                         sdcor,
+                         stringsAsFactors = FALSE)
+        if (order=="lower.tri") {
+            ## reorder *back* to lower.tri order
+            m <- matrix(NA,n,n)
+            diag(m) <- seq(n)
+            m[lower.tri(m)] <- (n+1):(n*(n+1)/2)
+            dd <- dd[m[lower.tri(m,diag=TRUE)],]
+        }
+        dd
     }
     r <- do.call(rbind,
                  mapply(tmpf,x,names(x),SIMPLIFY = FALSE))
@@ -2467,3 +2558,4 @@ as.data.frame.VarCorr.merMod <- function(x,row.names = NULL, optional = FALSE, .
     rownames(r) <- NULL
     r
 }
+

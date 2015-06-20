@@ -1,4 +1,5 @@
 library(lme4)
+library(testthat)
 library(lattice)
 
 ### __ was ./profile_plots.R ___
@@ -15,6 +16,15 @@ if(!dev.interactive(orNone=TRUE)) pdf("profile_plots.pdf")
 xyplot(tpr.fm1)
 splom(tpr.fm1)
 densityplot(tpr.fm1, main="densityplot( profile(lmer(..)) )")
+
+## various scale options
+xyplot(tpr.fm1,scale=list(x=list(relation="same")))  ## stupid
+xyplot(tpr.fm1,scale=list(y=list(relation="same")))
+xyplot(tpr.fm1,scale=list(y=list(relation="same"),tck=0))
+
+##
+expect_error(xyplot(tpr.fm1,conf=50),"must be strictly between 0 and 1")
+
 ### end {profile_plots.R}
 
 fm01ML <- lmer(Yield ~ 1|Batch, Dyestuff, REML = FALSE)
@@ -103,3 +113,33 @@ if (testLevel > 3) {
     }  ## testLevel > 4
 
 }  ## testLevel > 3
+
+library("parallel")
+if (detectCores()>1) {
+
+    p0 <- profile(fm1, which="theta_")
+    ## http://stackoverflow.com/questions/12983137/how-do-detect-if-travis-ci-or-not
+    travis <- nchar(Sys.getenv("TRAVIS"))>0
+    if(.Platform$OS.type != "windows" && !travis) {
+        prof01P <- profile(fm1, which="theta_", parallel="multicore", ncpus=2)
+        stopifnot(all.equal(p0,prof01P))
+    }
+
+    ## works in Solaris from an interactive console but not ???
+    ##   via R CMD BATCH
+
+    if (Sys.info()["sysname"] != "SunOS" && !travis) {
+        prof01P.snow <- profile(fm1, which="theta_", parallel="snow", ncpus=2)
+        stopifnot(all.equal(p0,prof01P.snow))
+    }
+}
+
+## test profile/update from within functions
+foo <- function() {
+    df <- cbpp
+    gm1 <- glmer(cbind(incidence, size - incidence) ~ period + (1 | herd),
+                   data = cbpp, family = binomial)
+    pp <- profile(gm1,which="theta_")
+    return(pp)
+}
+stopifnot(is(foo(),"thpr"))

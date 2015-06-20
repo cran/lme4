@@ -5,21 +5,25 @@ noReForm <- function(re.form) {
         (is(re.form,"formula") && length(re.form)==2 && identical(re.form[[2]],0))
 }
 
+##' Random Effects formula only
 reOnly <- function(f) {
-    reformulate(paste0("(",sapply(findbars(f),deparse),")"))
+    reformulate(paste0("(", vapply(findbars(f), safeDeparse, ""), ")"))
 }
 
 reFormHack <- function(re.form,ReForm,REForm,REform) {
+    warnDeprec <- function(name)
+        warning(gettextf("'%s' is deprecated; use '%s' instead", name, "re.form"),
+                call.=FALSE, domain=NA)
     if (!missing(ReForm)) {
-        message(shQuote("re.form")," is now preferred to ",shQuote("ReForm"))
+        warnDeprec("ReForm")
         return(ReForm)
     }
     if (!missing(REForm)) {
-        message(shQuote("re.form")," is now preferred to ",shQuote("REForm"))
+        warnDeprec("REForm")
         return(REForm)
     }
     if (!missing(REform)) {
-        message(shQuote("re.form")," is now preferred to ",shQuote("REform"))
+        warnDeprec("REform")
         return(REform)
     }
     re.form
@@ -54,7 +58,7 @@ reFormHack <- function(re.form,ReForm,REForm,REform) {
 ##' sapply(slotNames(fm1),function(x) class(slot(fm1,x)))
 setParams <- function(object, params, inplace=FALSE, subset=FALSE) {
     pNames <- c("beta","theta")
-    if (useSc <- object@devcomp$dims["useSc"]) pNames <- c(pNames,"sigma")
+    if (object@devcomp$dims["useSc"]) pNames <- c(pNames, "sigma")
     if (!is.list(params) || length(setdiff(names(params),pNames)) > 0)
         stop("params should be specifed as a list with elements from ",
              "{",paste(shQuote(pNames),collapse=", "),"}")
@@ -120,84 +124,88 @@ setParams <- function(object, params, inplace=FALSE, subset=FALSE) {
 ##' @param object fitted model object
 ##' @param newdata (optional) data frame containing new data
 ##' @param re.form formula specifying random effect terms to include (NULL=all, ~0)
-##' @param ReForm backward compatibility argument
 ##' @param na.action
 ##'
-mkNewReTrms <- function(object, newdata, re.form=NULL, ReForm,
-                        na.action=na.pass,
-                        allow.new.levels=FALSE) {
+##' @note Hidden; _only_ used (twice) in this file
+mkNewReTrms <- function(object, newdata, re.form=NULL, na.action=na.pass,
+                        allow.new.levels=FALSE)
+{
     ## construct (fixed) model frame in order to find out whether there are
     ## missing data/what to do about them
-    re.form <- reFormHack(re.form,ReForm)  ## back-compatibility
-    mfnew <- if (is.null(newdata)) {
-        model.frame(object)  ## FIXME: check ...
+    ## need rfd to inherit appropriate na.action; need grouping
+    ## variables as well as any covariates that are included
+    ## in RE terms
+    if (is.null(newdata)) {
+        rfd <- mfnew <- model.frame(object)
     } else {
-        Terms <- terms(object,fixed.only=TRUE)
-        model.frame(delete.response(Terms),newdata, na.action=na.action)
-    }
-    if (is(re.form,"formula")) {
+          mfnew <- model.frame(delete.response(terms(object,fixed.only=TRUE)),
+                               newdata, na.action=na.action)
+          ## make sure we pass na.action with new data
+          ## it would be nice to do something more principled like
+          ## rfd <- model.frame(~.,newdata,na.action=na.action)
+          ## but this adds complexities (stored terms, formula, etc.)
+          ## that mess things up later on ...
+          rfd <- na.action(newdata)
+          if (is.null(attr(rfd,"na.action")))
+              attr(rfd,"na.action") <- na.action
+      }
+    if (inherits(re.form, "formula")) {
         ## DROP values with NAs in fixed effects
-        if (length(fit.na.action <- attr(mfnew,"na.action"))>0) {
+        if (length(fit.na.action <- attr(mfnew,"na.action")) > 0) {
             newdata <- newdata[-fit.na.action,]
         }
-        re <- ranef(object)
-        rfd <- if(is.null(newdata)) object@frame else newdata
-        ReTrms <- mkReTrms(findbars(re.form[[2]]), rfd)
-        if (!allow.new.levels &&
-            any(sapply(ReTrms$flist,function(x) any(is.na(x)))))
-            stop("NAs are not allowed in prediction data",
-                 " for grouping variables unless allow.new.levels is TRUE")
-        unames <- unique(sort(names(ReTrms$cnms)))  ## FIXME: same as names(ReTrms$flist) ?
-        ## convert numeric grouping variables to factors as necessary
-        ## must use all.vars() for examples
-        ## for (i in all.vars(RHSForm(re.form))) {
-        ## TO DO: should restrict attention to grouping factors only
-        getgrpvars <- function(x) all.vars(x[[3]])
-        all.grp.vars <- unique(unlist(lapply(findbars(re.form),getgrpvars)))
-        for (i in all.grp.vars) {
-            if (!is.matrix(rfd[[i]]))
-                rfd[[i]] <- factor(rfd[[i]])
-        }
-        Rfacs <- lapply(setNames(unames,unames),
-                        function(x) factor(eval(parse(text=x),envir=rfd)))
-        new_levels <- lapply(Rfacs,function(x) levels(droplevels(factor(x))))
-        ## FIXME: should this be unique(as.character(x)) instead?
-        ##   (i.e., what is the proper way to protect against non-factors?)
-        levelfun <- function(x,n) {
-            ## find and deal with new levels
-            nl.n <- new_levels[[n]]
-            if (!all(nl.n %in% rownames(x))) {
-                if (!allow.new.levels) stop("new levels detected in newdata")
-                ## create an all-zero data frame corresponding to the new set of levels ...
-                newx <- as.data.frame(matrix(0, nrow=length(nl.n), ncol=ncol(x),
-                                             dimnames=list(nl.n, names(x))))
-                ## then paste in the matching RE values from the original fit/set of levels
-                newx[rownames(x),] <- x
-                x <- newx
-            }
-            ## find and deal with missing old levels
-	    if (!all(r.inn <- rownames(x) %in% nl.n)) x[r.inn,,drop=FALSE] else x
-        }
-        ## fill in/delete levels as appropriate
-        re_x <- mapply(levelfun, re, names(re), SIMPLIFY=FALSE)
-        re_new <- list()
-        if (any(!names(ReTrms$cnms) %in% names(re)))
+        ## note: mkReTrms automatically *drops* unused levels
+	ReTrms <- mkReTrms(findbars(re.form[[2]]), rfd)
+        ## update Lambdat (ugh, better way to do this?)
+        ReTrms <- within(ReTrms,Lambdat@x <- unname(getME(object,"theta")[Lind]))
+	if (!allow.new.levels && any(vapply(ReTrms$flist, anyNA, NA)))
+	    stop("NAs are not allowed in prediction data",
+		 " for grouping variables unless allow.new.levels is TRUE")
+        ns.re <- names(re <- ranef(object))
+        nRnms <- names(Rcnms <- ReTrms$cnms)
+        if (!all(nRnms %in% ns.re))
             stop("grouping factors specified in re.form that were not present in original model")
+        new_levels <- lapply(ReTrms$flist, function(x) levels(factor(x)))
+        ## fill in/delete levels as appropriate
+        re_x <- Map(function(r,n) levelfun(r,n,allow.new.levels=allow.new.levels),
+                    re[names(new_levels)], new_levels)
         ## pick out random effects values that correspond to
         ##  random effects incorporated in re.form ...
-        for (i in seq_along(ReTrms$cnms)) {
-            rname <- names(ReTrms$cnms)[i]
-            if (any(!ReTrms$cnms[[rname]] %in% names(re[[rname]])))
-                stop("random effects specified in re.form",
-                     " that were not present in original model")
-            re_new[[i]] <- re_x[[rname]][,ReTrms$cnms[[rname]]]
-        }
-        re_newvec <- unlist(lapply(re_new,t))  ## must TRANSPOSE RE matrices before unlisting
+        ## NB: Need integer indexing, as nRnms can be duplicated: (age|Subj) + (sex|Subj) :
+	re_new <- lapply(seq_along(nRnms), function(i) {
+            rname <- nRnms[i]
+	    if (!all(Rcnms[[i]] %in% names(re[[rname]])))
+		stop("random effects specified in re.form that were not present in original model")
+	    re_x[[rname]][,Rcnms[[i]]]
+	})
+        re_new <- unlist(lapply(re_new, t))  ## must TRANSPOSE RE matrices before unlisting
+        ## FIXME? use vapply(re_new, t, FUN_VALUE=????)
     }
     Zt <- ReTrms$Zt
-    attr(Zt,"na.action") <-
-        attr(re_newvec,"na.action") <- attr(mfnew,"na.action")
-    list(Zt=Zt,b=re_newvec)
+    attr(Zt, "na.action") <- attr(re_new, "na.action") <- attr(mfnew, "na.action")
+    list(Zt=Zt, b=re_new, Lambdat = ReTrms$Lambdat)
+}
+
+##' @param x a random effect (i.e., data frame with rows equal to levels, columns equal to terms
+##' @param n vector of new levels
+levelfun <- function(x,nl.n,allow.new.levels=FALSE) {
+    ## 1. find and deal with new levels
+    if (!all(nl.n %in% rownames(x))) {
+        if (!allow.new.levels) stop("new levels detected in newdata")
+        ## create an all-zero data frame corresponding to the new set of levels ...
+        newx <- as.data.frame(matrix(0, nrow=length(nl.n), ncol=ncol(x),
+                                     dimnames=list(nl.n, names(x))))
+        ## then paste in the matching RE values from the original fit/set of levels
+        newx[rownames(x),] <- x
+        x <- newx
+    }
+    ## 2. find and deal with missing old levels
+    ## ... these should have been dropped when making the Z matrices
+    ##     etc. in mkReTrms, so we'd better drop them here to match ...
+    if (!all(r.inn <- rownames(x) %in% nl.n)) {
+        x <- x[r.inn,,drop=FALSE]
+    }
+    return(x)
 }
 
 ##'
@@ -207,8 +215,6 @@ mkNewReTrms <- function(object, newdata, re.form=NULL, ReForm,
 ##' @param object a fitted model object
 ##' @param newdata data frame for which to evaluate predictions
 ##' @param newparams new parameters to use in evaluating predictions
-##' @param newX new design matrix to use in evaluating predictions
-##' (alternative to \code{newdata})
 ##' @param re.form formula for random effects to condition on.  If \code{NULL},
 ##' include all random effects; if \code{NA} or \code{~0},
 ##' include no random effects
@@ -233,7 +239,7 @@ mkNewReTrms <- function(object, newdata, re.form=NULL, ReForm,
 ##' str(p4 <- predict(gm1,newdata,re.form=~(1|herd))) # explicitly specify RE
 ##' @method predict merMod
 ##' @export
-predict.merMod <- function(object, newdata=NULL, newparams=NULL, newX=NULL,
+predict.merMod <- function(object, newdata=NULL, newparams=NULL,
                            re.form=NULL,
                            ReForm,
                            REForm,
@@ -268,19 +274,16 @@ predict.merMod <- function(object, newdata=NULL, newparams=NULL, newX=NULL,
     ## should follow 'na.action' instead ...)
 
     re.form <- reFormHack(re.form,ReForm,REForm,REform)
-    
-    if (length(list(...)>0)) warning("unused arguments ignored")
 
-    
-    fit.na.action <- NULL
+    if (length(list(...)) > 0) warning("unused arguments ignored")
+
     type <- match.arg(type)
     if (!is.null(terms))
         stop("terms functionality for predict not yet implemented")
-    if (!is.null(newparams)) {
+    if (!is.null(newparams))
         object <- setParams(object,newparams)
-    }
-    if ((rawPred <- is.null(newdata) &&
-                    is.null(re.form) && is.null(newparams))) { 
+
+    if ((is.null(newdata) && is.null(re.form) && is.null(newparams))) {
         ## raw predict() call, just return fitted values
         ##   (inverse-link if appropriate)
         if (isLMM(object) || isNLMM(object)) {
@@ -293,42 +296,46 @@ predict.merMod <- function(object, newdata=NULL, newparams=NULL, newX=NULL,
                 nm <- seq_along(pred)
             names(pred) <- nm
         }
+	fit.na.action <- NULL
         ## flow jumps to end for na.predict
     } else { ## newdata and/or re.form and/or newparams specified
-        X_orig <- getME(object, "X")
+        X <- getME(object, "X")
+        X.col.dropped <- attr(X, "col.dropped")
         ## modified from predict.glm ...
         if (is.null(newdata)) {
-            ## get original model matrix and offset
-            X <- X_orig
+            ## Use original model 'X' matrix and offset
             fit.na.action <- attr(object@frame,"na.action")  ## original NA action
             ## orig. offset: will be zero if there are no matches ...
             offset <- rowSums(object@frame[grepl("offset\\(.*\\)",
                                                  names(object@frame))])
-
         } else {  ## new data specified
             ## evaluate new fixed effect
             RHS <- formula(substitute(~R,
-                              list(R=RHSForm(formula(object,fixed.only=TRUE)))))
+                                      list(R=RHSForm(formula(object,fixed.only=TRUE)))))
             Terms <- terms(object,fixed.only=TRUE)
-            isFac <- vapply(mf <- model.frame(object,
-                                              fixed.only=TRUE),
-                            is,"factor",FUN.VALUE=TRUE)
+            mf <- model.frame(object, fixed.only=TRUE)
+            isFac <- vapply(mf, is.factor, FUN.VALUE=TRUE)
             ## ignore response variable
             isFac[attr(Terms,"response")] <- FALSE
             orig_levs <- if (length(isFac)==0) NULL else lapply(mf[isFac],levels)
-            X <- model.matrix(RHS, mfnew <- model.frame(delete.response(Terms),
-                                                        newdata,
-                                                        na.action=na.action,
-                                                        xlev=orig_levs),
-                              contrasts.arg=attr(X_orig,"contrasts"))
-            offset <- rep(0, nrow(X))
+
+            mfnew <- model.frame(delete.response(Terms),
+                                 newdata,
+                                 na.action=na.action,
+                                 xlev=orig_levs)
+            X <- model.matrix(RHS, data=mfnew,
+                              contrasts.arg=attr(X,"contrasts"))
+            offset <- 0 # rep(0, nrow(X))
             tt <- terms(object)
             if (!is.null(off.num <- attr(tt, "offset"))) {
                 for (i in off.num)
                     offset <- offset + eval(attr(tt,"variables")[[i + 1]], newdata)
             }
+            ## FIXME?: simplify(no need for 'mfnew'): can this be different from 'na.action'?
             fit.na.action <- attr(mfnew,"na.action")
         }
+	if(is.numeric(X.col.dropped) && length(X.col.dropped) > 0)
+	    X <- X[, -X.col.dropped, drop=FALSE]
         pred <- drop(X %*% fixef(object))
         ## FIXME:: need to unname()  ?
         ## FIXME: is this redundant??
@@ -336,18 +343,18 @@ predict.merMod <- function(object, newdata=NULL, newparams=NULL, newX=NULL,
         ##     offset <- offset + eval(frOffset, newdata)
         pred <- pred+offset
         if (!noReForm(re.form)) {
-            if (is.null(re.form)) {
+            if (is.null(re.form))
 		re.form <- reOnly(formula(object)) # RE formula only
-                ReTrms <- mkReTrms(findbars(re.form), newdata)
-            }
-            newRE <- mkNewReTrms(object,newdata,re.form,na.action=na.action,
+            newRE <- mkNewReTrms(object,
+                                 newdata, re.form, na.action=na.action,
                                  allow.new.levels=allow.new.levels)
-            pred <- pred + drop(as.matrix(newRE$b %*% newRE$Zt))
+            pred <- pred + base::drop(as(newRE$b %*% newRE$Zt, "matrix"))
         }
         if (isGLMM(object) && type=="response") {
             pred <- object@resp$family$linkinv(pred)
         }
     }  ## newdata/newparams/re.form
+
     ## fill in NAs as appropriate: if NAs were detected in
     ## original model fit, OR in updated model frame construction
     ## but DON'T double-NA if raw prediction in the first place
@@ -363,31 +370,11 @@ predict.merMod <- function(object, newdata=NULL, newparams=NULL, newX=NULL,
     pred
 }
 
-##' @importFrom stats simulate
-NULL
 ##' Simulate responses from the model represented by a fitted model object
 ##'
-##' @title Simulate responses from a \code{\linkS4class{merMod}} object
-##' @param object a fitted model object
-##' @param nsim positive integer scalar - the number of responses to simulate
-##' @param seed an optional seed to be used in \code{set.seed} immediately
-##'     before the simulation so as to generate a reproducible sample.
-##' @param ... optional additional arguments, none are used at present
-##' @examples
-##' ## test whether fitted models are consistent with the
-##' ##  observed number of zeros in CBPP data set:
-##' gm1 <- glmer(cbind(incidence, size - incidence) ~ period + (1 | herd),
-##'              data = cbpp, family = binomial)
-##' gg <- simulate(gm1,1000)
-##' zeros <- sapply(gg,function(x) sum(x[,"incidence"]==0))
-##' plot(table(zeros))
-##' abline(v=sum(cbpp$incidence==0),col=2)
-##' @method simulate merMod
-##' @export
-##'
-simulate.formula <- function(object, nsim = 1, seed = NULL, family, weights=NULL, offset=NULL, ...) {
-    ## N.B. *must* name all arguments so that 'object' is missing in
-    ## .simulateFun
+simulate.formula <- function(object, nsim = 1, seed = NULL, family,
+                             weights=NULL, offset=NULL, ...) {
+    ## N.B. *must* name all arguments so that 'object' is missing in .simulateFun()
     .simulateFun(formula=object, nsim=nsim, seed=seed,
                  family=family, weights=weights, offset=offset, ...)
 }
@@ -434,8 +421,8 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
             devfun <- do.call(mkLmerDevfun, lmod)
             object <- mkMerMod(environment(devfun),
                                ## (real parameters will be filled in later)
-                               opt=list(par=NA,fval=NA,conv=NA),
-                               lmod$reTrms,fr=lmod$fr)
+                               opt = list(par=NA,fval=NA,conv=NA),
+                               lmod$reTrms, fr = lmod$fr)
         } else {
             glmod <- glFormula(formula,newdata,family=family,
                                weights=weights,
@@ -444,8 +431,8 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
             devfun <- do.call(mkGlmerDevfun, glmod)
             object <- mkMerMod(environment(devfun),
                                ## (real parameters will be filled in later)
-                               opt=list(par=NA,fval=NA,conv=NA),
-                               glmod$reTrms,fr=glmod$fr)
+                               opt = list(par=NA,fval=NA,conv=NA),
+                               glmod$reTrms, fr = glmod$fr)
         }
         ## would like to do this:
         ## so predict() -> fitted() -> set default names will work
@@ -478,8 +465,9 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
     RNGstate <- .Random.seed
 
     sigma <- sigma(object)
-    n <- nrow(X <- getME(object, "X"))
-    link <- if (isGLMM(object)) "response"
+    ## OBSOLETE: no longer use X?
+    ## n <- nrow(X <- getME(object, "X"))
+    ## link <- if (isGLMM(object)) "response"
 
     ## predictions, conditioned as specified, on link scale
     ## previously: do **NOT** use na.action as specified here (inherit
@@ -487,7 +475,9 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
     ## now: use na.omit, because we have to match up
     ##    with whatever is done in mkNewReTrms
     etapred <- predict(object, newdata=newdata, re.form=re.form,
-                       type="link", na.action=na.omit)
+                       type="link", na.action=na.omit,
+                       allow.new.levels=allow.new.levels)
+    n <- length(etapred)
 
     ## now add random components:
     ##  only the ones we did *not* condition on
@@ -496,10 +486,8 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
     ## construct RE formula ONLY: leave out fixed terms,
     ##   which might have loose terms like offsets in them ...
     fb <- findbars(formula(object))
-    pfun <- function(x) paste("(",paste(deparse(x),collapse=" "),")")
-    compReForm <- reformulate(sapply(fb,pfun))
-
-
+    compReForm <- reformulate(vapply(fb, function(x)
+                                         paste("(",safeDeparse(x),")"), ""))
     if (!noReForm(re.form)) {
         rr <- re.form[[length(re.form)]] ## RHS of formula
         ftemplate <- substitute(.~.-XX, list(XX=rr))
@@ -507,27 +495,35 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
     }
 
     ## (1) random effect(s)
-    if (!is.null(findbars(compReForm))) {
-        newRE <- mkNewReTrms(object,newdata,compReForm,
-                             na.action=na.action,
-                             allow.new.levels=allow.new.levels)
-        U <- t(getME(object, "Lambdat") %*% newRE$Zt)
-        u <- rnorm(ncol(U)*nsim)
-        sim.reff <- ## UNSCALED random-effects contribution:
-            as(U %*% matrix(u, ncol = nsim), "matrix")
-    } else sim.reff <- 0
-    if (isLMM(object)) {
+    sim.reff <- if (!is.null(findbars(compReForm))) {
+	newRE <- mkNewReTrms(object, newdata, compReForm,
+			     na.action=na.action,
+			     allow.new.levels=allow.new.levels)
+        ## paranoia ...
+        stopifnot(!is.null(newdata) ||
+                  isTRUE(all.equal(newRE$Lambdat,getME(object,"Lambdat"))))
+	U <- t(newRE$Lambdat %*% newRE$Zt) # == Z Lambda
+	u <- rnorm(ncol(U)*nsim)
+	## UNSCALED random-effects contribution:
+	as(U %*% matrix(u, ncol = nsim), "matrix")
+    } else 0
+
+    val <- if (isLMM(object)) {
         ## result will be matrix  n x nsim :
-        val <- etapred + sigma * (sim.reff +
-                                  ## residual contribution:
-                                  matrix(rnorm(n * nsim), ncol = nsim))
+        etapred + sigma * (sim.reff +
+                               ## residual contribution:
+                               matrix(rnorm(n * nsim), ncol = nsim))
     } else if (isGLMM(object)) {
         ## GLMM
         ## n.b. DON'T scale random-effects (???)
         etasim <- etapred+sim.reff
         family <- object@resp$family
+        ## hack (NB families have weird names) from @aosmith16
+        if(gsub("[^[:alpha:]]", "", family$family) == "NegativeBinomial") {
+            family$family <- "negative.binomial"
+        }
         musim <- family$linkinv(etasim)
-        ntot <- length(musim) ## FIXME: or could be dims["n"]?
+        ## ntot <- length(musim) ## FIXME: or could be dims["n"]?
         ## FIXME: is it possible to leverage family$simulate ... ???
         ##
         if (is.null(sfun <- simfunList[[family$family]]) &&
@@ -535,71 +531,76 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
             stop("simulation not implemented for family",
                  family$family)
         ## don't rely on automatic recycling
-        musim <- rep(musim,length.out=n*nsim)
-        val <- sfun(object,
-                    nsim=1,
-                    ftd=musim)
+        val <- sfun(object, nsim=1, ftd = rep_len(musim, n*nsim))
         ## split results into nsims: need special case for binomial matrix/factor responses
         if (family$family=="binomial" && is.matrix(r <- model.response(object@frame))) {
-            val <- lapply(split(val[[1]], gl(nsim, n, 2 * nsim * n)), matrix,
+            lapply(split(val[[1]], gl(nsim, n, 2 * nsim * n)), matrix,
                           ncol = 2, dimnames = list(NULL, colnames(r)))
         } else if (family$family=="binomial" && is.factor(val[[1]])) {
-            val <- split(val[[1]],gl(nsim,n))
-        } else val <- split(val,gl(nsim,n))
-    } else {
+            split(val[[1]], gl(nsim,n))
+        } else split(val, gl(nsim,n))
+    } else
         stop("simulate method for NLMMs not yet implemented")
-    }
+
     ## from src/library/stats/R/lm.R
     if(!is.list(val)) {
         dim(val) <- c(n, nsim)
         val <- as.data.frame(val)
-    }  else class(val) <- "data.frame"
+    } else class(val) <- "data.frame"
     names(val) <- paste("sim", seq_len(nsim), sep="_")
     ## have not yet filled in NAs, so need to use names of fitted
     ## object NOT including values with NAs
     f <- fitted(object)
-    nm <- names(f)[!is.na(f)]  
-    if (length(nm)==0) nm <- seq(n)
+    nm <- names(f)[!is.na(f)]
+    ## unnamed input, *or* simulation from new data ...
+    if (length(nm) == 0) {
+        nm <- as.character(seq(n))
+    } else if (!is.null(newdata)) {
+        nm <- rownames(newdata)
+    }
     row.names(val) <- nm
 
-    fit.na.action <- attr(model.frame(object),"na.action")
+    fit.na.action <- attr(model.frame(object), "na.action")
 
     if (!missing(na.action) &&  !is.null(fit.na.action)) {
         ## retrieve name of na.action type ("omit", "exclude", "pass")
-        class.na.action <- class(attr(na.action(NA),"na.action"))
+        class.na.action <- class(attr(na.action(NA), "na.action"))
         if (class.na.action != class(fit.na.action)) {
             ## hack to override action where explicitly specified
             class(fit.na.action) <- class.na.action
         }
     }
 
-    if (is.matrix(val[[1]])) {
-        ## have to handle binomial response matrices differently --
-        ## fill in NAs as appropriate in *both* columns
-        val <- lapply(val,function(x) { apply(x,2,napredict,
-                                       omit=fit.na.action) })
-        ## have to put this back into a (weird) data frame again,
-        ## carefully (should do the napredict stuff
-        ## earlier, so we don't have to redo this transformation!)
-        class(val) <- "data.frame"
+    val <- if (is.matrix(val[[1]])) {
+	## have to handle binomial response matrices differently --
+	## fill in NAs as appropriate in *both* columns
+	structure(lapply(val, function(x) apply(x, 2L, napredict,
+						omit = fit.na.action)),
+		  ## have to put this back into a (weird) data frame again,
+		  ## carefully (should do the napredict stuff
+		  ## earlier, so we don't have to redo this transformation!)
+		  class = "data.frame")
     } else {
-        val <- as.data.frame(lapply(val,napredict, omit=fit.na.action))
+        as.data.frame(lapply(val, napredict, omit=fit.na.action))
     }
 
     ## reconstruct names: first get rid of NAs, then refill them
     ## as appropriate based on fit.na.action (which may be different
     ## from the original model's na.action spec)
-    if (length(nm2 <- names(napredict(na.omit(f),
-                                        omit=fit.na.action)))>0)
+    nm2 <-
+	if (is.null(newdata))
+	    names(napredict(na.omit(f), omit=fit.na.action))
+	else
+	    rownames(napredict(newdata, omit=fit.na.action))
+    if (length(nm2) > 0)
         row.names(val) <- nm2
 
-    ## as.data.frame(lapply(...)) blows away na.action attribute,
-    ##  so we have to re-assign here
-    attr(val,"na.action") <- fit.na.action
-
-    attr(val, "seed") <- RNGstate
-    val
-}
+    structure(val,
+              ## as.data.frame(lapply(...)) blows away na.action attribute,
+              ##  so we have to re-assign here
+              na.action = fit.na.action,
+              seed = RNGstate)
+}## .simulateFun()
 
 ########################
 ## modified from stats/family.R
@@ -675,9 +676,8 @@ Gamma_simfun <- function(object, nsim, ftd=fitted(object)) {
 }
 
 gamma.shape.merMod <- function(object, ...) {
-    if(!(family(object)$family == "Gamma"))
-        stop("Can not fit gamma shape parameter ",
-             "because Gamma family not used")
+    if(family(object)$family != "Gamma")
+	stop("Can not fit gamma shape parameter because Gamma family not used")
 
     y <- getME(object, "y")
     mu <- getME(object, "mu")
@@ -687,11 +687,9 @@ gamma.shape.merMod <- function(object, ...) {
     dev <- -2*sum(L)
                                         # Eqs. between 8.2 & 8.3 (MN)
     Dbar <- dev/length(y)
-    alpha <- (6+2*Dbar)/(Dbar*(6+Dbar))
-                                        # FIXME: obtain standard error
-    res <- list(alpha = alpha, SE = NA)
-    class(res) <- "gamma.shape"
-    res
+    structure(list(alpha = (6+2*Dbar)/(Dbar*(6+Dbar)),
+		   SE = NA), # FIXME: obtain standard error
+	      class = "gamma.shape")
 }
 
 
@@ -708,14 +706,21 @@ gamma.shape.merMod <- function(object, ...) {
 
 ## in the original MASS version, .Theta is assigned into the environment
 ## (triggers a NOTE in R CMD check)
+## modified from @aosmith16 GH contribution
 negative.binomial_simfun <- function (object, nsim, ftd=fitted(object))
 {
-    stop("not implemented yet")
-    ## val <- rnbinom(nsim * length(ftd), mu=ftd, size=.Theta)
+    wts <- weights(object)
+    if (any(wts != 1))
+        warning("ignoring prior weights")
+    theta <- as.numeric(gsub("[[:alpha:][:blank:]+?&/\\()]", "",
+                             object@resp$family$family))
+    rnbinom(nsim * length(ftd), mu = ftd,
+            size = theta)
 }
 
-simfunList <- list(gaussian=gaussian_simfun,
-                binomial=binomial_simfun,
-                poisson=poisson_simfun,
-                Gamma=Gamma_simfun,
-                negative.binomial=negative.binomial_simfun)
+
+simfunList <- list(gaussian = gaussian_simfun,
+		   binomial = binomial_simfun,
+		   poisson  = poisson_simfun,
+		   Gamma    = Gamma_simfun,
+		   negative.binomial = negative.binomial_simfun)

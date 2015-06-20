@@ -1,7 +1,7 @@
 ####  Utility Functions for lme4 Testing
 ####  ----------------------------------
 if(FALSE) ### "Load" these by
-    source(system.file("testdata/lme-tst-funs.R", package="lme4", mustWork=TRUE))
+    source(system.file("testdata", "lme-tst-funs.R", package="lme4", mustWork=TRUE))
 ## e.g. from ../../tests/glmmWeights.R
 
 ##' example originally from Gabor Grothendieck
@@ -72,10 +72,14 @@ gimME <- function(mod, nm, is.mer = is(mod,"mer"))
 ##' @author Martin Maechler
 allcoefs <- function(mod, incl.t = FALSE) {
     iMer <- is(mod, "mer")
+    sigmaF <- {
+	if (iMer) lme4.0::sigma else if(getRversion() >= "3.3.0")
+	    stats::sigma else lme4::sigma
+    }
     ## incl.t: rather also the std.err., t-values:
     c(beta = if(incl.t) coef(summary(mod)) else gimME(mod, "beta", iMer),
       gimME(mod,"theta", iMer),# have their own names
-      sigma = if(iMer) lme4.0::sigma(mod) else lme4::sigma(mod))
+      sigma = sigmaF(mod))
 }
 
 ##' S3 method but also works for lme4.0:

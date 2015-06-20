@@ -3,7 +3,6 @@
 \alias{glmerControl}
 \alias{lmerControl}
 \alias{nlmerControl}
-\alias{convergence}
 \alias{.makeCC}
 \description{
   Construct control structures for mixed model fitting.  All arguments
@@ -52,6 +51,7 @@ glmerControl(optimizer = c("bobyqa", "Nelder_Mead"),
     sparseX = FALSE,
     tolPwrss=1e-7,
     compDev=TRUE,
+    nAGQ0initStep=TRUE,
     ## input checking options
     check.nobs.vs.rankZ = "ignore",
     check.nobs.vs.nlev = "stop",
@@ -62,6 +62,7 @@ glmerControl(optimizer = c("bobyqa", "Nelder_Mead"),
                     "stop.deficient", "ignore"),
     check.scaleX  = "warning",
     check.formula.LHS = "stop",
+    check.response.not.const = "stop",
     ## convergence checking options
     check.conv.grad     = .makeCC("warning", tol = 1e-3, relTol = NULL),
     check.conv.singular = .makeCC(action = "ignore",  tol = 1e-4),
@@ -132,6 +133,7 @@ nlmerControl(optimizer = "Nelder_Mead", tolPwrss = 1e-10,
   \item{compDev}{logical scalar - should compiled code be
     used for the deviance evaluation during the optimization
     of the parameter estimates?}
+  \item{nAGQ0initStep}{do one initial run with \code{nAGQ = 0}.}
   \item{check.nlev.gtreq.5}{character - rules for
     checking whether all random effects have >= 5 levels.
     See \code{action}.}
@@ -191,6 +193,8 @@ nlmerControl(optimizer = "Nelder_Mead", tolPwrss = 1e-10,
     \code{simulate.merMod};
     \emph{use at your own risk} as it may allow the generation
     of unstable \code{merMod} objects}
+  \item{check.response.not.const}{character - check that the
+    response is not constant.}
 
   \item{optCtrl}{a \code{\link{list}} of additional arguments to be
     passed to the nonlinear optimizer (see \code{\link{Nelder_Mead}},
@@ -237,24 +241,7 @@ nlmerControl(optimizer = "Nelder_Mead", tolPwrss = 1e-10,
   will suppress warnings that the number of observations is less than
   the rank of the random effects model matrix \code{Z}.
 }
-\section{Troubleshooting}{
-  Some additional information about specific warnings and what to do
-  about them:
-  \itemize{
-    \item \code{Model failed to converge with max|grad| ...} The scaled
-    gradient at the fitted (RE)ML estimates
-    is worryingly large. Try switching optimizers to see if you
-    get consistent results, or
-    compute values of the deviance in the neighbourhood of the estimated
-    parameters to double-check that \code{lme4} has really found a
-    local optimum.
-    \item \code{Model is nearly unidentifiable ... Rescale variables?}
-    The Hessian (curvature matrix) at the maximum likelihood or REML
-    estimates has a large eigenvalue, indicating that the surface is
-    nearly flat in some direction. Consider centering and/or scaling
-    continuous predictor variables.
-  }
-}
+\seealso{\link{convergence}}
 \examples{
 str(lmerControl())
 str(glmerControl())

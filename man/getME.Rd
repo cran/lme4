@@ -6,11 +6,12 @@
 \usage{
 getME(object,
       name = c("X", "Z", "Zt", "Ztlist", "mmList", "y", "mu", "u", "b",
-               "Gp", "Tp", "L", "Lambda", "Lambdat", "Lind",
+               "Gp", "Tp", "L", "Lambda", "Lambdat", "Lind", "Tlist",
                "A", "RX", "RZX", "sigma", "flist",
                "fixef", "beta", "theta", "ST", "REML", "is_REML",
                "n_rtrms", "n_rfacs", "N", "n", "p", "q",
-               "cnms", "devcomp", "offset", "lower"))
+               "p_i", "l_i", "q_i", "k", "m_i", "m",
+               "cnms", "devcomp", "offset", "lower", "devfun"))
 }
 \arguments{
   \item{object}{a fitted mixed-effects model of class
@@ -53,6 +54,8 @@ getME(object,
       \item{Lambdat}{transpose \eqn{\Lambda'}{Lambda'} of \eqn{\Lambda}{Lambda} above.}
       \item{Lind}{index vector for inserting elements of
 	\eqn{\theta}{theta} into the nonzeros of \eqn{\Lambda}{Lambda}.}
+      \item{Tlist}{vector of template matrices from which the blocks of 
+	\eqn{\Lambda}{Lambda} are generated.}
       \item{A}{Scaled sparse model matrix (class
 	\code{"\link[Matrix:dgCMatrix-class]{dgCMatrix}"}) for
 	the unit, orthogonal random effects, \eqn{U}, equal to
@@ -77,9 +80,16 @@ getME(object,
       \item{n_rtrms}{number of random-effects terms}
       \item{n_rfacs}{number of distinct random-effects grouping factors}
       \item{N}{number of rows of \code{X}}
-      \item{n}{length of \code{y}}
-      \item{p}{number of columns of \code{X}}
-      \item{q}{number of columns of \code{Z}}
+      \item{n}{length of the response vector, \code{y}}
+      \item{p}{number of columns of the fixed effects model matrix, \code{X}}
+      \item{q}{number of columns of the random effects model matrix, \code{Z}}
+      \item{p_i}{numbers of columns of the raw model matrices,
+    \code{mmList}}
+      \item{l_i}{numbers of levels of the grouping factors}
+      \item{q_i}{numbers of columns of the term-wise model matrices, \code{ZtList}}
+      \item{k}{number of random effects terms}
+      \item{m_i}{numbers of covariance parameters in each term}
+      \item{m}{total number of covariance parameters}
       \item{cnms}{the \dQuote{component names}, a \code{\link{list}}.}
       \item{REML}{\code{0} indicates the model was fitted by maximum
 	likelihood, any other positive integer indicates fitting by 
@@ -126,6 +136,7 @@ getME(object,
       \item{offset}{model offset}
       \item{lower}{lower bounds on model parameters (random effects
 	parameters only).}
+      \item{devfun}{deviance function (so far only available for LMMs)}
     }
   }
 }
