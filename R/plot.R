@@ -1,16 +1,19 @@
 ## copied/modified from nlme
-splitFormula <-
-  ## split, on the nm call, the rhs of a formula into a list of subformulas
-  function(form, sep = "/")
+
+##' split, on the nm call, the rhs of a formula into a list of subformulas
+splitFormula <- function(form, sep = "/")
 {
     if (inherits(form, "formula") ||
-        mode(form) == "call" && form[[1]] == as.name("~"))
-        return(splitFormula(form[[length(form)]], sep = sep))
-    if (mode(form) == "call" && form[[1]] == as.name(sep))
-        return(do.call("c", lapply(as.list(form[-1]), splitFormula, sep = sep)))
-    if (mode(form) == "(") return(splitFormula(form[[2]], sep = sep))
-    if (length(form) < 1) return(NULL)
-    list(asOneSidedFormula(form))
+	mode(form) == "call" && form[[1]] == as.name("~"))
+	splitFormula(form[[length(form)]], sep = sep)
+    else if (mode(form) == "call" && form[[1]] == as.name(sep))
+	do.call(c, lapply(as.list(form[-1]), splitFormula, sep = sep))
+    else if (mode(form) == "(")
+	splitFormula(form[[2]], sep = sep)
+    else if (length(form))
+	list(asOneSidedFormula(form))
+    ## else
+    ##	NULL
 }
 
 ## Recursive version of all.vars
@@ -23,27 +26,12 @@ allVarsRec <- function(object)
     }
 }
 
-## crippled version of getData.gnls from nlme
+## simple version of getData.gnls from nlme
+## but we *should* and *can* work with environment(formula(.))
 getData <-  function(object)
 {
     mCall <- object@call
-    data <- eval(mCall$data,environment(formula(object)))
-    ## if (is.null(data)) return(data)
-    ## FIXME: deal with NAs, subset appropriately
-    ## naPat <- eval(mCall$naPattern)
-    ## if (!is.null(naPat)) {
-    ##   data <- data[eval(naPat[[2]], data), , drop = FALSE]
-    ## }
-    ## naAct <- eval(mCall$na.action)
-    ## if (!is.null(naAct)) {
-    ##   data <- naAct(data)
-    ## }
-    ## subset <- mCall@subset
-    ## if (!is.null(subset)) {
-    ##   subset <- eval(asOneSidedFormula(subset)[[2]], data)
-    ##   data <- data[subset, ]
-    ## }
-    return(data)
+    eval(mCall$data, environment(formula(object)))
 }
 
 asOneFormula <-
@@ -220,10 +208,10 @@ getResponseFormula <-
 ##' }
 ##' @S3method plot merMod
 ##' @method plot merMod
-##' @export 
+##' @export
 plot.merMod <-
     function(x, form = resid(., type = "pearson") ~ fitted(.), abline,
-             id = NULL, idLabels = NULL, 
+             id = NULL, idLabels = NULL,
              grid, ...)
         ## Diagnostic plots based on residuals and/or fitted values
 {

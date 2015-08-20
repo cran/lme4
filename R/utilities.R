@@ -696,11 +696,35 @@ nlformula <- function(mc) {
 ## }
 ################################################################################
 
-.minimalOptinfo <- function() {
-    list(conv = list(
-             opt = 0L,
-             lme4 = list(messages = character(0))))
+.minimalOptinfo <- function()
+    list(conv = list(opt = 0L,
+                     lme4 = list(messages = character(0))))
+
+.optinfo <- function(opt, lme4conv=NULL)
+    list(optimizer = attr(opt, "optimizer"),
+	 control   = attr(opt, "control"),
+	 derivs    = attr(opt, "derivs"),
+	 conv      = list(opt = opt$conv, lme4 = lme4conv),
+	 feval     = if (is.null(opt$feval)) NA else opt$feval,
+	 warnings  = attr(opt, "warnings"),
+	 val       = opt$par)
+
+##' Potentically needed in more than one place, be sure to keep consistency!
+##' hack (NB families have weird names) from @aosmith16; then corrected
+isNBfamily <- function(familyString)
+    grepl("^Negative ?Binomial", familyString, ignore.case=TRUE)
+normalizeFamilyName <- function(family) { # such as  object@resp$family
+    if(isNBfamily(family$family))
+	family$family <- "negative.binomial"
+    family
 }
+
+##' Is it a family with no scale parameter
+hasNoScale <- function(family)
+    any(substr(family$family, 1L, 12L)
+        == c("poisson", "binomial", "negative.bin", "Negative Bin"))
+
+
 
 ##--> ../man/mkMerMod.Rd ---Create a merMod object
 ##' @param rho the environment of the objective function
@@ -712,24 +736,24 @@ mkMerMod <- function(rho, opt, reTrms, fr, mc, lme4conv=NULL) {
               is(pp <- rho$pp, "merPredD"),
               is(resp <- rho$resp, "lmResp"),
               is.list(opt), "par" %in% names(opt),
-              c("conv","fval") %in% substr(names(opt),1,4), ## "conv[ergence]", "fval[ues]"
+              c("conv", "fval") %in% substr(names(opt),1,4), ## "conv[ergence]", "fval[ues]"
               is.list(reTrms), c("flist", "cnms", "Gp", "lower") %in% names(reTrms),
               length(rcl <- class(resp)) == 1)
     n    <- nrow(pp$V)
     p    <- ncol(pp$V)
-    dims <- c(N=nrow(pp$X), n=n, p=p, nmp=n-p,
-              nth=length(pp$theta), q=nrow(pp$Zt),
-              nAGQ=rho$nAGQ,
+    isGLMM <- (rcl == "glmResp")
+    dims <- c(N = nrow(pp$X), n=n, p=p, nmp = n-p, q = nrow(pp$Zt),
+              nth = length(pp$theta),
+              nAGQ= rho$nAGQ,
               compDev=rho$compDev,
               ## 'use scale' in the sense of whether dispersion parameter should
               ##  be reported/used (*not* whether theta should be scaled by sigma)
-              useSc=(rcl != "glmResp" ||
-                     !resp$family$family %in% c("poisson","binomial")),
+              useSc = !(isGLMM && hasNoScale(resp$family)),
               reTrms=length(reTrms$cnms),
-              spFe=0L,
-              REML=if (rcl=="lmerResp") resp$REML else 0L,
-              GLMM=(rcl=="glmResp"),
-              NLMM=(rcl=="nlsResp"))
+              spFe= 0L,
+              REML = if (rcl=="lmerResp") resp$REML else 0L,
+              GLMM= isGLMM,
+              NLMM= (rcl=="nlsResp"))
     storage.mode(dims) <- "integer"
     fac     <- as.numeric(rcl != "nlsResp")
     if (trivial.y <- (length(resp$y)==0)) {
@@ -743,7 +767,7 @@ mkMerMod <- function(rho, opt, reTrms, fr, mc, lme4conv=NULL) {
     ## weights <- resp$weights
     beta    <- pp$beta(fac)
     ## rescale
-    if (!is.null(sc <- attr(pp$X,"scaled:scale"))) {
+    if (!is.null(sc <- attr(pp$X, "scaled:scale"))) {
         warning("auto(un)scaling not yet finished/tested")
         ## FIXME: test/handle no-intercept models
         ##   (only need to worry if we do centering as well as scaling)
@@ -754,7 +778,7 @@ mkMerMod <- function(rho, opt, reTrms, fr, mc, lme4conv=NULL) {
         beta2[names(sc)] <- sc*beta2[names(sc)]
         beta <- beta2
     }
-    if (!is.null(attr(pp$X,"scaled:center"))) {
+    if (!is.null(attr(pp$X, "scaled:center"))) {
         warning("auto(un)centering not yet implemented")
     }
     #sigmaML <- pwrss/sum(weights)
@@ -776,19 +800,13 @@ mkMerMod <- function(rho, opt, reTrms, fr, mc, lme4conv=NULL) {
              tolPwrss=rho$tolPwrss)
     ## TODO:  improve this hack to get something in frame slot (maybe need weights, etc...)
     if(missing(fr)) fr <- data.frame(resp$y)
-    new(switch(rcl, lmerResp="lmerMod", glmResp="glmerMod", nlsResp="nlmerMod"),
+    new(switch(rcl, lmerResp = "lmerMod", glmResp = "glmerMod", nlsResp = "nlmerMod"),
         call=mc, frame=fr, flist=reTrms$flist, cnms=reTrms$cnms,
         Gp=reTrms$Gp, theta=pp$theta, beta=beta,
         u=if (trivial.y) rep(NA_real_,nrow(pp$Zt)) else pp$u(fac),
         lower=reTrms$lower, devcomp=list(cmp=cmp, dims=dims),
         pp=pp, resp=resp,
-	optinfo = list (optimizer= attr(opt,"optimizer"),
-			control	 = attr(opt,"control"),
-			derivs	 = attr(opt,"derivs"),
-			conv  = list(opt=opt$conv, lme4=lme4conv),
-			feval = if (is.null(opt$feval)) NA else opt$feval,
-			warnings = attr(opt,"warnings"), val = opt$par)
-        )
+	optinfo = .optinfo(opt, lme4conv))
 }## {mkMerMod}
 
 ## generic argument checking
@@ -808,9 +826,11 @@ checkArgs <- function(type,...) {
         ## (different meanings/hints depending on glmer vs lmer)
 	if (!is.null(l...[["method"]])) {
             msg <- paste("Argument", sQuote("method"), "is deprecated.")
-            if (type=="lmer") msg <- paste(msg,"Use the REML argument to specify ML or REML estimation.")
-            if (type=="glmer") msg <- paste(msg,"Use the nAGQ argument to specify Laplace (nAGQ=1) or adaptive",
-                "Gauss-Hermite quadrature (nAGQ>1).  PQL is no longer available.")
+	    if (type == "lmer")
+		msg <- paste(msg, "Use the REML argument to specify ML or REML estimation.")
+	    else if (type == "glmer")
+		msg <- paste(msg, "Use the nAGQ argument to specify Laplace (nAGQ=1) or adaptive",
+			     "Gauss-Hermite quadrature (nAGQ>1).  PQL is no longer available.")
             warning(msg,call.=FALSE)
             l... <- l...[names(l...) != "method"]
         }
@@ -892,7 +912,7 @@ checkFormulaData <- function(formula, data, checkLHS=TRUE, debug=FALSE) {
             OK <- allvarex(parent.frame(i))
             cat("vars exist in parent frame ", i)
             if (i == glEnv) cat(" (global)")
-            cat(" ",OK,"\n")
+            cat(" ",OK, "\n")
         }
         cat("vars exist in env of formula ", allvarex(denv), "\n")
     } ## if (debug)
@@ -941,8 +961,8 @@ testLevel <- function()
 ##' @return Sparse covariance matrix
 condVar <- function(object) {
   s2 <- sigma(object)^2
-  Lamt <- getME(object,"Lambdat")
-  L <- getME(object,"L")
+  Lamt <- getME(object, "Lambdat")
+  L <- getME(object, "L")
 
   ## never do it this way! fortune("SOOOO")
   #V <- solve(L, system = "A")
@@ -1069,38 +1089,6 @@ nloptwrap <- local({
     defaultControl <- list(algorithm="NLOPT_LN_BOBYQA",
                            xtol_abs=1e-6, ftol_abs=1e-6, maxeval=1e5)
     function(par,fn,lower,upper,control=list(),...) {
-        if(packageVersion("nloptr") < "1.0.2") {
-    ## kluge: we would like to import nloptr.default.options from nloptr
-    ##   up front (it's required by nloptr and isn't accessible if
-    ##   nloptr::nloptr is only imported without the package being loaded)
-    ## (1) adding export(nloptr.default.options) to the NAMESPACE
-    ##     of nloptr doesn't work (package install fails)
-    ## (2) the following code puts a copy of nloptr.default.options into the
-    ##   environment of nloptwrap(), but nloptr can't see it
-    ##   from there when called from within nloptwrap ...
-    ##    if (!exists("nloptr.default.options")) {
-    ##         data("nloptr.default.options",
-    ##              package="nloptr",
-    ##              envir=environment()) }
-    ## (3) solution used here is to load it *into the global environment*
-    ##  every time nloptwrap() is
-    ##     called (if it doesn't exist) -- ugly but works.
-    ##   ... but it provokes a complaint from R CMD check
-    ##   ... loading it into the environment of nloptwrap, or
-    ##       the environment within nloptwrap (i.e. envir=environment()
-    ##       or envir=parent.env(environment()) doesn't work because
-    ##       nloptr doesn't look there for it.
-    ##   ... loading it into the environment of nloptr doesn't work
-    ##       because the environment is locked (and I don't know if/how
-    ##       to unlock it: ?unlockBinding
-    ##  http://stackoverflow.com/questions/19132492/how-to-unlock-environment-in-r
-    ## https://gist.github.com/wch/3280369#file-unlockenvironment-r
-    ## this seems like a lot of effort to go to
-            ## try to deceive R CMD check
-            ee <- .GlobalEnv ## environment(nloptr)
-            if (!exists("nloptr.default.options", envir=ee))
-                data("nloptr.default.options", package="nloptr", envir=ee)
-        }
         for (n in names(defaultControl))
             if (is.null(control[[n]])) control[[n]] <- defaultControl[[n]]
         res <- nloptr(x0=par, eval_f=fn, lb=lower,ub=upper, opts=control, ...)

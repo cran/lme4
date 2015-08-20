@@ -3,6 +3,48 @@
 \name{NEWS}
 \title{lme4 News}
 \encoding{UTF-8}
+
+\section{CHANGES IN VERSION 1.1-9}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item \code{terms} and \code{formula} methods now have
+      \code{random.only} options
+
+      \item \code{getME} gains a \code{glmer.nb.theta} option.
+      It is now (an S3) generic with an \code{"merMod"} method in
+      \pkg{lme4} and potentially other methods in dependent packages.
+
+      \item \code{simulate} now works for \code{glmer.nb} models
+      (Github #284: idea from @aosmith16)
+    }
+  }
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item explicit \code{maxit} arguments for various functions
+      (\code{refit}, \code{mkGlmerDevfun}, ...)
+    }
+  }
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item prediction and simulation now work when random-effects
+      terms have data-dependent bases (e.g., \code{poly(.)} or
+      \code{ns(.)} terms) (Github #313, Edgar Gonzalez)
+      \item \code{logLik} for \code{glmer.nb} models now
+      includes the overdispersion parameter in the
+      parameter count (\code{df} attribute)
+      \item \code{lmList} handles offsets and weights better
+      \item lots of fixes to \code{glmer.nb} (Github #176, #266, #287,
+      #318). \strong{Please note that glmer.nb is still somewhat
+	unstable/under construction.}
+    }
+  }
+  \subsection{CRAN-COMPATIBILITY UPDATES}{
+    \itemize{
+      \item import functions from base packages to pass CRAN checks
+      \item tweak to failing tests on Windows
+    }
+  }
+}
 \section{CHANGES IN VERSION 1.1-8}{
   \subsection{NEW FEATURES}{
     \itemize{
@@ -71,8 +113,7 @@
       \item As with \code{lm()}, users now get an error for non-finite
       (\code{Inf}, \code{NA}, or \code{NaN})
       values in the response unless \code{na.action} is set to
-      exclude or omit them. Github #310
-
+      exclude or omit them (Github #310)
     }
   }
 }
@@ -98,11 +139,11 @@
       \item the use of \code{deviance} to return the REML criterion
       is now deprecated; users should use \code{REMLcrit()} instead
       (Github #211)
-    \item changed the default value of \code{check.nobs.vs.rankZ} to
-    \code{"ignore"} (Github #214)
+      \item changed the default value of \code{check.nobs.vs.rankZ} to
+      \code{"ignore"} (Github #214)
     }
   }
-    \subsection{BUG FIXES}{
+  \subsection{BUG FIXES}{
     \itemize{
       \item change gradient testing from absolute to relative
       \item fix \code{confint(.,method="boot")} to allow/work
@@ -303,7 +344,7 @@
       levels than are present in the original data (Github issue #143,
       reported by Rune Haubo)
       \item the existence of a variable "new" in the global environment
-  would mess \code{lme4} up: reported at http://stackoverflow.com/questions/19801070/error-message-glmer-using-r-what-must-be-a-character-string-or-a-function
+      would mess \code{lme4} up: reported at http://stackoverflow.com/questions/19801070/error-message-glmer-using-r-what-must-be-a-character-string-or-a-function
     }
   }
 }
@@ -554,23 +595,23 @@
 \section{CHANGES IN VERSION 0.999375-16 (2008-06-23)}{
   \subsection{MAJOR USER-VISIBLE CHANGES}{
     \itemize{
-       \item The underlying algorithms and representations for all the
-       mixed-effects models fit by this package have changed - for
-       the better, we hope. The class "mer" is a common
-       mixed-effects model representation for linear, generalized
-       linear, nonlinear and generalized nonlinear mixed-effects
-       models.
-       \item ECME iterations are no longer used at all, nor are analytic
-       gradients. Components named 'niterEM', 'EMverbose', or
-       'gradient' can be included in the 'control' argument to
-       lmer(), glmer() or nlmer() but have no effect.
-       \item PQL iterations are no longer used in glmer() and nlmer().
-       Only the Laplace approximation is currently available. AGQ,
-       for certain classes of GLMMs or NLMMs, is being added.
-       \item The 'method' argument to lmer(), glmer() or nlmer() is
-       deprecated. Use the 'REML = FALSE' in lmer() to obtain ML
-       estimates. Selection of AGQ in glmer() and nlmer() will be
-       controlled by the argument 'nAGQ', when completed.
+      \item The underlying algorithms and representations for all the
+      mixed-effects models fit by this package have changed - for
+      the better, we hope. The class "mer" is a common
+      mixed-effects model representation for linear, generalized
+      linear, nonlinear and generalized nonlinear mixed-effects
+      models.
+      \item ECME iterations are no longer used at all, nor are analytic
+      gradients. Components named 'niterEM', 'EMverbose', or
+      'gradient' can be included in the 'control' argument to
+      lmer(), glmer() or nlmer() but have no effect.
+      \item PQL iterations are no longer used in glmer() and nlmer().
+      Only the Laplace approximation is currently available. AGQ,
+      for certain classes of GLMMs or NLMMs, is being added.
+      \item The 'method' argument to lmer(), glmer() or nlmer() is
+      deprecated. Use the 'REML = FALSE' in lmer() to obtain ML
+      estimates. Selection of AGQ in glmer() and nlmer() will be
+      controlled by the argument 'nAGQ', when completed.
     }
   }
   \subsection{NEW FEATURES}{

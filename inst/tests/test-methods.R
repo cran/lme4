@@ -3,9 +3,8 @@ library("lme4")
 L <- load(system.file("testdata", "lme-tst-fits.rda",
                       package="lme4", mustWork=TRUE))
 
-if (getRversion() > "3.0.0") {
-    ## saved fits are not safe with old R versions
-
+## FIXME: should test for old R versions, skip reloading test data in that
+## case?
 fm0 <- fit_sleepstudy_0
 fm1 <- fit_sleepstudy_1
 fm2 <- fit_sleepstudy_2
@@ -41,9 +40,27 @@ fmPix <- lmer(pixel ~ day + I(day^2) + (day | Dog) + (1 | Side/Dog), data = Pixe
 
 context("summary")
 test_that("summary", {
-    ## test for multiple-correlation-warning bug
-    cc <- capture.output(print(summary(fit_agridat_archbold),correlation=FALSE))
-    expect_true(length(g <- grep("not shown by default",cc))==0 || g<=1)
+    ## test for multiple-correlation-warning bug and other 'correlation = *' variants
+    ## Have 2 summary() versions, each with 3 print(.) ==> 6 x capture.output(.)
+    sf.aa <- summary(fit_agridat_archbold)
+    msg1 <- "Correlation.* not shown by default"
+    ## message => *not* part of capture.*(.)
+    expect_message(c1 <- capture.output(sf.aa), msg1)
+                                        # correlation = NULL - default
+    cF <- capture.output(print(sf.aa, correlation=FALSE))
+    ## TODO? ensure the above gives *no* message/warning/error
+    expect_identical(c1, cF)
+    expect_message(
+    cT <- capture.output(print(sf.aa, correlation=TRUE))
+    , "Correlation.* could have been required in summary()")
+    expect_identical(cF, cT[seq_along(cF)])
+    sfT.aa <- summary(fit_agridat_archbold, correlation=TRUE)
+    expect_message(cT2 <- capture.output(sfT.aa), msg1)
+    expect_identical(cF, cT2)
+    cT3 <- capture.output(print(sfT.aa, correlation=TRUE))
+    expect_identical(cT, cT3)
+    cF2 <- capture.output(print(sfT.aa, correlation=FALSE))
+    expect_identical(cF, cF2)
 })
 
 context("anova")
@@ -198,8 +215,44 @@ test_that("confint", {
     expect_equal(dimnames(ci1.p.n),dimnames(ci1.w.n))
     expect_equal(dimnames(ci1.p.n),dimnames(ci1.b.n))
 
+    ## test case of slightly wonky (spline fit fails) but monotonic profiles:
+    ##
+    simfun <- function(J,n_j,g00,g10,g01,g11,sig2_0,sig01,sig2_1){
+        N <- sum(rep(n_j,J))
+        x <- rnorm(N)
+        z <- rnorm(J)
+        mu <- c(0,0)
+        sig <- matrix(c(sig2_0,sig01,sig01,sig2_1),ncol=2)
+        u   <- MASS::mvrnorm(J,mu=mu,Sigma=sig)
+        b_0j <- g00 + g01*z + u[,1]
+        b_1j <- g10 + g11*z + u[,2]
+        y <- rep(b_0j,each=n_j)+rep(b_1j,each=n_j)*x + rnorm(N,0,sqrt(0.5))
+        sim_data <- data.frame(Y=y,X=x,Z=rep(z,each=n_j),
+                               group=rep(1:J,each=n_j))
+    }
+    set.seed(102)
+    dat <- simfun(10,5,1,.3,.3,.3,(1/18),0,(1/18))
+    fit <- lmer(Y~X+Z+X:Z+(X||group),data=dat)
+    expect_warning(pp <- profile(fit,"theta_",quiet=TRUE),
+                   "non-monotonic profile")
+    expect_warning(cc <- confint(pp),"falling back to linear interpolation")
+    ## very small/unstable problem, needs large tolerance
+    expect_equal(unname(cc[2,]),c(0,0.5427609),tolerance=1e-2)
 
+    badprof <- readRDS(system.file("testdata","badprof.rds",
+                                   package="lme4"))
+    expect_warning(cc <- confint(badprof), "falling back to linear")
+    expect_equal(cc,
+        structure(c(0, -1, 2.50856219044636, 48.8305727797906, NA, NA,
+                    33.1204478717389, 1, 7.33374326592662, 68.7254711217912,
+                    -6.90462047196017,
+                    NA), .Dim = c(6L, 2L),
+                  .Dimnames = list(c(".sig01", ".sig02",
+                  ".sig03", ".sigma", "(Intercept)", "cYear"),
+                  c("2.5 %", "97.5 %"))),
+                 tol=1e-3)
 })
+
 
 context("refit")
 test_that("refit", {
@@ -240,20 +293,21 @@ test_that("predict", {
         data("Orthodont", package = "MEMSS") # (differently "coded" from the 'default' "nlme" one)
         silly <- glmer(Sex ~ distance + (1|Subject),
                        data = Orthodont, family = binomial)
-        sillypred <- data.frame(distance = c(20, 25))
-        options(warn = 2) # no warnings!
-        ps <- predict(silly, sillypred, re.form=NA, type = "response")
-        expect_is(ps, "numeric")
-        expect_equal(unname(ps), c(0.999989632, 0.999997201))
-        ## a case with interactions (failed in one temporary version):
-        ## fails differently on Windows and on other platforms?
-        expect_warning(fmPixS <<- update(fmPix, .~. + Side),
-                       "(nearly unidentifiable|not uniquely determined)")
     }
+    sillypred <- data.frame(distance = c(20, 25))
+    op <- options(warn = 2) # no warnings!
+    ps <- predict(silly, sillypred, re.form=NA, type = "response")
+    expect_is(ps, "numeric")
+    expect_equal(unname(ps), c(0.999989632, 0.999997201))
+    ## a case with interactions (failed in one temporary version):
+    expect_warning(fmPixS <<- update(fmPix, .~. + Side),
+                   "nearly unidentifiable|unable to evaluate scaled gradient|failed to converge")
+	## (1|2|3); 2 and 3 seen (as Error??) on CRAN's Windows 32bit
+    options(op)
+
     set.seed(1); ii <- sample(nrow(Pixel), 16)
     expect_equal(predict(fmPix,  newdata = Pixel[ii,]), fitted(fmPix )[ii])
     expect_equal(predict(fmPixS, newdata = Pixel[ii,]), fitted(fmPixS)[ii])
-    options(warn = 0)
 
     set.seed(7); n <- 100; y <- rnorm(n)
     dd <- data.frame(id = factor(sample(10, n, replace = TRUE)),
@@ -294,11 +348,13 @@ test_that("predict", {
     expect_equal(predict(fm3, newdata = model.frame(fm3)[2:3, ])[2],
                  predict(fm3, newdata = model.frame(fm3)[3, ]))
 
+    ## complex-basis functions in RANDOM effect: (currently)
+    fm5 <- lmer(Reaction~Days+(poly(Days,2)|Subject),sleepstudy)
+    expect_equal(predict(fm5,sleepstudy[1,]),fitted(fm5)[1])
+    ## complex-basis functions in FIXED effect are fine
+    fm6 <- lmer(Reaction~poly(Days,2)+(1|Subject),sleepstudy)
+    expect_equal(predict(fm6,sleepstudy[1,]),fitted(fm6)[1])
 })
-
-
-
-
 
 context("simulate")
 test_that("simulate", {
@@ -316,27 +372,38 @@ test_that("simulate", {
     p9 <- simulate(gm2, re.form = NA, seed = 101)
     p10 <- simulate(gm2,use.u = FALSE, seed = 101)
     p11 <- simulate(gm2,use.u = TRUE, seed = 101)
+    ## minimal check of content:
+    expect_identical(colSums(p1[,1]), c(incidence =  95, 747))
+    expect_identical(colSums(p2[,1]), c(incidence = 109, 733))
+    ## equivalences:
+    ## group ~0:
     expect_equal(p2,p3)
     expect_equal(p2,p5)
     expect_equal(p2,p6)
     expect_equal(p2,p8)
     expect_equal(p2,p9)
     expect_equal(p2,p10)
+    ## group 1:
     expect_equal(p1,p4)
     expect_equal(p1,p7)
     expect_equal(p1,p11)
     expect_error(simulate(gm2,use.u = TRUE, re.form = NA), "should specify only one")
+    ##
     ## hack: test with three REs
     p1 <- lmer(diameter ~ (1|plate) + (1|plate) + (1|sample), Penicillin,
-               control = lmerControl(check.conv.hess = "ignore"))
-    expect_is(sp1 <- simulate(p1), "data.frame")
-    expect_true(all(dim(sp1) == c(nrow(Penicillin), 1)))
+               control = lmerControl(check.conv.hess = "ignore",
+                                     check.conv.grad = "ignore"))
+    expect_is(sp1 <- simulate(p1, seed=123), "data.frame")
+    expect_identical(dim(sp1), c(nrow(Penicillin), 1L))
+    expect_equal(fivenum(sp1[,1]),
+		 c(20.9412, 22.5805, 23.5575, 24.6095, 27.6997), tol=1e-5)
     ## Pixel example
-    expect_true(all(dim(simulate(fmPixS)) == c(nPix,1)))
-    expect_true(all(dim(simulate(fmPix )) == c(nPix,1)))
+
+    expect_identical(dim(simulate(fmPixS)), c(nPix, 1L))
+    expect_identical(dim(simulate(fmPix )), c(nPix, 1L))
 
     ## simulation with newdata smaller/larger different from original
-    fm <- lmer(diameter ~ 1 + (1|plate) + (1|sample),Penicillin)
+    fm <- lmer(diameter ~ 1 + (1|plate) + (1|sample), Penicillin)
     expect_is(simulate(fm,newdata=Penicillin[1:10,],allow.new.levels=TRUE),"data.frame")
     expect_is(simulate(fm,newdata=do.call(rbind,replicate(4,Penicillin,simplify=FALSE))),"data.frame")
 
@@ -345,19 +412,26 @@ test_that("simulate", {
     dd <- data.frame(f=factor(rep(1:10,each=20)),
                      x=runif(200),
                      y=rnbinom(200,size=2,mu=2))
-    g1 <- glmer.nb(y~x+(1|f),data=dd)
-    s1 <- simulate(g1)
-    expect_equal(mean(s1[[1]]),2.35)
+    g1 <- glmer.nb(y ~ x + (1|f), data=dd)
+    th.g1 <- getME(g1, "glmer.nb.theta")
+    ts1 <- table(s1 <- simulate(g1)[,1])
+    expect_equal(fixef(g1), c("(Intercept)" = 0.630067, x = -0.0167248), tol = 1e-5)
+    expect_equal(th.g1, 2.013, tol = 1e-4)
+    expect_equal(th.g1, g1@call$family[["theta"]])# <- important for pkg{effects} eval(<call>)
+    expect_identical(sum(s1), 403)
+    expect_identical(as.vector(ts1[as.character(0:5)]),
+                     c(51L, 54L, 36L, 21L, 14L, 9L))
 
-    d <- sleepstudy
-    d$Subject <- factor(rep(1:18, each=10))
+    ## Simulate with newdata with *new* RE levels:
+    d <- sleepstudy[-1] # droping the response ("Reaction")
+    ## d$Subject <- factor(rep(1:18, each=10))
     ## Add 18 new subjects:
-    d <- rbind(sleepstudy, sleepstudy)
+    d <- rbind(d, d)
     d$Subject <- factor(rep(1:36, each=10))
-    d$simulated <- simulate(fm1, seed=1, newdata=d[-1],
+    d$simulated <- simulate(fm1, seed=1, newdata = d,
                             re.form=NULL,
-                            allow.new.levels=TRUE)[[1]]
-    expect_equal(mean(d$simulated),299.9384608)
+                            allow.new.levels = TRUE)[,1]
+    expect_equal(mean(d$simulated), 299.9384608)
 })
 
 context("misc")
@@ -369,7 +443,6 @@ test_that("misc", {
     }
     expect_is(as.data.frame(VarCorr(fm1)), "data.frame")
 })
-}# R >= 3.0.0
 
 context("plot")
 test_that("plot", {
@@ -406,3 +479,4 @@ test_that("summary", {
                     data=grouseticks)
        expect_is(family(gnb),"family")
    })
+

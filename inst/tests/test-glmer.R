@@ -101,9 +101,10 @@ test_that("glmer", {
     expect_is(glmer(prop ~ period + (1 | herd),
 		      data = cbppX, family = binomial, weights=size, na.action="na.exclude"),
 	      "glmerMod")
+
     expect_is(glmer(prop ~ period + (1 | herd),
-		      data = cbppX, family = binomial, weights=size, offset=rep(0,nrow(cbppX))),
-	      "glmerMod")
+    		      data = cbppX, family = binomial, weights=size, offset=rep(0,nrow(cbppX))),
+    "glmerMod")
     expect_is(glmer(prop ~ period + (1 | herd),
 		      data = cbppX, family = binomial, weights=size, contrasts=NULL),
 	      "glmerMod")
@@ -123,7 +124,7 @@ test_that("glmer", {
                    "extra argument.*disregarded")
 if(FALSE) { ## Hadley broke this
     expect_warning(glmer(cbind(incidence, size - incidence) ~ period + (1 | herd),
-                             data = cbpp, family = binomial,
+                         data = cbpp, family = binomial,
                          control=list()),
                    "instead of passing a list of class")
     expect_warning(glmer(cbind(incidence, size - incidence) ~ period + (1 | herd),
@@ -136,8 +137,8 @@ if(FALSE) { ## Hadley broke this
     mod <- glmer(presabs~predictor+(1|species),family=binomial,
                  radinger_dat)
     expect_is(mod,"merMod")
-    ## TODO: is this reliable across platforms or do we have to loosen?
-    expect_equal(unname(fixef(mod)),c(0.5425528,6.4289962))
+    ## tolerance: 32-bit Windows (CRAN) reported ave.diff of 5.33e-8
+    expect_equal(unname(fixef(mod)), c(0.5425528,6.4289962), tolerance = 4e-7)
     set.seed(101)
     ## complete separation case
     d <- data.frame(y=rbinom(1000,size=1,p=0.5),

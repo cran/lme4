@@ -1,5 +1,5 @@
 Package: lme4
-Version: 1.1-8
+Version: 1.1-9
 Title: Linear Mixed-Effects Models using 'Eigen' and S4
 Authors@R: c(person("Douglas","Bates", role="aut"),
     person("Martin","Maechler", role="aut"),
@@ -23,7 +23,7 @@ Description: Fit linear and generalized linear mixed-effects models.
 Depends: R (>= 3.0.2), Matrix (>= 1.1.1), methods, stats
 LinkingTo: Rcpp (>= 0.10.5), RcppEigen
 Imports: graphics, grid, splines, utils, parallel, MASS, nlme, lattice,
-        minqa (>= 1.1.15), nloptr
+        minqa (>= 1.1.15), nloptr (>= 1.0.4)
 Suggests: knitr, boot, PKPDmodels, MEMSS, testthat (>= 0.8.1), ggplot2,
         mlmRev, optimx (>= 2013.8.6), gamm4, pbkrtest, HSAUR2, numDeriv
 VignetteBuilder: knitr
@@ -32,6 +32,6 @@ License: GPL (>= 2)
 URL: https://github.com/lme4/lme4/ http://lme4.r-forge.r-project.org/
 BugReports: https://github.com/lme4/lme4/issues
 NeedsCompilation: yes
-Packaged: 2015-06-20 21:23:09 UTC; bolker
+Packaged: 2015-08-20 14:45:02 UTC; bolker
 Repository: CRAN
-Date/Publication: 2015-06-22 09:09:58
+Date/Publication: 2015-08-20 23:55:56

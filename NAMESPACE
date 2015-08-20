@@ -1,16 +1,28 @@
 useDynLib(lme4,.registration=TRUE)
 
 ## base packages
-importFrom("graphics", plot)
-importFrom("grid", gpar,viewport)
-importFrom("splines", backSpline,interpSpline,periodicSpline)
-importFrom("methods", show)
+importFrom("graphics", par, plot)
+importFrom("grid", gpar, viewport)
+importFrom("splines", backSpline, interpSpline, periodicSpline)
+importFrom("methods", as, getDataPart, is, new, rbind2, show, slot, slotNames)
 importFrom("stats",
-           anova, coef, confint, deviance, df.residual, drop1,
-           extractAIC, family, fitted, formula, hatvalues, logLik,
-           model.matrix, nobs, profile, residuals, simulate, terms,
-           update, vcov, weights)
-importFrom("utils", flush.console)
+           AIC, BIC, anova, approx, approxfun,
+           as.formula, asOneSidedFormula, ave,
+           coef, confint, delete.response,
+           deviance, df.residual, dnorm, drop.scope, drop1, extractAIC,
+           family, fitted, formula, gaussian, getCall, glm,
+           hatvalues, lm, logLik, model.extract, model.frame,
+           model.matrix, model.offset, model.response, model.weights,
+           na.exclude, na.omit, na.pass, napredict, naresid, nlminb,
+           nobs, optimize, pchisq, pnorm, poisson, ppoints,
+           predict, printCoefmat, profile, pt, qchisq, qnorm,
+           qqnorm, qt, quantile, rbinom, reformulate, reorder,
+           resid, residuals, rgamma, rnbinom, rnorm, rpois,
+           runif, sd, setNames, simulate, symnum, terms, terms.formula,
+           update, update.formula, var, vcov, weights)
+
+importFrom("utils", flush.console, packageVersion, stack, str)
+
 
 ## Recommended packages
 importClassesFrom("Matrix", corMatrix, dgCMatrix, dpoMatrix, dCHMsimpl)
@@ -27,17 +39,24 @@ importFrom("lattice",
            splom, strip.custom, strip.default, trellis.par.get,
            xyplot)
 importFrom("MASS", negative.binomial, theta.ml)
+
 ## generics we provide methods for and re-export:
 importFrom("nlme", fixef,ranef, VarCorr, getGroups)
 
 importFrom("Matrix", drop0, rankMatrix, sparseMatrix, cBind,rBind,
            forceSymmetric, fac2sparse, KhatriRao, Diagonal)
-importMethodsFrom("Matrix", coerce, "%*%",crossprod,tcrossprod,
-                  t,diag, chol2inv,solve, colSums,rowSums)
+## methods incl. S4 generics:
+importMethodsFrom("Matrix", coerce, cov2cor, "%*%", crossprod,tcrossprod,
+                  t, diag, chol2inv, solve, colSums,rowSums)
 ## other CRAN packages:
 importFrom("minqa", bobyqa)
 importFrom("nloptr", nloptr)
 
+## Re-Exports :
+export(negative.binomial)
+## currently needed for some eval()ing methods for glmer.nb() objects
+
+## Our Exports:
 export(bootMer)
 export(devcomp)
 export(dummy)
@@ -146,6 +165,7 @@ S3method(formula,lmList4)
 S3method(formula,merMod)
 ## S3method(fortify,merMod)# but don't hide:
 export(fortify.merMod)
+S3method(getME, merMod)
 S3method(hatvalues,merMod)
 S3method(isGLMM,merMod)
 S3method(isLMM,merMod)
@@ -192,6 +212,7 @@ S3method(vcov,summary.merMod)
 S3method(weights,merMod)
 S3method(xyplot,thpr)
 
+
 S3method(sigma,lmList4)
 
 ## Re-using S3 methods from nlme (for 'lmList') as methods for our 'lmList4':
@@ -207,3 +228,4 @@ S3method(residuals,lmList4)
 S3method(summary,lmList4)
 ## Auxiliaries:
 S3method(getGroups,lmList4)
+

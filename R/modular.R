@@ -7,8 +7,9 @@ doCheck <- function(x) {
     is.character(x) && !any(x == "ignore")
 }
 
-RHSForm <- function(formula) {
-    formula[[length(formula)]]
+RHSForm <- function(form,as.form=FALSE) {
+    rhsf <- form[[length(form)]]
+    if (as.form) reformulate(deparse(rhsf)) else rhsf
 }
 
 `RHSForm<-` <- function(formula,value) {
@@ -330,7 +331,7 @@ lFormula <- function(formula, data=NULL, REML = TRUE,
     ignoreArgs <- c("start","verbose","devFunOnly","control")
     l... <- list(...)
     l... <- l...[!names(l...) %in% ignoreArgs]
-    do.call("checkArgs", c(list("lmer"),l...))
+    do.call(checkArgs, c(list("lmer"), l...))
     if (!is.null(list(...)[["family"]])) {
         ## lmer(...,family=...); warning issued within checkArgs
         mc[[1]] <- quote(lme4::glFormula)
@@ -394,6 +395,17 @@ lFormula <- function(formula, data=NULL, REML = TRUE,
     fixedfr <- eval(mf, parent.frame())
     attr(attr(fr,"terms"), "predvars.fixed") <-
         attr(attr(fixedfr,"terms"), "predvars")
+
+    ## ran-effects model frame (for predvars)
+    ## important to COPY formula (and its environment)?
+    ranform <- formula
+    RHSForm(ranform) <- subbars(RHSForm(reOnly(formula)))
+    mf$formula <- ranform
+    ranfr <- eval(mf, parent.frame())
+    attr(attr(fr,"terms"), "predvars.random") <-
+        attr(terms(ranfr), "predvars")
+
+    ## FIXME: shouldn't we have this already in the full-frame predvars?
     X <- model.matrix(fixedform, fr, contrasts)#, sparse = FALSE, row.names = FALSE) ## sparseX not yet
     ## backward compatibility (keep no longer than ~2015):
     if(is.null(rankX.chk <- control[["check.rankX"]]))
@@ -575,10 +587,10 @@ optimizeLmer <- function(devfun,
             }
         }
     }
-    if (boundary.tol > 0) {
-        opt <- check.boundary(rho,opt,devfun,boundary.tol)
-    }
-    return(opt)
+    if (boundary.tol > 0)
+	check.boundary(rho, opt, devfun, boundary.tol)
+    else
+	opt
 }
 
 ## TODO: remove any arguments that aren't actually used by glFormula (same for lFormula)
@@ -609,7 +621,7 @@ glFormula <- function(formula, data=NULL, family = gaussian,
     ignoreArgs <- c("start","verbose","devFunOnly","optimizer", "control", "nAGQ")
     l... <- list(...)
     l... <- l...[!names(l...) %in% ignoreArgs]
-    do.call("checkArgs", c(list("glmer"), l...))
+    do.call(checkArgs, c(list("glmer"), l...))
 
     cstr <- "check.formula.LHS"
     checkCtrlLevels(cstr, control[[cstr]])
@@ -662,6 +674,16 @@ glFormula <- function(formula, data=NULL, family = gaussian,
     fixedfr <- eval(mf, parent.frame())
     attr(attr(fr,"terms"),"predvars.fixed") <-
         attr(attr(fixedfr,"terms"),"predvars")
+
+    ## ran-effects model frame (for predvars)
+    ## important to COPY formula (and its environment)?
+    ranform <- formula
+    RHSForm(ranform) <- subbars(RHSForm(reOnly(formula)))
+    mf$formula <- ranform
+    ranfr <- eval(mf, parent.frame())
+    attr(attr(fr,"terms"), "predvars.random") <-
+        attr(terms(ranfr), "predvars")
+
     X <- model.matrix(fixedform, fr, contrasts)#, sparse = FALSE, row.names = FALSE) ## sparseX not yet
     ## backward compatibility (keep no longer than ~2015):
     if(is.null(rankX.chk <- control[["check.rankX"]]))
@@ -691,9 +713,9 @@ mkGlmerDevfun <- function(fr, X, reTrms, family, nAGQ = 1L, verbose = 0L, maxit 
                       c(reTrms[c("Zt","theta","Lambdat","Lind")],
                         n=nrow(X), list(X=X)))
     rho$resp <- if (missing(fr))
-        mkRespMod(family=family, ...)
+	mkRespMod(family=family, ...)
     else
-        mkRespMod(fr, family=family)
+	mkRespMod(fr, family=family)
     nAGQinit <- if(control$nAGQ0initStep) 0L else 1L
     ## allow trivial y
     if (length(y <- rho$resp$y) > 0) {

@@ -294,7 +294,7 @@ profile.merMod <- function(fitted,
 		forspl <- interpSpline(form, bres, na.action=na.omit)),
 		     error=function(e)e)
         if (inherits(bakspl, "error"))
-            warning("non-monotonic profile")
+            warning("non-monotonic profile for ",pname)
         ## return:
         namedList(bres,bakspl,forspl) # namedList() -> lmerControl.R
 
@@ -406,7 +406,7 @@ profile.merMod <- function(fitted,
 ##' tn <- names(getME(fm1,"theta"))
 ##' nn <- c(tn,names(fixef(fm1)))
 ##' get.which("theta_",length(tn),length(nn),nn, verbose=TRUE)
-##' 
+##'
 get.which <- function(which, nvp, nptot, parnames, verbose=FALSE) {
     if (is.null(which))
         seq_len(nptot)
@@ -435,19 +435,20 @@ get.which <- function(which, nvp, nptot, parnames, verbose=FALSE) {
 ## classes
 .modelMatrixDrop <- function(mm, w) {
     if (isS4(mm)) {
-        ll <- list(Class = class(mm),
-                   assign = attr(mm,"assign")[-w],
-                   contrasts = NULL)
-        ## FIXME: where did the contrasts information go??
-        ## mm@contrasts)
-        X <- mm[, -w, drop = FALSE]
-        ll <- c(ll, lapply(structure(slotNames(X), .Names=slotNames(X)),
-                           function(nm) slot(X, nm)))
-        return(do.call("new", ll))
+	nX <- slotNames(X <- mm[, -w, drop = FALSE])
+	do.call(new,
+		c(list(Class = class(mm),
+		       assign = attr(mm,"assign")[-w],
+		       contrasts = NULL
+		       ## FIXME: where did the contrasts information go??
+		       ##      mm@contrasts
+		       ),
+		  lapply(structure(nX, .Names=nX),
+			 function(nm) slot(X, nm))))
+    } else {
+	structure(mm[, -w, drop=FALSE],
+		  assign = attr(mm, "assign")[-w])
     }
-    ans <- mm[, -w, drop=FALSE]
-    attr(ans, "assign") <- attr(mm, "assign")[-w]
-    ans
 }
 
 ## The deviance is profiled with respect to the fixed-effects
@@ -692,7 +693,11 @@ format.perc <- function (probs, digits) {
 
 ##' confint() method for  our profile() results 'thpr'
 ##' @importFrom stats confint
-confint.thpr <- function(object, parm, level = 0.95, zeta, ...)
+confint.thpr <- function(object, parm, level = 0.95, zeta,
+                         ## tolerance for non-monotonic profiles
+                         ## (raw values, not splines)
+                         non.mono.tol=1e-2, 
+                         ...)
 {
     bak <- attr(object, "backward")
     ## fallback strategy for old profiles that don't have a lower/upper
@@ -701,6 +706,8 @@ confint.thpr <- function(object, parm, level = 0.95, zeta, ...)
         lower <- rep(NA,length(parm))
     if (is.null(upper <- attr(object,"upper")))
         upper <- rep(NA,length(parm))
+    ## FIXME: work a little harder to add -Inf/Inf for fixed effect
+    ##  parameters?  (Should only matter for really messed-up profiles)
     bnms <- names(bak)
     if (missing(parm)) parm <- bnms
     else if (is.numeric(parm)) parm <- bnms[parm]
@@ -719,12 +726,28 @@ confint.thpr <- function(object, parm, level = 0.95, zeta, ...)
         ## predy is used in many places and it's much harder to
         ## tell in general whether an NA indicates a lower or an
         ## upper bound ...
+        badprof <- FALSE
+        p <- rep(NA,2)
 	if (!inherits(b <- bak[[parm[i]]], "error")) {
             p <- predy(b, zeta)
+        } else {
+            obj1 <- object[object$.par==parm[[i]],c(parm[[i]],".zeta")]
+            if (all(is.na(obj1[,2]))) {
+                badprof <- TRUE
+                warning("bad profile for ",parm[i])
+            } else if (min(diff(obj1[,2])<(-non.mono.tol),na.rm=TRUE)) {
+                badprof <- TRUE
+                warning("non-monotonic profile for ",parm[i])
+            } else {
+                warning("bad spline fit for ",parm[i],": falling back to linear interpolation")
+                p <- approxfun(obj1[,2],obj1[,1])(zeta)
+            }
+        }
+        if (!badprof) {
             if (is.na(p[1])) p[1] <- lower[i]
             if (is.na(p[2])) p[2] <- upper[i]
-            ci[i,] <- p
         }
+        ci[i,] <- p
     }
     ci
 }
