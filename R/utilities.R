@@ -1,11 +1,15 @@
-if((Rv <- getRversion()) < "3.1.0") {
-  anyNA <- function(x) any(is.na(x))
-  if(Rv < "3.0.0") {
-      rep_len <- function(x, length.out) rep(x, length.out=length.out)
-      if(Rv < "2.15")
-          paste0 <- function(...) paste(..., sep = '')
-  }
-}; rm(Rv)
+if((Rv <- getRversion()) < "3.2.0") {
+    lengths <- function (x, use.names = TRUE) vapply(x, length, 1L, USE.NAMES = use.names)
+    if(Rv < "3.1.0") {
+        anyNA <- function(x) any(is.na(x))
+        if(Rv < "3.0.0") {
+            rep_len <- function(x, length.out) rep(x, length.out=length.out)
+            if(Rv < "2.15")
+                paste0 <- function(...) paste(..., sep = '')
+        }
+    }
+} ## R < 3.2.0
+rm(Rv)
 
 ## From Matrix package  isDiagonal(.) :
 all0 <- function(x) !anyNA(x) && all(!x)
@@ -122,8 +126,9 @@ mkReTrms <- function(bars, fr, drop.unused.levels=TRUE) {
   ## order terms stably by decreasing number of levels in the factor
   if (any(diff(nl) > 0)) {
     ord <- rev(order(nl))
-    blist <- blist[ord]
-    nl <- nl[ord]
+    blist      <- blist     [ord]
+    nl         <- nl        [ord]
+    term.names <- term.names[ord]
   }
   Ztlist <- lapply(blist, `[[`, "sm")
   Zt <- do.call(rBind, Ztlist)  ## eq. 7, JSS lmer paper
@@ -134,7 +139,7 @@ mkReTrms <- function(bars, fr, drop.unused.levels=TRUE) {
   ## any potential reordering of the terms.
   cnms <- lapply(blist, `[[`, "cnms")   # list of column names of the
                                         # model matrix per term
-  nc <- vapply(cnms, length, 0L)	# no. of columns per term
+  nc <- lengths(cnms)	                # no. of columns per term
                                         # (in lmer jss:  p_i)
   nth <- as.integer((nc * (nc+1))/2)	# no. of parameters per term
                                         # (in lmer jss:  ??)
@@ -161,7 +166,7 @@ mkReTrms <- function(bars, fr, drop.unused.levels=TRUE) {
                         ltri <- lower.tri(dd, diag = TRUE)
                         ii <- row(dd)[ltri]
                         jj <- col(dd)[ltri]
-                        dd[cbind(ii, jj)] <- seq_along(ii) # FIXME: this line unnecessary?
+                        ## unused: dd[cbind(ii, jj)] <- seq_along(ii)
                         data.frame(i = as.vector(mm[, ii]) + boff[i],
                                    j = as.vector(mm[, jj]) + boff[i],
                                    x = as.double(rep.int(seq_along(ii),
@@ -169,8 +174,8 @@ mkReTrms <- function(bars, fr, drop.unused.levels=TRUE) {
                                                    thoff[i]))
                       }))))
   thet <- numeric(sum(nth))
-  ll <- list(Zt=Matrix::drop0(Zt), theta=thet, Lind=as.integer(Lambdat@x),
-             Gp=unname(c(0L, cumsum(nb))))
+  ll <- list(Zt = drop0(Zt), theta = thet, Lind = as.integer(Lambdat@x),
+             Gp = unname(c(0L, cumsum(nb))))
   ## lower bounds on theta elements are 0 if on diagonal, else -Inf
   ll$lower <- -Inf * (thet + 1)
   ll$lower[unique(diag(Lambdat))] <- 0
@@ -576,16 +581,16 @@ subnms <- function(form, nms) {
     sbnm(form)
 }
 
-## Check for a constant term (a literal 1) in an expression
+##' Check for a constant term (a literal 1) in an expression
 ##
-## In the mixed-effects part of a nonlinear model formula, a constant
-## term is not meaningful because every term must be relative to a
-## nonlinear model parameter.  This function recursively checks the
-## expressions in the formula for a a constant, calling stop() if
-## such a term is encountered.
-## @title Check for constant terms.
-## @param expr an expression
-## @return NULL.  The function is executed for its side effect.
+##' In the mixed-effects part of a nonlinear model formula, a constant
+##' term is not meaningful because every term must be relative to a
+##' nonlinear model parameter.  This function recursively checks the
+##' expressions in the formula for a a constant, calling stop() if
+##' such a term is encountered.
+##' @title Check for constant terms.
+##' @param expr an expression
+##' @return NULL.  The function is executed for its side effect.
 chck1 <- function(expr) {
     if ((le <- length(expr)) == 1) {
         if (is.numeric(expr) && expr == 1)
@@ -602,7 +607,7 @@ nlformula <- function(mc) {
   start <- eval(mc$start, parent.frame(2L))
   if (is.numeric(start)) start <- list(nlpars = start)
   stopifnot(is.numeric(nlpars <- start$nlpars),
-            vapply(nlpars, length, 0L) == 1L,
+            lengths(nlpars) == 1L,
             length(pnames <- names(nlpars)) == length(nlpars),
             length(form <- as.formula(mc$formula)) == 3L,
             is(nlform <- eval(form[[2]]), "formula"),

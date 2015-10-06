@@ -179,6 +179,18 @@ test_that("bootMer", {
         suppressWarnings(confint(fm1, method="boot", FUN=testFun, nsim=10,
                                  quiet=TRUE)))),
                  c(243.7551,256.9104),tol=1e-3)
+
+    ## passing re.form to bootMer
+    FUN <- function(.){
+        predict(., type="response")
+    }
+    fm2 <- lmer(strength ~ (1|batch/cask), Pastes)
+    expect_is(bootMer(fm2, predict, nsim=3),"boot")
+    expect_is(bootMer(fm2, predict, re.form=NULL, nsim=3),"boot")
+    expect_is(bootMer(fm2, predict, re.form=~(1|batch)+(1|cask:batch), nsim=3),
+              "boot")
+    expect_is(b3 <- bootMer(fm2, predict, re.form=~(1|batch), nsim=3),
+              "boot")
 })
 context("confint_other")
 test_that("confint", {
@@ -233,11 +245,14 @@ test_that("confint", {
     set.seed(102)
     dat <- simfun(10,5,1,.3,.3,.3,(1/18),0,(1/18))
     fit <- lmer(Y~X+Z+X:Z+(X||group),data=dat)
-    expect_warning(pp <- profile(fit,"theta_",quiet=TRUE),
-                   "non-monotonic profile")
-    expect_warning(cc <- confint(pp),"falling back to linear interpolation")
-    ## very small/unstable problem, needs large tolerance
-    expect_equal(unname(cc[2,]),c(0,0.5427609),tolerance=1e-2)
+    if (Sys.info()["sysname"] != "SunOS") {
+        ## doesn't produce warnings on Solaris ...
+        expect_warning(pp <- profile(fit,"theta_",quiet=TRUE),
+                       "non-monotonic profile")
+        expect_warning(cc <- confint(pp),"falling back to linear interpolation")
+        ## very small/unstable problem, needs large tolerance
+        expect_equal(unname(cc[2,]),c(0,0.5427609),tolerance=1e-2)
+    }
 
     badprof <- readRDS(system.file("testdata","badprof.rds",
                                    package="lme4"))
