@@ -9,8 +9,39 @@ modelFormula <- function(form)
     if (!inherits(rhs, "call") || rhs[[1]] != as.symbol('|'))
         stop("rhs of formula must be a conditioning expression")
     form[[3]] <- rhs[[2]]
-    list(model = form, groups = rhs[[3]])
+    list(model = dropOffset(form), groups = rhs[[3]])
 }
+
+dropOffset <- function(form) {
+    ## atomic 
+    if (is.symbol(form) || is.numeric(form)) return(form)
+    ## binary
+    if (identical(form[[1]],quote(offset))) {
+        NULL
+    } else {
+        ## unary operator
+        if (length(form)==2) {
+            form[[2]] <- dropOffset(form[[2]])
+            return(form)
+        }
+        nb2 <- dropOffset(form[[2]])
+        nb3 <- dropOffset(form[[3]])
+        if (is.null(nb2))
+            nb3
+        else if (is.null(nb3))
+            nb2
+        else {
+            form[[2]] <- nb2
+            form[[3]] <- nb3
+            return(form)
+        }
+    }
+}
+
+## dropOffset(y~x)
+## dropOffset(y~x+offset(stuff))
+## dropOffset(y~-x+offset(stuff))
+## dropOffset(~-x+offset(stuff))
 
 ##' @title List of lm Objects with a Common Model
 ##' @param formula a linear formula object of the form
@@ -29,24 +60,33 @@ modelFormula <- function(form)
 lmList <- function(formula, data, family, subset, weights,
                    na.action, offset, pool = TRUE, ...) {
     stopifnot(inherits(formula, "formula"))
-    ## FIXME: converting data to data.frame here doesn't help
-    ##  because model.frame is accessed through eval(...,parent.frame())
-    ##  below, so it picks up the *original* value of data
-    ## model.frame(groupedData) is problematic ...
-    ## data <- as.data.frame(data)
-    if (is(data,"groupedData"))
-        warning("lmList does not (yet) work correctly on groupedData objects")
+
+    ## model.frame(groupedData) was problematic ... but not as we
+    ## are currently using it.
+
     mCall <- mf <- match.call()
-    m <- match(c("family", "data", "subset", "weights",
-                 "na.action", "offset"), names(mf), 0)
+
+    ## in contrast to the usual R model-fitting idiom, we do **not**
+    ## want to evaluate the model frame here; it will mess up any derived
+    ## variables we have when we go to fit the sub-models.  We were previously
+    ## using model.frame() on the entire data set, but that does not
+    ## exclude unused columns ... and hence screws us up when there are
+    ## NA values in unused columns.  All we need the model frame for
+    ## is evaluating the groups.
+
+    ## keep weights and offsets in case we have NAs there??
+    m <- match(c("formula", "data", "subset", "na.action",
+                 "weights", "offset"), names(mf), 0)
     mf <- mf[c(1, m)]
     ## substitute `+' for `|' in the formula
-### FIXME: Figure out what to do here instead of subbars
-    ##          mf$formula <- subbars(formula)
-    mf$x <- mf$model <- mf$y <- mf$family <- NULL
+    mf$formula <- subbars(formula)
     mf$drop.unused.levels <- TRUE
+    ## pass NAs for now -- want *all* groups, weights, offsets recovered
+    mf$na.action <- na.pass
     mf[[1]] <- as.name("model.frame")
-    frm <- eval(mf, parent.frame())## <- including "..."
+    frm <- eval.parent(mf) ## <- including "..."
+    data[["(weights)"]] <- model.weights(frm)
+    data[["(offset)"]] <- model.offset(frm)
     mform <- modelFormula(formula)
     isGLM <- !missing(family) ## TODO in future, consider isNLM / isNLS
     errorH <- function(e) NULL # => NULL iff an error happened
@@ -54,33 +94,28 @@ lmList <- function(formula, data, family, subset, weights,
     ## (simply passing them along silently gives confusing output)
     groups <- eval(mform$groups, frm)
     if (!is.factor(groups)) groups <- factor(groups)
-    ## FIXME: this splitting of data, weights, offset is really
-    ## ugly/brute force.  I feel like there ought to be a way
-    ## to leverage the fact that 'weights' and 'offset' have
-    ## automatically been incorporated into the model frame ...
     fit <- if (isGLM) glm else lm
     mf2 <- if (missing(family)) NULL else list(family=family)
-    fitfun <- function(dat,formula) {
+    fitfun <- function(data,formula) {
         tryCatch({
-            data <- as.data.frame(dat)
             do.call(fit,c(list(formula, data,
-                               weights=dat[["(weights)"]],
-                               offset=dat[["(offset)"]]),
+                               weights = model.weights(data),
+                               offset = model.offset(data), ...),
                           mf2))
         }, error=errorH)
     }
-    frm.split <- split(frm, groups)
+    ## split *original data*, not model frame, on groups
+    frm.split <- split(data, groups)
     ## NB:  levels() is only  OK if grouping variable is a factor
     nms <- names(frm.split)
-    ## null.split <- replicate(length(nms),NULL)
-    ## weights.split <- if (missing(weights)) null.split else split(weights, groups)
-    ## offset.split <- if (missing(offset)) null.split else split(offset, groups)
     val <- ## mapply(fitfun,
         lapply(
             frm.split,fitfun,
-                  ## weights.split,
-                  ## offset.split,
-               formula = as.formula(mform$model))
+            formula = as.formula(mform$model))
+
+    use <- !sapply(val, is.null)
+    if (nbad <- sum(!use))
+        warning("Fitting failed for ",nbad," group(s), probably because a factor only had one level")
 
     ## Contrary to nlme, we keep the erronous ones as well
     pool <- !isGLM || .hasScale(family2char(family))

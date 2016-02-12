@@ -771,10 +771,13 @@ optimizeGlmer <- function(devfun,
     }
     if (restart_edge) ## FIXME: implement this ...
         stop("restart_edge not implemented for optimizeGlmer yet")
-    if (boundary.tol > 0)
-        check.boundary(rho, opt, devfun, boundary.tol)
-    else
-        opt
+
+    if (boundary.tol > 0) {
+        opt <- check.boundary(rho, opt, devfun, boundary.tol)
+        if(stage != 1) rho$resp$setOffset(rho$baseOffset)
+    }
+
+    return(opt)
 }
 
 check.boundary <- function(rho,opt,devfun,boundary.tol) {
@@ -810,7 +813,7 @@ updateGlmerDevfun <- function(devfun, reTrms, nAGQ = 1L){
     rho$lower      <- c(rho$lower, rep.int(-Inf, length(rho$pp$beta0)))
     rho$lp0        <- rho$pp$linPred(1)
     rho$dpars      <- seq_along(rho$pp$theta)
-    rho$baseOffset <- rho$resp$offset + 0 # forcing a copy (!)
+    rho$baseOffset <- forceCopy(rho$resp$offset) # forcing a copy (!)
     rho$GQmat      <- GHrule(nAGQ)
     rho$fac        <- reTrms$flist[[1]]
     mkdevfun(rho, nAGQ)  # does this attach rho to devfun??

@@ -1178,18 +1178,36 @@ print.ranef.mer <- function(x, ...) {
     invisible(x)
 }
 
+## try to redo refit by calling modular structure ...
+refit2.merMod <- function(object,
+                          newresp=NULL) {
+    ## the idea is to steal as much structure as we can from the
+    ## previous fit, including
+    ##  * starting parameter values
+    ##  * random-effects structure
+    ##  * fixed-effects structure
+    ##  * model frame
+    ## and jump into the modular structure at an appropriate place;
+    ##  essentially, this should merge with a smart-as-possible
+    ##  version of 'update' ...
+
+}
+
 ## FIXME DRY: much of copy'n'paste from lmer() etc .. ==> become more modular (?)
-refit.merMod <- function(object, newresp=NULL, rename.response=FALSE, maxit = 100L, ...)
+refit.merMod <- function(object,
+                         newresp=NULL,
+                         ## formula=NULL, weights=NULL,
+                         rename.response=FALSE,
+                         maxit = 100L, ...)
 {
 
+    l... <- list(...)
+
     ctrl.arg <- NULL
-    if (ll <- length(l... <- list(...)) > 0) {
-        if ((ll == 1L) &&  (names(l...)[1] == "control")) {
-            ctrl.arg <- l...$control
-        }
-        else {
-            warning("additional arguments to refit.merMod ignored")
-        }
+    if("control" %in% names(l...)) ctrl.arg <- l...$control
+
+    if(!all(names(l...) %in% c("control", "verbose"))) {
+        warning("additional arguments to refit.merMod ignored")
     }
     ## TODO: not clear whether we should reset the names
     ##       to the new response variable.  Maybe not.
@@ -1263,9 +1281,9 @@ refit.merMod <- function(object, newresp=NULL, rename.response=FALSE, maxit = 10
 
     rr <- if(isLMM(object))
         mkRespMod(model.frame(object), REML = isREML(object))
-    else if(isGLMM(object))
+    else if(isGLMM(object)) {
         mkRespMod(model.frame(object), family = family(object))
-    else
+    } else
         stop("refit.merMod not working for nonlinear mixed models.\n",
              "try update.merMod instead.")
 
@@ -1293,8 +1311,10 @@ refit.merMod <- function(object, newresp=NULL, rename.response=FALSE, maxit = 10
 
     }
 
+
     if (isGLMM(object)) {
         GQmat <- GHrule(nAGQ)
+
         if (nAGQ <= 1) {
             glmerPwrssUpdate(pp,rr, control$tolPwrss, GQmat, maxit=maxit)
         } else {
@@ -1305,7 +1325,7 @@ refit.merMod <- function(object, newresp=NULL, rename.response=FALSE, maxit = 10
 
     devlist <-
 	if (isGLMM(object)) {
-	    baseOffset <- object@resp$offset
+	    baseOffset <- forceCopy(object@resp$offset)
 
 	    list(tolPwrss= dc$cmp [["tolPwrss"]],
 		 compDev = dc$dims[["compDev"]],
@@ -2152,10 +2172,9 @@ mkVarCorr <- function(sc, cnms, nc, theta, nms) {
 
 ##' Extract variance and correlation components
 ##'
-VarCorr.merMod <- function(x, sigma = 1, rdig = 3)# <- 3 args from nlme
+VarCorr.merMod <- function(x, sigma = 1, ...)
 {
-  ## FIXME:: would like to fix nlme to add ...
-  ## FIXME:: add type=c("varcov","sdcorr","logs" ?)
+  ## TODO: now that we have '...', add  type=c("varcov","sdcorr","logs" ?
     if (is.null(cnms <- x@cnms))
 	stop("VarCorr methods require reTrms, not just reModule")
     if(missing(sigma))
@@ -2223,9 +2242,9 @@ formatVC <- function(varcor, digits = max(3, getOption("digits") - 2),
     reMat[1+cumsum(reLens)-reLens, "Groups"] <- names(reLens)
     reMat[,"Name"] <- c(unlist(lapply(varcor, colnames)), if(useScale) "")
     if(any("Variance" == use.c))
-    reMat[,"Variance"] <- formatter(unlist(reStdDev)^2, digits = digits, ...)
+	reMat[,"Variance"] <- formatter(unlist(reStdDev)^2, digits = digits, ...)
     if(any("Std.Dev." == use.c))
-    reMat[,"Std.Dev."] <- formatter(unlist(reStdDev),   digits = digits, ...)
+	reMat[,"Std.Dev."] <- formatter(unlist(reStdDev),   digits = digits, ...)
     if (any(reLens > 1)) {
 	maxlen <- max(reLens)
 	recorr <- lapply(varcor, attr, "correlation")
@@ -2276,9 +2295,10 @@ summary.merMod <- function(object,
     famL <- famlink(resp = resp)
     p <- length(coefs <- fixef(object))
 
+    vc <- vcov(object, use.hessian = use.hessian)
+    stdError <- sqrt(diag(vc))
     coefs <- cbind("Estimate" = coefs,
-                   "Std. Error" = sqrt(diag(vcov(object,
-                   use.hessian = use.hessian))))
+                   "Std. Error" = stdError)
     if (p > 0) {
 	coefs <- cbind(coefs, (cf3 <- coefs[,1]/coefs[,2]), deparse.level = 0)
 	colnames(coefs)[3] <- paste(if(useSc) "t" else "z", "value")

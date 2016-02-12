@@ -1,5 +1,5 @@
 
-R Under development (unstable) (2015-04-10 r68170) -- "Unsuffered Consequences"
+R Under development (unstable) (2015-11-29 r69717) -- "Unsuffered Consequences"
 Copyright (C) 2015 The R Foundation for Statistical Computing
 Platform: i686-pc-linux-gnu (32-bit)
 
@@ -19,7 +19,6 @@ Type 'q()' to quit R.
 
 > library(lme4)
 Loading required package: Matrix
-Loading required package: Rcpp
 > library(lattice)
 > library(testthat)
 > do.plots <- FALSE
@@ -145,10 +144,10 @@ Loading required package: Rcpp
 +                                         # replicate 1 only appears in rows 1:18.
 +     rownames(cake[cake$replicate==1,])
 + 
-+     predict(m, newdata=cake[-1:-17,], ReForm=~ (1 | replicate))
-+     predict(m, newdata=cake[-1:-18,], ReForm=NA)
-+     predict(m, newdata=cake[-1:-18,], ReForm=~ (1 | replicate)) 
-+     predict(m, newdata=cake[-1:-18,], ReForm=~ (1 | replicate), allow.new.levels=TRUE)
++     predict(m, newdata=cake[-1:-17,], re.form=~ (1 | replicate))
++     predict(m, newdata=cake[-1:-18,], re.form=NA)
++     predict(m, newdata=cake[-1:-18,], re.form=~ (1 | replicate)) 
++     predict(m, newdata=cake[-1:-18,], re.form=~ (1 | replicate), allow.new.levels=TRUE)
 + 
 +     ##
 + 
@@ -163,13 +162,22 @@ Loading required package: Rcpp
 +     p3 <- predict(fm1,newdata=nd)
 +     stopifnot(all.equal(p2,p3))
 +     stopifnot(all.equal(p2,p0[1]))
++ 
++     ## Stack Overflow 34221564:
++     ##  should only drop columns from model matrix when using *new* data
++     library(splines)
++     sleep <- sleepstudy  #get the sleep data
++     set.seed(1234567)
++     sleep$age <- as.factor(sample(1:3,length(sleep),rep=TRUE))
++     form1 <- Reaction ~ Days + ns(Days, df=4) +
++         age + Days:age + (Days | Subject)
++     m4 <- lmer(form1, sleep)
++     expect_equal(unname(head(predict(m4,re.form=NA))),
++                  c(255.645493, 262.3263, 268.86947, 279.0608,
++                    293.9390, 304.4721),tol=1e-4)
 + }
-Warning messages:
-1: 'ReForm' is deprecated; use 're.form' instead 
-2: 'ReForm' is deprecated; use 're.form' instead 
-3: 'ReForm' is deprecated; use 're.form' instead 
-4: 'ReForm' is deprecated; use 're.form' instead 
+fixed-effect model matrix is rank deficient so dropping 1 column / coefficient
 > 
 > proc.time()
    user  system elapsed 
-  1.972   0.080   2.494 
+  2.332   0.080   2.952 
