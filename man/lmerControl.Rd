@@ -86,7 +86,8 @@ nlmerControl(optimizer = "Nelder_Mead", tolPwrss = 1e-10,
     \describe{
       \item{(1)}{takes input parameters \code{fn} (function to be
         optimized), \code{par} (starting parameter values), \code{lower}
-        (lower bounds) and \code{control} (control parameters, passed
+        and \code{upper} (parameter bounds)
+	and \code{control} (control parameters, passed
         through from the \code{control} argument) and}
       \item{(2)}{returns a list with (at least) elements \code{par}
         (best-fit parameters), \code{fval} (best-fit function value),
@@ -108,6 +109,10 @@ nlmerControl(optimizer = "Nelder_Mead", tolPwrss = 1e-10,
     optimization, while the second will be used for the final (random
     effects plus fixed effect parameters) phase.  See
     \code{\link{modular}} for more information on these two phases.
+
+    If \code{optimizer} is \code{NULL} (at present for \code{lmer} only),
+    all of the model structures will be set up, but no optimization will
+    be done (e.g. parameters will all be returned as \code{NA}).
   }
   \item{calc.derivs}{logical - compute gradient and Hessian of nonlinear
     optimization solution?}
@@ -133,7 +138,14 @@ nlmerControl(optimizer = "Nelder_Mead", tolPwrss = 1e-10,
   \item{compDev}{logical scalar - should compiled code be
     used for the deviance evaluation during the optimization
     of the parameter estimates?}
-  \item{nAGQ0initStep}{do one initial run with \code{nAGQ = 0}.}
+  \item{nAGQ0initStep}{Run an initial optimization phase with
+    \code{nAGQ = 0}. While the initial optimization usually
+    provides a good starting point for subsequent fitting
+    (thus increasing overall computational speed),
+    setting this option to \code{FALSE} can be useful in cases
+    where the initial phase results in bad fixed-effect estimates
+    (seen most often in binomial models with \code{link="cloglog"}
+    and offsets).}
   \item{check.nlev.gtreq.5}{character - rules for
     checking whether all random effects have >= 5 levels.
     See \code{action}.}

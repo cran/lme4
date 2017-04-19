@@ -4,6 +4,30 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 1.1-13 (2017-04-18) }{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item added \code{prof.scale} argument to \code{profile.merMod},
+      documented caveats about using \code{varianceProf}/\code{logProf}
+      transformation methods for correlation parameters
+    }
+  }
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item suppressed spurious contrast-dropping warning (GH #414)
+      \item fixed bug in \code{confint.lmList4} (GH #26)
+      \item fixed bug when \code{FUN} returned an unnamed
+      vector in \code{confint(.,FUN=FUN,method="boot")}
+      \item fixed small bug relating to \code{nAGQ0initStep=FALSE}
+    }
+  }
+  \subsection{CRAN-COMPATIBILITY UPDATES}{
+        \itemize{
+	  \item fixed time stamps on compiled versions of vignettes
+	}
+      }
+}
+
 \section{CHANGES IN VERSION 1.1-12 (2016-04-15)}{
   This release is primarily a bump for compatibility with the new
   Windows toolchain. Some small documentation and test changes.

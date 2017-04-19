@@ -73,7 +73,8 @@ est_theta <- function(object, limit = 20,
                       eps = .Machine$double.eps^0.25, trace = 0)
 {
   Y <- model.response(model.frame(object))
-  mu <- fitted(object)
+  ## may have NA values if na.exclude was used ...
+  mu <- na.omit(fitted(object))
   theta.ml(Y, mu, weights = object@resp$weights,
            limit = limit, eps = eps, trace = trace)
 }
@@ -94,7 +95,7 @@ glmer.nb <- function(..., interval = log(th) + c(-3,3),
 
     mc <- match.call()
     mc[[1]] <- quote(glmer)
-    mc$family <- quote(poisson)
+    mc$family <- quote(stats::poisson)
     mc$verbose <- (verbose>=2)
     g0 <- eval(mc, parent.frame(1L))
 

@@ -192,7 +192,48 @@ test_that("bootMer", {
               "boot")
     expect_is(b3 <- bootMer(fm2, predict, re.form=~(1|batch), nsim=3),
               "boot")
+
+    FUN_name <- function(.) getME(.,"theta")
+    FUN_noname <- function(.) unname(getME(.,"theta"))
+
+    c_name <- suppressWarnings(
+        confint(fm2, method="boot", FUN=FUN_name, nsim=3, seed=101))
+
+    c_noname <- suppressWarnings(
+        confint(fm2, method="boot", FUN=FUN_noname, nsim=3, seed=101))
+
+    expect_equal(unname(c_name),unname(c_noname))
+
+    ## example from
+    df2 <- data.frame(
+    prop1 = c(0.46, 0.471, 0.458, 0.764, 0.742, 0.746,
+              0.569, 0.45,    0.491,    0.467, 0.464,
+              0.556, 0.584, 0.478, 0.456, 0.46, 0.493, 0.704, 0.693, 0.651),
+    prop2 = c(0.458, 0.438, 0.453, 0.731, 0.738, 0.722, 0.613,
+              0.498, 0.452, 0.451, 0.447,
+              0.48, 0.576, 0.484, 0.473, 0.467, 0.467, 0.722, 0.707, 0.709),
+    site = factor(rep(1:8,c(2,1,3,5,3,2,1,3))))
+
+    ## from SO 37466771: bootstrapping etc. on GLMMs with scale
+    ## parameters
+    gaussmodel <- glmer(prop2 ~ prop1 + (1|site),
+                   data=df2, family=gaussian(link="logit"))
+    set.seed(101)
+    bci <- suppressWarnings(confint(gaussmodel,method="boot",nsim=10))
+    expect_equal(bci,
+                 structure(c(16.0861072699207, 0.0367496156026639,
+                             -4.21025090053564,
+                             3.1483596407467, 31.3318861915707,
+                             0.0564761126030204, -1.00593089841924,
+                             4.7064432268919), .Dim = c(4L, 2L),
+                           .Dimnames = list(c(".sig01",
+                                              ".sigma", "(Intercept)",
+                                              "prop1"), c("2.5 %", "97.5 %"))),
+                 tolerance=1e-5)
+
+
 })
+
 context("confint_other")
 test_that("confint", {
     load(system.file("testdata", "gotway_hessianfly.rda", package = "lme4"))
@@ -246,10 +287,11 @@ test_that("confint", {
     set.seed(102)
     dat <- simfun(10,5,1,.3,.3,.3,(1/18),0,(1/18))
     fit <- lmer(Y~X+Z+X:Z+(X||group),data=dat)
+
     if (Sys.info()["sysname"] != "SunOS" &&
         .Platform$OS.type != "windows") {
         ## doesn't produce warnings on Solaris, or win-builder ...
-        expect_warning(pp <- profile(fit,"theta_",quiet=TRUE),
+        expect_warning(pp <- profile(fit,"theta_"),
                        "non-monotonic profile")
         expect_warning(cc <- confint(pp),"falling back to linear interpolation")
         ## very small/unstable problem, needs large tolerance
@@ -283,7 +325,7 @@ test_that("refit", {
     expect_equal(s1 <- simulate(fm,newdata = Orthodont,seed = 101),
                  s2 <- simulate(fm,seed = 101))
 
-    
+
     ## works *without* offset ...
     m5 <- glmer(round(Reaction) ~ Days + (1|Subject),
                 data = sleepstudy, family=poisson,
@@ -316,17 +358,17 @@ test_that("predict", {
     expect_is(pm, "numeric")
     expect_equal(quantile(pm, names = FALSE),
                  c(211.006525, 260.948978, 296.87331, 328.638297, 458.155583))
+    op <- options(warn = 2) # there should be no warnings!
     if (require("MEMSS",quietly=TRUE)) {
         ## test spurious warning with factor as response variable
         data("Orthodont", package = "MEMSS") # (differently "coded" from the 'default' "nlme" one)
         silly <- glmer(Sex ~ distance + (1|Subject),
                        data = Orthodont, family = binomial)
+        sillypred <- data.frame(distance = c(20, 25))
+        ps <- predict(silly, sillypred, re.form=NA, type = "response")
+        expect_is(ps, "numeric")
+        expect_equal(unname(ps), c(0.999989632, 0.999997201), tolerance=1e-6)
     }
-    sillypred <- data.frame(distance = c(20, 25))
-    op <- options(warn = 2) # no warnings!
-    ps <- predict(silly, sillypred, re.form=NA, type = "response")
-    expect_is(ps, "numeric")
-    expect_equal(unname(ps), c(0.999989632, 0.999997201), tolerance=1e-6)
     ## a case with interactions (failed in one temporary version):
     expect_warning(fmPixS <<- update(fmPix, .~. + Side),
                    "nearly unidentifiable|unable to evaluate scaled gradient|failed to converge")
@@ -359,7 +401,8 @@ test_that("predict", {
     Orthodont <- within(Orthodont, nsex <- as.numeric(Sex == "Male"))
     m3 <- lmer(distance ~ age + (age|Subject) + (0 + Sex |Subject),
                data=Orthodont,
-               control=lmerControl(check.conv.hess="ignore"))
+               control=lmerControl(check.conv.hess="ignore",
+                                   check.conv.grad="ignore"))
     m4 <- lmer(distance ~ age + (age|Subject) + (0 + nsex|Subject), data=Orthodont)
     expect_equal(p3 <- predict(m3, Orthodont), fitted(m3), tolerance=1e-14)
     expect_equal(p4 <- predict(m4, Orthodont), fitted(m4), tolerance=1e-14)
@@ -382,6 +425,22 @@ test_that("predict", {
     ## complex-basis functions in FIXED effect are fine
     fm6 <- lmer(Reaction~poly(Days,2)+(1|Subject),sleepstudy)
     expect_equal(predict(fm6,sleepstudy[1,]),fitted(fm6)[1])
+
+    ## GH #414: no warning about dropping contrasts on random effects
+    op <- options(warn = 2) # there should be no warnings!
+    set.seed(1)
+    dat <- data.frame(
+        fac = rep(c("a", "b"), 100),
+        grp = rep(1:25, each = 4))
+    dat$y <- 0
+    contr <- 0.5 * contr.sum(2)
+    rownames(contr) <- c("a", "b")
+    colnames(contr) <- "a"
+    contrasts(dat$fac) <- contr
+    m1_contr <- lmer(y~fac+(fac|grp),dat)
+    pp <- predict(m1_contr,newdata=dat)
+    options(op)
+    
 })
 
 context("simulate")
@@ -462,7 +521,7 @@ test_that("simulate", {
              newparams=getME(g1,c("theta","beta")),
              newdata=dd)[,1]
     expect_equal(s1,s2)
-    
+
     ## Simulate with newdata with *new* RE levels:
     d <- sleepstudy[-1] # droping the response ("Reaction")
     ## d$Subject <- factor(rep(1:18, each=10))
@@ -557,3 +616,34 @@ test_that("summary", {
        expect_is(family(gnb),"family")
    })
 
+
+context("profile")
+test_that("profile", {
+    ## FIXME: can we deal with convergence warning messages here ... ?
+    ## fit profile on default sd/cor scale ...
+    p1 <- suppressWarnings(profile(fm1,which="theta_"))
+    ## and now on var/cov scale ...
+    p2 <- suppressWarnings(profile(fm1,which="theta_",
+                                   prof.scale="varcov"))
+    ## because there are no correlations, squaring the sd results
+    ## gives the same result as profiling on the variance scale
+    ## in the first place
+    expect_equal(confint(p1)^2,confint(p2),
+              tolerance=1e-5)
+    ## or via built-in varianceProf() function
+    expect_equal(unname(confint(varianceProf(p1))),
+                 unname(confint(p2)),
+              tolerance=1e-5)
+    p3 <- profile(fm2,which=c(1,3,4))
+    p4 <- suppressWarnings(profile(fm2,which="theta_",prof.scale="varcov",
+                                   signames=FALSE))
+    ## warning: In zetafun(np, ns) : NAs detected in profiling
+    ## compare only for sd/var components, not corr component
+    expect_equal(unname(confint(p3)^2),
+                 unname(confint(p4)[c(1,3,4),]),
+              tolerance=1e-3)
+    ## check naming convention properly adjusted
+    expect_equal(as.character(unique(p4$.par)),
+                 c("var_(Intercept)|Subject", "cov_Days.(Intercept)|Subject",
+                   "var_Days|Subject", "sigma"))
+})

@@ -166,6 +166,14 @@ head(as.data.frame(boo01))
 ## Among-batch variance:
 (bCI.3 <- boot.ci(boo01, index=3, type=c("norm", "basic", "perc"))) # sig01
 
+
+## Copy of unexported stats:::format.perc helper function
+format.perc <- function(probs, digits) {
+    paste(format(100 * probs, trim = TRUE,
+                 scientific = FALSE, digits = digits),
+          "\%")
+}
+
 ## Extract all CIs (somewhat awkward)
 bCI.tab <- function(b,ind=length(b$t0), type="perc", conf=0.95) {
     btab0 <- t(sapply(as.list(seq(ind)),
@@ -175,7 +183,7 @@ bCI.tab <- function(b,ind=length(b$t0), type="perc", conf=0.95) {
     rownames(btab) <- names(b$t0)
     a <- (1 - conf)/2
     a <- c(a, 1 - a)
-    pct <- stats:::format.perc(a, 3)
+    pct <- format.perc(a, 3)
     colnames(btab) <- pct
     return(btab)
 }
@@ -185,10 +193,9 @@ bCI.tab(boo01)
 plot(boo01,index=3)
 
 ## Check stored values from a longer (1000-replicate) run:
-load(system.file("testdata","boo01L.RData",package="lme4"))
-plot(boo01L,index=3)
+(load(system.file("testdata","boo01L.RData", package="lme4")))# "boo01L"
+plot(boo01L, index=3)
 mean(boo01L$t[,"sig01"]==0) ## note point mass at zero!
 }
 \keyword{htest}
 \keyword{models}
-

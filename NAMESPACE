@@ -58,6 +58,7 @@ export(negative.binomial)
 
 ## Our Exports:
 export(bootMer)
+export(checkConv)
 export(devcomp)
 export(dummy)
 export(factorize)  ## needed for qqmath???
@@ -88,6 +89,7 @@ export(lmerResp)
 export(lmList)
 export(lmResp)
 export(logProf)
+export(varianceProf)
 export(mlist2vec)
 export(vec2mlist)
 export(vec2STlist)

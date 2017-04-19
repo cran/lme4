@@ -1,5 +1,5 @@
 Package: lme4
-Version: 1.1-12
+Version: 1.1-13
 Title: Linear Mixed-Effects Models using 'Eigen' and S4
 Authors@R: c(person("Douglas","Bates", role="aut"),
     person("Martin","Maechler", role="aut"),
@@ -27,7 +27,7 @@ License: GPL (>= 2)
 URL: https://github.com/lme4/lme4/ http://lme4.r-forge.r-project.org/
 BugReports: https://github.com/lme4/lme4/issues
 NeedsCompilation: yes
-Packaged: 2016-04-16 03:11:44 UTC; bolker
+Packaged: 2017-04-18 12:18:44 UTC; bolker
 Author: Douglas Bates [aut],
   Martin Maechler [aut],
   Ben Bolker [aut, cre],
@@ -39,4 +39,4 @@ Author: Douglas Bates [aut],
   Peter Green [ctb]
 Maintainer: Ben Bolker <bbolker+lme4@gmail.com>
 Repository: CRAN
-Date/Publication: 2016-04-16 20:40:11
+Date/Publication: 2017-04-19 04:28:18 UTC

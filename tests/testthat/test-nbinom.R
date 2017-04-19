@@ -10,6 +10,13 @@ dd$y <- rnbinom(nrow(dd), mu = mu, size = 0.5)
 
 ## mimic glmer.nb protocol
 
+test_that("ok with Poisson masking", {
+    poisson <- NA
+    ## use shortened version of data for speed ...
+    m.base <- glmer.nb(y ~ f1 + (1|g), data=dd[1:200,])
+    expect_is(m.base,"merMod")
+})
+
 context("testing glmer refit")
 
 test_that("glmer refit", {
@@ -51,3 +58,15 @@ test_that("glmer refit", {
             m.symth5 <- update(m.base,family=negative.binomial(theta=th2))
             expect_equal(m.symth5@beta,(m.symth5.r <- refit(m.symth5))@beta)
         })
+
+## GH #399
+test_that("na_exclude", {
+    dd1 <- dd[1:200,]
+    dd1$f1[1:5] <- NA
+    expect_error(glmer.nb(y ~ f1 + (1|g), data=dd1, na.action=na.fail),
+                 "missing values in object")
+    m1 <- glmer.nb(y ~ f1 + (1|g), data=dd1, na.action=na.omit)
+    m2 <- glmer.nb(y ~ f1 + (1|g), data=dd1, na.action=na.exclude)
+    expect_equal(fixef(m1),fixef(m1))
+    expect_equal(length(predict(m2))-length(predict(m1)),5)
+})

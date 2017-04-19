@@ -66,7 +66,9 @@ mkBlist <- function(x,frloc, drop.unused.levels=TRUE) {
     if (all(is.na(ff)))
         stop("Invalid grouping factor specification, ",
              deparse(x[[3]]),call.=FALSE)
-    if (drop.unused.levels) ff <- droplevels(ff)
+    ## NB: *also* silently drops <NA> levels - and mkReTrms() and hence
+    ##     predict.merMod() have relied on that property  :
+    if (drop.unused.levels) ff <- factor(ff, exclude=NA)
     nl <- length(levels(ff))
     ## this section implements eq. 6 of the JSS lmer paper
     ## (but not by explicit Khatri-Rao products)
@@ -221,6 +223,7 @@ mkRespMod <- function(fr, REML=NULL, family = NULL, nlenv = NULL, nlmod = NULL, 
         weights <- model.weights(fr)
         N <- n <- nrow(fr)
         etastart_update <- model.extract(fr, "etastart")
+        mustart_update <- model.extract(fr, "mustart")
     } else {
         fr <- list(...)
         y <- fr$y
@@ -228,6 +231,7 @@ mkRespMod <- function(fr, REML=NULL, family = NULL, nlenv = NULL, nlmod = NULL, 
         offset <- fr$offset
         weights <- fr$weights
         etastart_update <- fr$etastart
+        mustart_update <- fr$mustart
     }
     if(length(dim(y)) == 1L)
 	y <- drop(y) ## avoid problems with 1D arrays and keep names
@@ -257,9 +261,9 @@ mkRespMod <- function(fr, REML=NULL, family = NULL, nlenv = NULL, nlmod = NULL, 
     rho <- new.env()
     rho$y <- if (is.null(y)) numeric(0) else y
     if (!is.null(REML)) rho$REML <- REML
-    rho$etastart <- fr$etastart
-    rho$mustart <- fr$mustart
-    rho$start <- NULL
+    rho$etastart <- etastart_update
+    rho$mustart <- mustart_update
+    rho$start <- attr(fr,"start")
     if (!is.null(nlenv)) {
         stopifnot(is.language(nlmod),
                   is.environment(nlenv),
@@ -292,12 +296,17 @@ mkRespMod <- function(fr, REML=NULL, family = NULL, nlenv = NULL, nlmod = NULL, 
         rho$nobs <- n
         ## allow trivial objects, e.g. for simulation
         if (length(y)>0) eval(family$initialize, rho)
+        ## ugh. this *is* necessary;
+        ##  family$initialize *ignores* mustart in env, overwrites!
+        ## see ll 180-182 of src/library/stats/R/glm.R
+        ## https://github.com/wch/r-source/search?utf8=%E2%9C%93&q=mukeep
+        if (!is.null(mustart_update)) rho$mustart <- mustart_update
         ## family$initialize <- NULL     # remove clutter from str output
         ll <- as.list(rho)
         ans <- do.call(new, c(list(Class="glmResp", family=family),
                               ll[setdiff(names(ll), c("m", "nobs", "mustart"))]))
-        if (length(y)>0) ans$updateMu(if (!is.null(es <- etastart_update)) es else
-                                      family$linkfun(get("mustart", rho)))
+        if (length(y)>0)
+            ans$updateMu(if (!is.null(es <- etastart_update)) es else                                       family$linkfun(rho$mustart))
         ans
     } else if (is.null(nlenv)) ## lmer
         do.call(lmerResp$new, as.list(rho))
@@ -865,14 +874,28 @@ missDataFun <- function(d) {
     ff <- sys.frames()
     ex <- substitute(d)
     ii <- rev(seq_along(ff))
+    foundAnon <- FALSE
     for(i in ii) {
+        ## trying to find where the original symbol is defined ...
         ex <- eval(substitute(substitute(x, env=sys.frames()[[n]]),
                               env = list(x = ex, n=i)))
+        if (grepl("^\\.\\.[0-9]+$",safeDeparse(ex))) {
+            ## testing for the dreaded "..1", "..2" pattern; this means
+            ## we are stuck in an anonymous function somewhere ...
+            ## won't be able to see whether data exist or not,
+            ## but we should not flag them as missing -- definitely
+            ## causes false positives
+            ## might be better to check against quote(..1), quote(..2),
+            ## ... but ugh ...
+            foundAnon <- TRUE
+            break
+        }
     }
-    return(is.symbol(ex) && !exists(deparse(ex)))
+    return(!foundAnon && is.symbol(ex) && !exists(deparse(ex)))
 }
 
-checkFormulaData <- function(formula, data, checkLHS=TRUE, debug=FALSE) {
+checkFormulaData <- function(formula, data, checkLHS=TRUE,
+                             checkData=TRUE, debug=FALSE) {
     nonexist.data <- missDataFun(data)
     wd <- tryCatch(eval(data), error = identity)
     if (wrong.data <- inherits(wd,"simpleError")) {

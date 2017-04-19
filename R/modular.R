@@ -159,7 +159,7 @@ checkScaleX <- function(X,  kind="warning", tol=1e3) {
 checkNlevels <- function(flist, n, ctrl, allow.n=FALSE)
 {
     stopifnot(is.list(ctrl), is.numeric(n))
-    nlevelVec <- unlist(lapply(flist, function(x) nlevels(droplevels(x)) ))
+    nlevelVec <- vapply(flist, function(x) nlevels(factor(x, exclude=NA)), 1)
     ## Part 1 ----------------
     cstr <- "check.nlev.gtr.1"
     checkCtrlLevels(cstr, cc <- ctrl[[cstr]])
@@ -600,7 +600,7 @@ optimizeLmer <- function(devfun,
 ##' @export
 glFormula <- function(formula, data=NULL, family = gaussian,
                       subset, weights, na.action, offset,
-                      contrasts = NULL, mustart, etastart,
+                      contrasts = NULL, start, mustart, etastart,
                       control = glmerControl(), ...) {
     ## FIXME: does start= do anything? test & fix
 
@@ -652,6 +652,11 @@ glFormula <- function(formula, data=NULL, family = gaussian,
     ## store full, original formula & offset
     attr(fr,"formula") <- formula
     attr(fr,"offset") <- mf$offset
+    ## attach starting coefficients to model frame so we can
+    ##  pass them through to mkRespMod -> family()$initialize ...
+    if (!missing(start) && is.list(start)) {
+        attr(fr,"start") <- start$fixef
+    }
     n <- nrow(fr)
     ## random effects and terms modules
     reTrms <- mkReTrms(findbars(RHSForm(formula)), fr)

@@ -342,7 +342,7 @@ predict.merMod <- function(object, newdata=NULL, newparams=NULL,
             ## orig. offset: will be zero if there are no matches ...
             offset <- model.offset(model.frame(object))
             if (is.null(offset)) offset <- 0
-            
+
         } else {  ## new data specified
             ## evaluate new fixed effect
             RHS <- formula(substitute(~R,
@@ -353,16 +353,32 @@ predict.merMod <- function(object, newdata=NULL, newparams=NULL,
             ## ignore response variable
             isFac[attr(Terms,"response")] <- FALSE
             orig_levs <- if (length(isFac)==0) NULL else lapply(mf[isFac],levels)
+            ## https://github.com/lme4/lme4/issues/414
+            ## contrasts are not relevant in random effects;
+            ##  model.frame.default warns about dropping contrasts
+            ##  if (1) xlev is specified and (2) any factors in
+            ##  original data frame had contrasts set
 
-            mfnew <- model.frame(delete.response(Terms),
-                                 newdata,
-                                 na.action=na.action,
-                                 xlev=orig_levs)
+            ## alternative solution: drop contrasts manually
+            ## (could assign to a new variable newdata2 for safety,
+            ## but I don't think newdata
+            ##  is used downstream in this function?)
+            
+            ## isFacND <- which(vapply(newdata, is.factor, FUN.VALUE = TRUE))
+            ## for (j in isFacND) {
+            ##    attr(newdata[[j]], "contrasts") <- NULL
+            ## }
+            
+            mfnew <- suppressWarnings(
+                model.frame(delete.response(Terms),
+                            newdata,
+                            na.action = na.action, xlev = orig_levs))
+            
             X <- model.matrix(RHS, data=mfnew,
                               contrasts.arg=attr(X,"contrasts"))
             ## hack to remove unused interaction levels?
             ## X <- X[,colnames(X0)]
-            
+
             offset <- 0 # rep(0, nrow(X))
             tt <- terms(object)
             if (!is.null(off.num <- attr(tt, "offset"))) {
@@ -434,12 +450,21 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
                          formula=NULL,family=NULL,
                          weights=NULL,
                          offset=NULL,
-                         allow.new.levels=FALSE, na.action=na.pass, ...) {
+                         allow.new.levels=FALSE,
+                         na.action=na.pass,
+                         cond.sim=TRUE,
+                         ...) {
+
+    nullWts <- FALSE
 
     if (is.null(weights)) {
         if (is.null(newdata))
             weights <- weights(object)
-        else weights <- rep(1,nrow(newdata))
+        else {
+
+            nullWts <- TRUE # this flags that 'weights' wasn't supplied by the user
+            weights <- rep(1,nrow(newdata))
+        }
     }
     if (missing(object)) {
         if (is.null(formula) || is.null(newdata) || is.null(newparams)) {
@@ -456,7 +481,8 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
             family <- get(family, mode = "function", envir = parent.frame())
         if (is.function(family))
             family <- family()
-        if (is.null(family) || family$family=="gaussian") {
+        if (is.null(family) ||
+            (family$family=="gaussian" && family$link=="identity")) {
             lmod <- lFormula(formula,newdata,
                              weights=weights,
                              offset=offset,
@@ -562,10 +588,12 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
     } else 0
 
     val <- if (isLMM(object)) {
-        ## result will be matrix  n x nsim :
-        etapred + sigma * (sim.reff +
+          ## result will be matrix  n x nsim :
+          etapred + sigma * (sim.reff +
                                ## residual contribution:
-                               matrix(rnorm(n * nsim), ncol = nsim))
+                               if (cond.sim)
+                                   matrix(rnorm(n * nsim), ncol = nsim)
+                               else 0)
     } else if (isGLMM(object)) {
         ## GLMM
         ## n.b. DON'T scale random-effects (???)
@@ -573,15 +601,26 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
         family <- normalizeFamilyName(object@resp$family)
         musim <- family$linkinv(etasim) #-> family$family == "negative.binomial" if(NB)
         ## ntot <- length(musim) ## FIXME: or could be dims["n"]?
-        ## FIXME: is it possible to leverage family$simulate ... ???
         ##
+
+        if (family$family=="binomial" && is.matrix(r <- model.response(object@frame))) {
+
+            # unless the user passed in new weights, take them from the response matrix
+            # e.g. cbind(incidence, size-incidence) ~ ...
+            if(nullWts) weights <- rowSums(r)
+        }
+
         if (is.null(sfun <- simfunList[[family$family]]) &&
             is.null(family$simulate))
             stop("simulation not implemented for family",
                  family$family)
         ## don't rely on automatic recycling
-        val <- sfun(object, nsim=1, ftd = rep_len(musim, n*nsim),
-                    wts = weights)
+        if (cond.sim) {
+             val <- sfun(object, nsim=1, ftd = rep_len(musim, n*nsim),
+                         wts = weights)
+        } else {
+             val  <- rep_len(musim, n*nsim)
+        }
         ## split results into nsims: need special case for binomial matrix/factor responses
         if (family$family=="binomial" && is.matrix(r <- model.response(object@frame))) {
             lapply(split(val[[1]], gl(nsim, n, 2 * nsim * n)), matrix,
@@ -676,7 +715,7 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
 ##
 gaussian_simfun <- function(object, nsim, ftd=fitted(object),
                             wts=weights(object)) {
-    
+
     if (any(wts != 1)) warning("ignoring prior weights")
     rnorm(nsim*length(ftd), ftd, sd=sigma(object))
 }
