@@ -4,6 +4,49 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 1.1-14}{
+  Primarily an R-devel/CRAN-compatibility release.
+  
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item added \code{transf} argument to \code{dotplot.ranef.mer}
+      to allow back-transformation (Ferenci Tamás, GH #134)
+      \item added \code{as.data.frame.ranef.mer} convenience method
+      \item user can specify initial value for overdispersion parameter
+      in \code{glmer.nb} (Timothy Lau, GH #423)
+    }
+  }
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item fix bug where NAs in fitting data were carried over into
+      predictions on new data (!) (lmwang9527, GH #420)
+      \item fix bug with long terms in models with || notation
+      \item \code{nlmer} now respects user-specified lower/upper bounds
+      (GH #432)
+      \item \code{confint.thpr} (confint method applied to an
+      already-computed profile now respects "theta_"/"beta_"
+      specifications to return all random-effect or all fixed-effect
+      confidence intervals, respectively
+    }
+  }
+  \subsection{DOCUMENTATION IMPROVEMENTS}{
+    \itemize{
+      \item document need to export packages and objects to workers
+      when using \code{bootMer} with snow
+    }
+  }
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item improved warning message when using
+      \code{lmerControl()} with \code{glmer} (GH #415)
+      \item avoid deparsing big data frames when checking data (GH
+      #410) 
+      \item pass \code{verbose} options to nloptr optimizers when
+      using \code{nloptwrap} (previously ignored, with a warning)
+    }
+  }
+}
+
 \section{CHANGES IN VERSION 1.1-13 (2017-04-18) }{
   \subsection{NEW FEATURES}{
     \itemize{

@@ -138,7 +138,8 @@ if(FALSE) { ## Hadley broke this
                  radinger_dat)
     expect_is(mod,"merMod")
     ## tolerance: 32-bit Windows (CRAN) reported ave.diff of 5.33e-8
-    expect_equal(unname(fixef(mod)), c(0.5425528,6.4289962), tolerance = 4e-7)
+    ## 64-bit Win-builder r73242 now reports ave. diff of 1.31e-5 ...
+    expect_equal(unname(fixef(mod)), c(0.5425528,6.4289962), tolerance = 1e-4)
     set.seed(101)
     ## complete separation case
     d <- data.frame(y=rbinom(1000,size=1,p=0.5),
@@ -333,5 +334,12 @@ if(FALSE) { ## Hadley broke this
                              -156.777303793966),
                            .Names = c("(Intercept)", "x", "f", "")),
                  tolerance=1e-5)
+
+    ## GH 415
+    expect_warning(glmer (round(Reaction) ~ Days + (1|Subject),
+                          data=sleepstudy[1:100,],
+                          family=poisson,
+                          control=lmerControl()),
+                   "please use glmerControl")
 
 })

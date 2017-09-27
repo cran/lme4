@@ -39,7 +39,7 @@ lmer <- function(formula, data=NULL, REML = TRUE,
 			list(start=start, verbose=verbose, control=control)))
     if (devFunOnly) return(devfun)
     ## optimize deviance function over covariance parameters
-    if (identical(control$optimizer,"none")) 
+    if (identical(control$optimizer,"none"))
         stop("deprecated use of optimizer=='none'; use NULL instead")
     opt <- if (length(control$optimizer)==0) {
                s <- getStart(start,environment(devfun)$lower,
@@ -73,9 +73,22 @@ glmer <- function(formula, data=NULL, family = gaussian,
     if (!inherits(control, "glmerControl")) {
 	if(!is.list(control)) stop("'control' is not a list; use glmerControl()")
 	## back-compatibility kluge
-	msg <- "Use control=glmerControl(..) instead of passing a list"
-	if(length(cl <- class(control))) msg <- paste(msg, "of class", dQuote(cl[1]))
-	warning(msg, immediate.=TRUE)
+        if (class(control)[1]=="lmerControl") {
+            warning("please use glmerControl() instead of lmerControl()",
+                    immediate.=TRUE)
+            control <-
+                ## unpack sub-lists
+                c(control[!names(control) %in% c("checkConv","checkControl")],
+                  control$checkControl,control$checkConv)
+            control["restart_edge"] <- NULL ## not implemented for glmer
+        } else {
+            msg <- "Use control=glmerControl(..) instead of passing a list"
+            if(length(cl <- class(control))) {
+                msg <- paste(msg, "of class", dQuote(cl[1]))
+            }
+            warning(msg, immediate.=TRUE)
+        }
+
 	control <- do.call(glmerControl, control)
     }
     mc <- mcout <- match.call()
@@ -140,7 +153,7 @@ glmer <- function(formula, data=NULL, family = gaussian,
 
     if(nAGQ > 0L) {
 
-        
+
         ## update deviance function to include fixed effects as inputs
         devfun <- updateGlmerDevfun(devfun, glmod$reTrms, nAGQ = nAGQ)
 
@@ -209,15 +222,46 @@ nlmer <- function(formula, data=NULL, control = nlmerControl(), start = NULL, ve
     rho$beta0 <- rho$pp$beta0
     rho$tolPwrss <- control$tolPwrss # Reset control parameter (the initial optimization is coarse)
 
-    opt <- optwrap(control$optimizer[[1]], devfun, rho$pp$theta, lower=rho$lower,
-                   control=control$optCtrl, adj=FALSE)
+
+    ## set lower and upper bounds: if user-specified, select
+    ##  only the ones corresponding to random effects
+    if (!is.null(lwr <- control$optCtrl$lower)) {
+        rho$lower <- lwr[seq_along(rho$lower)]
+        control$optCtrl$lower <- NULL
+    }
+    upper <- rep(Inf, length(rho$lower))
+    if (!is.null(upr <- control$optCtrl$upper)) {
+        upper <- upr[seq_along(rho$lower)]
+        control$optCtrl$upper <- NULL
+    }
+    
+    opt <- optwrap(control$optimizer[[1]], devfun, rho$pp$theta,
+                   lower=rho$lower,
+                   upper=upper,
+                   control=control$optCtrl,
+                   adj=FALSE)
+    
     rho$control <- attr(opt,"control")
 
     if (nAGQ > 0L) {
-        rho$lower <- c(rho$lower, rep.int(-Inf, length(rho$beta0)))
+
+        ## set lower/upper to values already harvested from control$optCtrl$upper
+        if (!is.null(lwr)) {
+            rho$lower <- lwr
+        } else {
+            rho$lower <- c(rho$lower, rep.int(-Inf, length(rho$beta0)))
+        }
+        if (!is.null(upr)) {
+            upper <- upr
+        } else {
+            upper <- c(upper, rep.int(Inf, length(rho$beta0)))
+        }
         rho$u0    <- rho$pp$u0
-        rho$beta0 <- rho$pp$beta0
         rho$dpars <- seq_along(rho$pp$theta)
+        ## fixed-effect parameters
+        rho$beta0 <- pmin(upper[-rho$dpars],
+                          pmax(rho$pp$beta0,rho$lower[-rho$dpars]))
+
         if (nAGQ > 1L) {
             if (length(vals$reTrms$flist) != 1L || length(vals$reTrms$cnms[[1]]) != 1L)
                 stop("nAGQ > 1 is only available for models with a single, scalar random-effects term")
@@ -228,7 +272,9 @@ nlmer <- function(formula, data=NULL, control = nlmerControl(), start = NULL, ve
 
         opt <- optwrap(control$optimizer[[2]], devfun,
                        par = c(rho$pp$theta, rho$beta0),
-                       lower = rho$lower, control = control$optCtrl,
+                       lower = rho$lower,
+                       upper = upper,
+                       control = control$optCtrl,
                        adj = TRUE, verbose=verbose)
 
     }
@@ -462,8 +508,10 @@ anovaLmer <- function(object, ..., refit = TRUE, model.names=NULL) {
         ##     depth <- depth-1
         ## }
         ## if (depth < maxdepth) {
-        if (any(duplicated(mNms))) {
-            warning("failed to find unique model names, assigning generic names")
+        if (any(substr(mNms, 1,4) == "new(") ||
+            any(duplicated(mNms)) || ## <- only if S4 objects are *not* properly deparsed
+            max(nchar(mNms)) > 200) {
+            warning("failed to find model names, assigning generic names")
             mNms <- paste0("MODEL",seq_along(mNms))
         }
         if (length(mNms) != length(mods))
@@ -1122,6 +1170,11 @@ NULL
 ranef.merMod <- function(object, condVar = FALSE, drop = FALSE,
 			 whichel = names(ans), postVar = FALSE, ...)
 {
+
+    if (length(L <- list(...))>0) {
+        warning(paste("additional arguments to ranef.merMod ignored:",
+                      paste(names(L),collapse=", ")))
+    }
     if (!missing(postVar) && missing(condVar)) {
         warning(sQuote("postVar")," is deprecated: please use ",
                 sQuote("condVar")," instead")
@@ -1260,7 +1313,9 @@ refit.merMod <- function(object,
 	    glmerControl()
 	else
 	    lmerControl()
-
+  if (object@optinfo$optimizer == "optimx") {
+   control$optCtrl <- object@optinfo$control
+  }
     ## we need this stuff defined before we call .glmerLaplace below ...
     pp      <- object@pp$copy()
     dc      <- object@devcomp
@@ -2051,7 +2106,7 @@ NULL
 vcov.merMod <- function(object, correlation = TRUE, sigm = sigma(object),
                         use.hessian = NULL, ...)
 {
-    
+
     hess.avail <-
          ## (1) numerical Hessian computed?
         (!is.null(h <- object@optinfo$derivs$Hessian) &&
@@ -2319,7 +2374,7 @@ summary.merMod <- function(object,
                    devcomp = devC,
                    isLmer = is(resp, "lmerResp"), useScale = useSc,
                    logLik = llAIC[["logLik"]],
-                   family = famL$fami, link = famL$link,
+                   family = famL$family, link = famL$link,
 		   ngrps = ngrps(object),
 		   coefficients = coefs, sigma = sig,
 		   vcov = vcov(object, correlation = correlation, sigm = sig),
@@ -2343,13 +2398,13 @@ summary.summary.merMod <- function(object, varcov = TRUE, ...) {
 
 ##' @importFrom lattice dotplot
 ##' @S3method  dotplot ranef.mer
-dotplot.ranef.mer <- function(x, data, main = TRUE, ...)
+dotplot.ranef.mer <- function(x, data, main = TRUE, transf=I, ...)
 {
     prepanel.ci <- function(x, y, se, subscripts, ...) {
 	if (is.null(se)) return(list())
 	x <- as.numeric(x)
 	hw <- 1.96 * as.numeric(se[subscripts])
-	list(xlim = range(x - hw, x + hw, finite = TRUE))
+	list(xlim = range(transf(x - hw), transf(x + hw), finite = TRUE))
     }
     panel.ci <- function(x, y, se, subscripts, pch = 16,
 			 horizontal = TRUE, col = dot.symbol$col,
@@ -2366,21 +2421,15 @@ dotplot.ranef.mer <- function(x, data, main = TRUE, ...)
 	panel.abline(v = 0, col = col.line, lty = lty, lwd = lwd)
 	if (!is.null(se)) {
 	    se <- as.numeric(se[subscripts])
-	    panel.segments( x - 1.96 * se, y, x + 1.96 * se, y, col = 'black')
+	    panel.segments( transf(x - 1.96 * se), y,
+                            transf(x + 1.96 * se), y, col = 'black')
 	}
-	panel.xyplot(x, y, pch = pch, ...)
+	panel.xyplot(transf(x), y, pch = pch, ...)
     }
     f <- function(nx, ...) {
-        xt <- x[[nx]]
-	ss <- stack(xt)
+        ss <- asDf0(x,nx)
         mtit <- if(main) nx # else NULL
-	ss$ind <- factor(as.character(ss$ind), levels = colnames(xt))
-	ss$.nn <- rep.int(reorder(factor(rownames(xt)), xt[[1]],
-                                  FUN = mean,sort = sort), ncol(xt))
-	se <- NULL
-	if (!is.null(pv <- attr(xt, "postVar")))
-	    se <- unlist(lapply(1:(dim(pv)[1]), function(i) sqrt(pv[i, i, ])))
-	dotplot(.nn ~ values | ind, ss, se = se,
+	dotplot(.nn ~ values | ind, ss, se = ss$se,
 		prepanel = prepanel.ci, panel = panel.ci,
 		xlab = NULL, main = mtit, ...)
     }
@@ -2490,6 +2539,40 @@ weights.merMod <- function(object, type = c("prior","working"), ...) {
     return(res)
 }
 
+## utility function: x is a ranef.mer object, nx is the name of an element
+asDf0 <- function(x,nx,id=FALSE) {
+    xt <- x[[nx]]
+    ss <- stack(xt)
+    ss$ind <- factor(as.character(ss$ind), levels = colnames(xt))
+    ss$.nn <- rep.int(reorder(factor(rownames(xt)), xt[[1]],
+                              FUN = mean,sort = sort), ncol(xt))
+    if (!is.null(pv <- attr(xt, "postVar")))
+        ss$se <- unlist(lapply(1:(dim(pv)[1]), function(i) sqrt(pv[i, i, ])))
+    if (id) ss$id <- nx
+    return(ss)
+}
+
+## convert ranef object to a long-format data frame, e.g. suitable
+##  for ggplot2 (or homemade lattice plots)
+## FIXME: have some gymnastics to do if terms, levels are different
+##  for different grouping variables - want to maintain ordering
+##  but still allow rbind()ing
+as.data.frame.ranef.mer <- function(x,
+                ...,
+                stringsAsFactors = default.stringsAsFactors()) {
+    xL <- lapply(names(x),asDf0,x=x,id=TRUE)
+    ## combine
+    xD <- do.call(rbind,xL)
+    ## rename ...
+    oldnames <- c("values","ind",".nn","se","id")
+    newnames <- c("condval","term","grp","condsd","grpvar")
+    names(xD) <- newnames[match(names(xD),oldnames)]
+    ## reorder ...
+    neworder <- c("grpvar","term","grp","condval")
+    if ("condsd" %in% names(xD)) neworder <- c(neworder,"condsd")
+    return(xD[neworder])
+}
+
 dim.merMod <- function(x) {
     getME(x, c("n", "p", "q", "p_i", "l_i", "q_i", "k", "m_i", "m"))
 }
@@ -2553,6 +2636,7 @@ optwrap <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
 	       if(!is.numeric(control$iprint)) control$iprint <- min(verbose, 3L)
 	   },
 	   "Nelder_Mead" = control$verbose <- verbose,
+           "nloptwrap" = control$print_level <- min(as.numeric(verbose),3L),
 	   ## otherwise:
 	   if(verbose) warning(gettextf(
 	       "'verbose' not yet passed to optimizer '%s'; consider fixing optwrap()",
@@ -2588,8 +2672,8 @@ optwrap <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
 		    feval = opt$fevals + opt$gevals,
 		    message = attr(opt,"details")[,"message"][[1]])
     }
-    if (opt$conv != 0) {
-        wmsg <- paste("convergence code",opt$conv,"from",optName)
+    if ((optconv <- getConv(opt)) != 0) {
+        wmsg <- paste("convergence code",optconv,"from",optName)
         if (!is.null(opt$msg)) wmsg <- paste0(wmsg,": ",opt$msg)
         warning(wmsg)
         curWarnings <<- append(curWarnings,list(wmsg))

@@ -109,11 +109,20 @@
       second from the left-hand side of the formula (if the formula has been
       specified in success/failure form), and defaults to 1 if neither of
       those have been supplied.
-      Simulated responses will be in matrix form if the supplied formula has
-      a matrix-valued left-hand side, otherwise they will be given as
-      proportions.
+      Simulated responses will be given as proportions, unless the supplied
+      formula has a matrix-valued left-hand side, in which case they will be
+      given in matrix form. If a left-hand side is given, variables in that
+      expression must be available in \code{newdata}.
     }
-  }
+    \item{For negative binomial models, use the \code{negative.binomial}
+      family (from the \code{MASS} package)
+      and specify the overdispersion parameter via the
+      \code{theta} (sic) parameter of the family function, e.g.
+      \code{simulate(...,family=negative.binomial(theta=1))} to simulate
+      from a geometric distribution (negative binomial with
+      overdispersion parameter 1).
+    }
+}
 }
 \examples{
 ## test whether fitted models are consistent with the
@@ -126,12 +135,15 @@ plot(table(zeros))
 abline(v=sum(cbpp$incidence==0),col=2)
 ##
 ## simulate from a non-fitted model; in this case we are just
-## replicating the previous model, but
+## replicating the previous model, but starting from scratch
 params <- list(theta=0.5,beta=c(2,-1,-2,-3))
 simdat <- with(cbpp,expand.grid(herd=levels(herd),period=factor(1:4)))
 simdat$size <- 15
 simdat$incidence <- sample(0:1,size=nrow(simdat),replace=TRUE)
-form <- formula(gm1)[-2]
+form <- formula(gm1)[-2]  ## RHS of equation only
 simulate(form,newdata=simdat,family=binomial,
+    newparams=params)
+## simulate from negative binomial distribution instead
+simulate(form,newdata=simdat,family=negative.binomial(theta=2.5),
     newparams=params)
 }

@@ -193,7 +193,8 @@ mkReTrms <- function(bars, fr, drop.unused.levels=TRUE) {
     asgn <- match(fnms, ufn)
   } else asgn <- seq_along(fl)
   names(fl) <- ufn
-  fl <- do.call(data.frame, c(fl, check.names = FALSE))
+  ## DON'T need fl to be a data.frame ... 
+  ## fl <- do.call(data.frame, c(fl, check.names = FALSE))
   attr(fl, "assign") <- asgn
   ll$flist <- fl
   ll$cnms <- cnms
@@ -409,11 +410,13 @@ findbars <- function(term)
 expandDoubleVerts <- function(term)
 {
     expandDoubleVert <- function(term) {
-	frml <- formula(paste0("~", deparse(term[[2]])))
+        frml <- formula(substitute(~x,list(x=term[[2]])))
+        ## FIXME: do this without paste and deparse if possible!
 	## need term.labels not all.vars to capture interactions too:
 	newtrms <- paste0("0+", attr(terms(frml), "term.labels"))
 	if(attr(terms(frml), "intercept")!=0)
 	    newtrms <- c("1", newtrms)
+
 	as.formula(paste("~(",
 			 paste(vapply(newtrms, function(trm)
 				      paste0(trm, "|", deparse(term[[3]])), ""),
@@ -717,11 +720,17 @@ nlformula <- function(mc) {
     list(conv = list(opt = 0L,
                      lme4 = list(messages = character(0))))
 
+getConv <- function(x) {
+    if (!is.null(x[["conv"]])) {
+        x[["conv"]]
+    } else x[["convergence"]]
+}
+
 .optinfo <- function(opt, lme4conv=NULL)
     list(optimizer = attr(opt, "optimizer"),
 	 control   = attr(opt, "control"),
 	 derivs    = attr(opt, "derivs"),
-	 conv      = list(opt = opt$conv, lme4 = lme4conv),
+	 conv      = list(opt = getConv(opt), lme4 = lme4conv),
 	 feval     = if (is.null(opt$feval)) NA else opt$feval,
 	 warnings  = attr(opt, "warnings"),
 	 val       = opt$par)
@@ -879,7 +888,7 @@ missDataFun <- function(d) {
         ## trying to find where the original symbol is defined ...
         ex <- eval(substitute(substitute(x, env=sys.frames()[[n]]),
                               env = list(x = ex, n=i)))
-        if (grepl("^\\.\\.[0-9]+$",safeDeparse(ex))) {
+        if (is.symbol(ex) && grepl("^\\.\\.[0-9]+$",safeDeparse(ex))) {
             ## testing for the dreaded "..1", "..2" pattern; this means
             ## we are stuck in an anonymous function somewhere ...
             ## won't be able to see whether data exist or not,
@@ -1129,8 +1138,10 @@ smmm <- lme4:::mmList.merMod(sm)
 }
 
 nloptwrap <- local({
+    ## define default control values in environment of function ...
     defaultControl <- list(algorithm="NLOPT_LN_BOBYQA",
                            xtol_abs=1e-6, ftol_abs=1e-6, maxeval=1e5)
+    ##
     function(par,fn,lower,upper,control=list(),...) {
         for (n in names(defaultControl))
             if (is.null(control[[n]])) control[[n]] <- defaultControl[[n]]
