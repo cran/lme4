@@ -4,9 +4,27 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1-14}{
+\section{CHANGES IN VERSION 1.1-15}{
+  \subsection{BUG FIXES}{
+     \itemize{
+	\item \code{model.frame(., fixed.only=TRUE)} now handles models with
+	"non-syntactic" (e.g. space-containing/backtick-delimited)
+        variables in the formula.
+
+	\item \code{confint(<merMod>)} now works again for the default
+	method \code{"profile"}.
+      }
+    }
+    \subsection{USER-VISIBLE CHANGES}{
+      \itemize{
+	\item exported \code{dotplot.ranef.mer}
+      }
+    }
+}
+
+\section{CHANGES IN VERSION 1.1-14 (2017-09-27)}{
   Primarily an R-devel/CRAN-compatibility release.
-  
+
   \subsection{NEW FEATURES}{
     \itemize{
       \item added \code{transf} argument to \code{dotplot.ranef.mer}
@@ -26,7 +44,7 @@
       \item \code{confint.thpr} (confint method applied to an
       already-computed profile now respects "theta_"/"beta_"
       specifications to return all random-effect or all fixed-effect
-      confidence intervals, respectively
+      confidence intervals, respectively.
     }
   }
   \subsection{DOCUMENTATION IMPROVEMENTS}{
@@ -40,12 +58,15 @@
       \item improved warning message when using
       \code{lmerControl()} with \code{glmer} (GH #415)
       \item avoid deparsing big data frames when checking data (GH
-      #410) 
+      #410)
       \item pass \code{verbose} options to nloptr optimizers when
       using \code{nloptwrap} (previously ignored, with a warning)
+      \item the \code{fl} (factor list) component of \code{mkReTrms}
+      objects is now returned as a list rather than a data frame
     }
   }
 }
+
 
 \section{CHANGES IN VERSION 1.1-13 (2017-04-18) }{
   \subsection{NEW FEATURES}{
@@ -82,7 +103,7 @@
   }
   \subsection{BUG FIXES}{
     \itemize{
-      \item fixed bug \emph{de novo} Gamma-response simulations
+      \item fixed bug in \emph{de novo} Gamma-response simulations
     }
   }
 }
@@ -114,7 +135,7 @@
     \itemize{
       \item updated CITATION file.
     }
-  }    
+  }
   \subsection{NEW FEATURES}{
     \itemize{
       \item We export set of about a dozen printing utility functions

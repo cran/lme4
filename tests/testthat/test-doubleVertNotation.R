@@ -6,12 +6,12 @@ context("testing '||' notation for independent ranefs")
 test_that("basic intercept + slope '||' works", {
 	expect_equivalent(
 		lFormula(Reaction ~ Days + (Days||Subject), sleepstudy)$reTrms,
-		lFormula(Reaction ~ Days + (1|Subject) + (0 + Days|Subject), sleepstudy)$reTrms,
+		lFormula(Reaction ~ Days + (1|Subject) + (0 + Days|Subject), sleepstudy)$reTrms
 	)
 	
 	expect_equivalent(
 		fitted(lmer(Reaction ~ Days + (Days||Subject), sleepstudy)),
-		fitted(lmer(Reaction ~ Days + (1|Subject) + (0 + Days|Subject), sleepstudy)),
+		fitted(lmer(Reaction ~ Days + (1|Subject) + (0 + Days|Subject), sleepstudy))
 	)
 })
 
@@ -32,7 +32,7 @@ test_that("'||' works with nested,  multiple, or interaction terms" , {
 })
 	
 test_that("quoted terms work", {
-	## used to shit the bed in test-oldRZXFailure.R
+	## used to fail in test-oldRZXFailure.R
 	f <- quote(crab.speciesS + crab.sizeS +
                    crab.speciesS:crab.sizeS + (snail.size | plot))
 	expect_equivalent(findbars(f)[[1]], (~(snail.size|plot))[[2]][[2]] )

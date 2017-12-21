@@ -368,6 +368,7 @@ test_that("predict", {
         ps <- predict(silly, sillypred, re.form=NA, type = "response")
         expect_is(ps, "numeric")
         expect_equal(unname(ps), c(0.999989632, 0.999997201), tolerance=1e-6)
+        detach("package:MEMSS")
     }
     ## a case with interactions (failed in one temporary version):
     expect_warning(fmPixS <<- update(fmPix, .~. + Side),
@@ -646,4 +647,22 @@ test_that("profile", {
     expect_equal(as.character(unique(p4$.par)),
                  c("var_(Intercept)|Subject", "cov_Days.(Intercept)|Subject",
                    "var_Days|Subject", "sigma"))
+})
+
+context("model.frame")
+test_that("model.frame", {
+    ## non-syntactic names
+    d <- sleepstudy
+    names(d)[1] <- "Reaction Time"
+    ee <- function(m,nm) {
+        expect_equal(names(model.frame(m, fixed.only=TRUE)),nm)
+    }
+    m <- lmer(Reaction ~ 1 + (1 | Subject), sleepstudy)
+    ee(m,"Reaction")
+    m2 <- lmer(Reaction ~ Days + (1 | Subject), sleepstudy)
+    ee(m2,c("Reaction","Days"))
+    m3 <- lmer(`Reaction Time` ~ Days + (1 | Subject), d)
+    ee(m3, c("Reaction Time","Days"))
+    m4 <- lmer(Reaction ~ log(1+Days) + (1 | Subject), sleepstudy)
+    ee(m4, c("Reaction","log(1 + Days)"))
 })
