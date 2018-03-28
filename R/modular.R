@@ -505,13 +505,22 @@ mkLmerDevfun <- function(fr, X, reTrms, REML = TRUE, start = NULL,
                                       n=nrow(X), list(X=X)))
     REMLpass <- if(REML) p else 0L
     rho$resp <-
-        if(missing(fr)) mkRespMod(REML = REMLpass, ...) else mkRespMod(fr, REML = REMLpass)
-    ## note: REML does double duty as rank of X and a flag for using
+        if(missing(fr))
+             mkRespMod(    REML = REMLpass, ...)
+        else mkRespMod(fr, REML = REMLpass)
+    ## FIXME / note: REML does double duty as rank of X and a flag for using
     ## REML maybe this should be mentioned in the help file for
     ## mkRespMod??  currently that help file says REML is logical.  a
     ## consequence of this double duty is that it is impossible to fit
-    ## a model with no fixed effects using REML.
-    devfun <- mkdevfun(rho, 0L, verbose=verbose, control=control)
+    ## a model with no fixed effects using REML (MM: ==> FIXME)
+    ## devfun <- mkdevfun(rho, 0L, verbose=verbose, control=control)
+
+    ## prevent R CMD check false pos. warnings (in this function only):
+    pp <- resp <- NULL
+    rho$lmer_Deviance <- lmer_Deviance
+    devfun <- function(theta)
+        .Call(lmer_Deviance, pp$ptr(), resp$ptr(), as.double(theta))
+    environment(devfun) <- rho
 
     # if all random effects are of the form 1|f and starting values not
     # otherwise provided (and response variable is present, i.e. not doing
@@ -533,7 +542,7 @@ mkLmerDevfun <- function(fr, X, reTrms, REML = TRUE, start = NULL,
     ## MM: commenting it did not break any of our checks
     if (length(rho$resp$y) > 0)  ## only if non-trivial y
         devfun(rho$pp$theta) # one evaluation to ensure all values are set
-    rho$lower <- reTrms$lower # SCW:  in order to be more consistent with mkLmerDevfun
+    rho$lower <- reTrms$lower # to be more consistent with mkGlmerDevfun
     devfun # this should pass the rho environment implicitly
 }
 
@@ -707,8 +716,8 @@ glFormula <- function(formula, data=NULL, family = gaussian,
 
 ##' @rdname modular
 ##' @export
-mkGlmerDevfun <- function(fr, X, reTrms, family, nAGQ = 1L, verbose = 0L, maxit = 100L,
-                          control=glmerControl(), ...) {
+mkGlmerDevfun <- function(fr, X, reTrms, family, nAGQ = 1L, verbose = 0L,
+                          maxit = 100L, control = glmerControl(), ...) {
     stopifnot(length(nAGQ <- as.integer(nAGQ)) == 1L,
               0L <= nAGQ, nAGQ <= 25L)
     verbose <- as.integer(verbose)

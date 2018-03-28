@@ -4,11 +4,13 @@ useDynLib(lme4, .registration=TRUE)
 importFrom("graphics", par, plot)
 importFrom("grid", gpar, viewport)
 importFrom("splines", backSpline, interpSpline, periodicSpline)
-importFrom("methods", as, getDataPart, is, new, rbind2, show, slot, slotNames)
+importFrom("methods", as, getDataPart, is, new, cbind2, rbind2, show, slot, slotNames)
 importFrom("stats",
            AIC, BIC, anova, approx, approxfun,
            as.formula, asOneSidedFormula, ave,
-           coef, confint, delete.response,
+           coef, confint,
+           contrasts, "contrasts<-",
+           delete.response,
            deviance, df.residual, dnorm, drop.scope, drop1, extractAIC,
            family, fitted, formula, gaussian, getCall, glm,
            hatvalues, lm, logLik, model.extract, model.frame,
@@ -22,6 +24,11 @@ importFrom("stats",
            update, update.formula, var, vcov, weights)
 
 importFrom("utils", flush.console, packageVersion, stack, str)
+if(getRversion() >= "3.5.0") {
+    importFrom("utils", warnErrList)
+} else {
+    importFrom("utils", capture.output) # for "our" warnErrList()
+}
 
 
 ## Recommended packages
@@ -42,7 +49,7 @@ importFrom("MASS", negative.binomial, theta.ml)
 ## generics we provide methods for and re-export:
 importFrom("nlme", fixef,ranef, VarCorr, getGroups)
 
-importFrom("Matrix", drop0, rankMatrix, sparseMatrix, cBind,rBind,
+importFrom("Matrix", drop0, rankMatrix, sparseMatrix,
            forceSymmetric, fac2sparse, KhatriRao, Diagonal)
 importClassesFrom("Matrix", corMatrix, dgCMatrix, dpoMatrix, dCHMsimpl)
 ## methods incl. S4 generics:
@@ -168,7 +175,7 @@ S3method(df.residual,merMod)
 S3method(dotplot,coef.mer)
 S3method(dotplot,ranef.mer)
 ## helpful to allow direct access for glmmTMB
-export(dotplot.ranef.mer) 
+export(dotplot.ranef.mer)
 S3method(drop1,merMod)
 S3method(extractAIC,merMod)
 S3method(family,glmResp)
