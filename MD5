@@ -1,5 +1,5 @@
 2e5b726f280690ac96aa8279ec72c848 *ChangeLog
-79bd0bf7d69bc35be53d107c3c47270a *DESCRIPTION
+99f4186a146cc73741ed5bb937050b6c *DESCRIPTION
 1515d950fe5b147ef08414b208f034ce *NAMESPACE
 a4eb6f49ba1ee9e3529cf77143fa7ad4 *R/AllClass.R
 c1eda7d4300d934fccc1271aba17f3a1 *R/AllGeneric.R
@@ -36,7 +36,7 @@ c80348b333f026d7fe927398894c6f34 *data/cake.rda
 28d1ffd0a450108d274431f7335e859d *data/grouseticks.rda
 3eb17ae1551f7a264c4214460041908c *data/sleepstudy.rda
 8c81a4cdd4cd634e4102999545422b7e *inst/CITATION
-e712fadbb2a0c9d20fe5cb17fac90e9c *inst/NEWS.Rd
+750d9ec9cd2d027a101ae42be56238d0 *inst/NEWS.Rd
 a1f824867c6c98ebe87a82f8ce95e3f6 *inst/doc/Doxyfile
 a73ce81977498c1b0bf6c8066776eee9 *inst/doc/PLSvGLS.pdf
 96b5b0184f8839aeb7f66b280d5ef8f1 *inst/doc/Theory.pdf
@@ -152,7 +152,7 @@ b31bc40c7d30f7c7661f74f4ae6529b4 *man/nlformula.Rd
 cfada68693ff7aad32d78fb0fe1a8b73 *man/nlmer.Rd
 3b07b36b150bb8866265fc4679853199 *man/nloptwrap.Rd
 f6ab89312ba0f6e6312c4ad7a2a91eaf *man/nobars.Rd
-61ca3a7f7cd9db61e7103ad1277b1a70 *man/plot.merMod.Rd
+f9b70e7fe84f5cee20783ead8acdcba3 *man/plot.merMod.Rd
 11b654a48989c25ab82fc6b4b1f8ef10 *man/plots.thpr.Rd
 b7ed39ea03dd9f50778e1142490e597b *man/predict.merMod.Rd
 1e64d6fccee6041f67cab27a1d298115 *man/profile-methods.Rd
@@ -237,7 +237,7 @@ d43a3e94c09040bc3ea42155f9ac3e11 *tests/prLogistic.R
 9c7e4556f03887efc29729d0ae06c245 *tests/priorWeights.R
 3bf355b6ea88ff815b11cd8460a889da *tests/priorWeightsModComp.R
 ab4eabb335049ecdb2e93444b8474ef3 *tests/profile-tst.R
-66dcc3f6afd9f22361acb569776e4130 *tests/refit.R
+2d8a53fe7c89f62fd729e48927edd96a *tests/refit.R
 c06aab866cca6f2d19f1ffb6811bc682 *tests/refit_allequal.RData
 f41d72b2048efd5d4aee555f78e1292f *tests/resids.R
 71936dde95ed77155e38f49177119801 *tests/respiratory.R
@@ -260,7 +260,7 @@ e830aff33142c0fd44eeaf22de05c219 *tests/testthat/test-glmernb.R
 1150edc8f2f3d5e0b24fa0a1069454ab *tests/testthat/test-lmList.R
 ab022fa3dc016215409a559359c0e6f7 *tests/testthat/test-lmer.R
 1ef8bc825d617df86ba8128cef02eff4 *tests/testthat/test-lmerResp.R
-9c9fbdf63b7083b597c5551569fb279a *tests/testthat/test-methods.R
+17ba4a513c9df9f4bff5be42be15a8c3 *tests/testthat/test-methods.R
 b71268590773c30d29686d309b09d544 *tests/testthat/test-methods.Rout
 2d4eec2fc057cbdf474a28c0dde65da8 *tests/testthat/test-nbinom.R
 7330f3016a17bcedc32a6bbc1719bc6a *tests/testthat/test-nlmer.R
