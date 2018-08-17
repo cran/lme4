@@ -4,22 +4,25 @@ useDynLib(lme4, .registration=TRUE)
 importFrom("graphics", par, plot)
 importFrom("grid", gpar, viewport)
 importFrom("splines", backSpline, interpSpline, periodicSpline)
-importFrom("methods", as, getDataPart, is, new, cbind2, rbind2, show, slot, slotNames)
+importFrom("methods", as, getDataPart, extends, is, new, cbind2, rbind2,
+           show, slot, slotNames, setRefClass)
 importFrom("stats",
            AIC, BIC, anova, approx, approxfun,
            as.formula, asOneSidedFormula, ave,
            coef, confint,
            contrasts, "contrasts<-",
+           cooks.distance,
            delete.response,
            deviance, df.residual, dnorm, drop.scope, drop1, extractAIC,
            family, fitted, formula, gaussian, getCall, glm,
-           hatvalues, lm, logLik, model.extract, model.frame,
+           hatvalues, influence, lm, logLik, model.extract, model.frame,
            model.matrix, model.offset, model.response, model.weights,
            na.exclude, na.omit, na.pass, napredict, naresid, nlminb,
            nobs, optimize, pchisq, pnorm, poisson, ppoints,
            predict, printCoefmat, profile, pt, qchisq, qnorm,
            qqnorm, qt, quantile, rbinom, reformulate, reorder,
            resid, residuals, rgamma, rnbinom, rnorm, rpois,
+           rstudent,
            runif, sd, setNames, simulate, symnum, terms, terms.formula,
            update, update.formula, var, vcov, weights)
 
@@ -50,7 +53,7 @@ importFrom("MASS", negative.binomial, theta.ml)
 importFrom("nlme", fixef,ranef, VarCorr, getGroups)
 
 importFrom("Matrix", drop0, rankMatrix, sparseMatrix,
-           forceSymmetric, fac2sparse, KhatriRao, Diagonal)
+           forceSymmetric, fac2sparse, KhatriRao, Diagonal, .bdiag)
 importClassesFrom("Matrix", corMatrix, dgCMatrix, dpoMatrix, dCHMsimpl)
 ## methods incl. S4 generics:
 importMethodsFrom("Matrix", coerce, cov2cor, "%*%", crossprod,tcrossprod,
@@ -67,6 +70,7 @@ export(negative.binomial)
 export(bootMer)
 export(checkConv)
 export(devcomp)
+export(devfun2)
 export(dummy)
 export(factorize)  ## needed for qqmath???
 export(expandDoubleVerts)
@@ -168,6 +172,7 @@ S3method(confint,lmList4)
 S3method(confint,merMod)# but don't hide:
 export(confint.merMod)
 S3method(confint,thpr)
+S3method(cooks.distance,merMod)
 S3method(densityplot,thpr)
 S3method(deviance,merMod)
 S3method(df.residual,merMod)
@@ -190,6 +195,8 @@ S3method(formula,merMod)
 export(fortify.merMod)
 S3method(getME, merMod)
 S3method(hatvalues,merMod)
+## don't export this until car::influence.merMod conflict sorted
+## S3method(influence,merMod)
 S3method(isGLMM,merMod)
 S3method(isLMM,merMod)
 S3method(isNLMM,merMod)
@@ -219,6 +226,7 @@ S3method(refitML,merMod)
 S3method(residuals,glmResp)
 S3method(residuals,lmResp)
 S3method(residuals,merMod)
+S3method(rstudent,merMod)
 S3method(sigma,merMod)
 S3method(simulate,merMod)
 S3method(simulate,formula)

@@ -4,9 +4,42 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
+
+\section{CHANGES IN VERSION 1.1-18-1}{
+\itemize{
+  \item This is a minor release; the only change is to 
+  roll back (unexport) the \code{influence.merMod} method, pending resolution of
+  conflicts with the \code{car} package
+}
+}
+\section{CHANGES IN VERSION 1.1-18 (2018-08-16)}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item \code{ranef(.,condVar=TRUE)} now works when there
+      are multiple random effects terms per factor
+    }
+  }
+  \subsection{NEW FEATURES}{
+    \itemize{
+        \item \code{rstudent} and \code{influence} methods are available
+           for \code{merMod} objects
+    \item \code{devfun2} function (for generating a deviance
+      function that works on the standard deviation/correlation scale)
+      is now exported
+    }
+  }
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{lmList} now obeys its \code{pool} argument (instead of
+      always using what currently is the default, GH #476)
+    }
+  }
+}
+
+
 \section{CHANGES IN VERSION 1.1-17 (2018-04-03)}{
   \itemize{
-    This is a maintenance release only (fixes CRAN problems with
+    \item This is a maintenance release only (fixes CRAN problems with
     cross-platform tests and examples)
   }
 }
@@ -35,7 +68,7 @@
     }
   }
 }
-    
+
 \section{CHANGES IN VERSION 1.1-15 (2017-12-21)}{
   \subsection{BUG FIXES}{
      \itemize{
@@ -55,7 +88,9 @@
 }
 
 \section{CHANGES IN VERSION 1.1-14 (2017-09-27)}{
-  Primarily an R-devel/CRAN-compatibility release.
+  \itemize{
+     \item Primarily an R-devel/CRAN-compatibility release.
+  }
 
   \subsection{NEW FEATURES}{
     \itemize{
@@ -91,7 +126,7 @@
       \code{lmerControl()} with \code{glmer} (GH #415)
       \item avoid deparsing big data frames when checking data (GH
       #410)
-      \item pass \code{verbose} options to nloptr optimizers when
+      \item pass \code{verbose} options to \code{nloptr} optimizers when
       using \code{nloptwrap} (previously ignored, with a warning)
       \item the \code{fl} (factor list) component of \code{mkReTrms}
       objects is now returned as a list rather than a data frame

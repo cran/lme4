@@ -65,7 +65,7 @@ warnErrList <- function(x, warn = TRUE) {
           paste(capture.output(sort(tt)), collapse="\n"), sep="\n")
 
     if(warn)
-	warning(msg, call. = FALSE, domain = NA)
+        warning(msg, call. = FALSE, domain = NA)
     x[errs] <- list(NULL)
     attr(x, "warningMsg") <- msg
   }
@@ -90,7 +90,9 @@ warnErrList <- function(x, warn = TRUE) {
 ##'     model function or family evaluation.
 ##' @export
 lmList <- function(formula, data, family, subset, weights,
-                   na.action, offset, pool = TRUE, warn = TRUE, ...) {
+                   na.action, offset,
+                   pool = !isGLM || .hasScale(family2char(family)),
+                   warn = TRUE, ...) {
     stopifnot(inherits(formula, "formula"))
 
     ## model.frame(groupedData) was problematic ... but not as we
@@ -153,19 +155,18 @@ lmList <- function(formula, data, family, subset, weights,
         lapply(frm.split, fitfun, formula = as.formula(mform$model))
     ## use warnErrList(), but expand msg for back compatibility and user-friendliness:
     val <- warnErrList(val, warn = FALSE)
+    ## Contrary to nlme, we keep the erronous ones as well (with a warning):
     if(warn && length(wMsg <- attr(val,"warningMsg"))) {
-	if(grepl("contrasts.* factors? .* 2 ", wMsg)){ # try to match translated msg, too
-	    warning("Fitting failed for ", sum(vapply(val, is.null, NA)),
-		    " group(s), probably because a factor only had one level",
-		    sub(".*:", ":\n ", wMsg), domain=NA)
-	} else
-	    warning(wMsg, domain=NA)
+        if(grepl("contrasts.* factors? .* 2 ", wMsg)){ # try to match translated msg, too
+            warning("Fitting failed for ", sum(vapply(val, is.null, NA)),
+                    " group(s), probably because a factor only had one level",
+                    sub(".*:", ":\n ", wMsg), domain=NA)
+        } else
+            warning(wMsg, domain=NA)
     }
-    ## Contrary to nlme, we keep the erronous ones as well
-    pool <- !isGLM || .hasScale(family2char(family))
     new("lmList4", setNames(val, nms),
-	call = mCall, pool = pool,
-	groups = ordered(groups),
+        call = mCall, pool = pool,
+        groups = ordered(groups),
         origOrder = match(unique(as.character(groups)), nms)
         )
 }
@@ -264,7 +265,7 @@ pooledSD <- function(x, allow.0.df = TRUE)
                                      res <- resid(el)
                                      c(sum(res^2), length(res) - length(coef(el)))
                                  }
-			     }))
+                             }))
     if (sumsqr[2] == 0) { ## FIXME? rather return NA with a warning ??
         stop("No degrees of freedom for estimating std. dev.")
     }
@@ -310,7 +311,7 @@ confint.lmList4 <- function(object, parm, level = 0.95, ...)
     mCall[[1]] <- quote(confint)
     template <- eval(mCall)
     if(is.null(d <- dim(template))) ## MASS:::confint.profile.glm() uses drop(), giving vector
-	d <- dim(template <- rbind("(Intercept)" = template))
+        d <- dim(template <- rbind("(Intercept)" = template))
     template[] <- NA_real_
     val <- array(template, c(d, length(object)),
                  c(dimnames(template), list(names(object))))
@@ -321,22 +322,22 @@ confint.lmList4 <- function(object, parm, level = 0.95, ...)
         a <- (1 - level)/2
         fac <- sd * qt(c(a, 1 - a), attr(sd, "df"))
         parm <- dimnames(template)[[1]]
-	for (i in seq_along(object))
-	    if(!is.null(ob.i <- object[[i]]))
-		val[ , , i] <- coef(ob.i)[parm] +
-		    sqrt(diag(summary(object[[i]], corr = FALSE)$cov.unscaled
-			      )[parm]) %o% fac
+        for (i in seq_along(object))
+            if(!is.null(ob.i <- object[[i]]))
+                val[ , , i] <- coef(ob.i)[parm] +
+                    sqrt(diag(summary(object[[i]], corr = FALSE)$cov.unscaled
+                              )[parm]) %o% fac
     } else { ## build on confint() method for "glm" / "lm" :
-	for (i in seq_along(object))
-	    if(!is.null(mCall$object <- object[[i]])) {
-		ci <- eval(mCall)
-		if(is.null(dim(ci))) ## MASS:::confint.profile.glm() ...
-		    ci <- rbind("(Intercept)" = ci)
-		if(identical(dim(ci), d))
-		    val[ , , i] <- ci
-		else ## some coefficients were not estimable
-		    val[rownames(ci), , i] <- ci
-	    }
+        for (i in seq_along(object))
+            if(!is.null(mCall$object <- object[[i]])) {
+                ci <- eval(mCall)
+                if(is.null(dim(ci))) ## MASS:::confint.profile.glm() ...
+                    ci <- rbind("(Intercept)" = ci)
+                if(identical(dim(ci), d))
+                    val[ , , i] <- ci
+                else ## some coefficients were not estimable
+                    val[rownames(ci), , i] <- ci
+            }
     }
     new("lmList4.confint", aperm(val, 3:1))
 }

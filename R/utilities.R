@@ -142,19 +142,19 @@ mkReTrms <- function(bars, fr, drop.unused.levels=TRUE) {
   ## any potential reordering of the terms.
   cnms <- lapply(blist, `[[`, "cnms")   # list of column names of the
                                         # model matrix per term
-  nc <- lengths(cnms)	                # no. of columns per term
+  nc <- lengths(cnms)                   # no. of columns per term
                                         # (in lmer jss:  p_i)
-  nth <- as.integer((nc * (nc+1))/2)	# no. of parameters per term
+  nth <- as.integer((nc * (nc+1))/2)    # no. of parameters per term
                                         # (in lmer jss:  ??)
-  nb <- nc * nl			        # no. of random effects per term
+  nb <- nc * nl                         # no. of random effects per term
                                         # (in lmer jss:  q_i)
   ## eq. 5, JSS lmer paper
   if (sum(nb) != q) {
       stop(sprintf("total number of RE (%d) not equal to nrow(Zt) (%d)",
                    sum(nb),q))
   }
-  boff <- cumsum(c(0L, nb))		# offsets into b
-  thoff <- cumsum(c(0L, nth))		# offsets into theta
+  boff <- cumsum(c(0L, nb))             # offsets into b
+  thoff <- cumsum(c(0L, nth))           # offsets into theta
   ### FIXME: should this be done with cBind and avoid the transpose
   ### operator?  In other words should Lambdat be generated directly
   ### instead of generating Lambda first then transposing?
@@ -236,7 +236,7 @@ mkRespMod <- function(fr, REML=NULL, family = NULL, nlenv = NULL, nlmod = NULL, 
         mustart_update <- fr$mustart
     }
     if(length(dim(y)) == 1L)
-	y <- drop(y) ## avoid problems with 1D arrays and keep names
+        y <- drop(y) ## avoid problems with 1D arrays and keep names
 
     if(isGLMM <- !is.null(family))
         stopifnot(inherits(family, "family"))
@@ -245,19 +245,19 @@ mkRespMod <- function(fr, REML=NULL, family = NULL, nlenv = NULL, nlmod = NULL, 
     ## test for non-numeric response here to avoid later
     ## confusing error messages from deeper machinery
     if (!is.null(y)) { ## 'y' may be NULL if we're doing simulation
-	if(!(is.numeric(y) ||
-	    ((is.binom <- isGLMM && family$family == "binomial") &&
+        if(!(is.numeric(y) ||
+            ((is.binom <- isGLMM && family$family == "binomial") &&
                 (is.factor(y) || is.logical(y))))) {
-	    if (is.binom)
-		stop("response must be numeric or factor")
-	    else {
+            if (is.binom)
+                stop("response must be numeric or factor")
+            else {
                 if (is.logical(y))
                     y <- as.integer(y)
                 else stop("response must be numeric")
             }
-	}
-	if(!all(is.finite(y)))
-	    stop("NA/NaN/Inf in 'y'") # same msg as from lm.fit()
+        }
+        if(!all(is.finite(y)))
+            stop("NA/NaN/Inf in 'y'") # same msg as from lm.fit()
     }
 
     rho <- new.env()
@@ -271,7 +271,7 @@ mkRespMod <- function(fr, REML=NULL, family = NULL, nlenv = NULL, nlmod = NULL, 
                   is.environment(nlenv),
                   is.numeric(val <- eval(nlmod, nlenv)),
                   length(val) == n,
-		  ## FIXME?  Restriction, not present in ole' nlme():
+                  ## FIXME?  Restriction, not present in ole' nlme():
                   is.matrix(gr <- attr(val, "gradient")),
                   is.numeric(gr),
                   nrow(gr) == n,
@@ -353,47 +353,47 @@ findbars <- function(term)
     ## Recursive function applied to individual terms
     fb <- function(term)
     {
-	if (is.name(term) || !is.language(term)) return(NULL)
-	if (term[[1]] == as.name("(")) return(fb(term[[2]]))
-	stopifnot(is.call(term))
-	if (term[[1]] == as.name('|')) return(term)
-	if (length(term) == 2) return(fb(term[[2]]))
-	c(fb(term[[2]]), fb(term[[3]]))
+        if (is.name(term) || !is.language(term)) return(NULL)
+        if (term[[1]] == as.name("(")) return(fb(term[[2]]))
+        stopifnot(is.call(term))
+        if (term[[1]] == as.name('|')) return(term)
+        if (length(term) == 2) return(fb(term[[2]]))
+        c(fb(term[[2]]), fb(term[[3]]))
     }
     ## Expand any slashes in the grouping factors returned by fb
     expandSlash <- function(bb)
     {
-	## Create the interaction terms for nested effects
-	makeInteraction <- function(x)
-	{
-	    if (length(x) < 2) return(x)
-	    trm1 <- makeInteraction(x[[1]])
-	    trm11 <- if(is.list(trm1)) trm1[[1]] else trm1
-	    list(substitute(foo:bar, list(foo=x[[2]], bar = trm11)), trm1)
-	}
-	## Return the list of '/'-separated terms
-	slashTerms <- function(x)
-	{
-	    if (!("/" %in% all.names(x))) return(x)
-	    if (x[[1]] != as.name("/"))
-		stop("unparseable formula for grouping factor",call.=FALSE)
-	    list(slashTerms(x[[2]]), slashTerms(x[[3]]))
-	}
+        ## Create the interaction terms for nested effects
+        makeInteraction <- function(x)
+        {
+            if (length(x) < 2) return(x)
+            trm1 <- makeInteraction(x[[1]])
+            trm11 <- if(is.list(trm1)) trm1[[1]] else trm1
+            list(substitute(foo:bar, list(foo=x[[2]], bar = trm11)), trm1)
+        }
+        ## Return the list of '/'-separated terms
+        slashTerms <- function(x)
+        {
+            if (!("/" %in% all.names(x))) return(x)
+            if (x[[1]] != as.name("/"))
+                stop("unparseable formula for grouping factor",call.=FALSE)
+            list(slashTerms(x[[2]]), slashTerms(x[[3]]))
+        }
 
-	if (!is.list(bb))
-	    expandSlash(list(bb))
-	else
-	    unlist(lapply(bb, function(x) {
-		if (length(x) > 2 && is.list(trms <- slashTerms(x[[3]])))
-		    ## lapply(unlist(...)) - unlist returns a flattened list
-		    lapply(unlist(makeInteraction(trms)),
-			   function(trm) substitute(foo|bar, list(foo = x[[2]], bar = trm)))
-		else x
-	    }))
+        if (!is.list(bb))
+            expandSlash(list(bb))
+        else
+            unlist(lapply(bb, function(x) {
+                if (length(x) > 2 && is.list(trms <- slashTerms(x[[3]])))
+                    ## lapply(unlist(...)) - unlist returns a flattened list
+                    lapply(unlist(makeInteraction(trms)),
+                           function(trm) substitute(foo|bar, list(foo = x[[2]], bar = trm)))
+                else x
+            }))
     }## {expandSlash}
 
     modterm <- expandDoubleVerts(
-	if(is(term, "formula")) term[[length(term)]] else term)
+        if(is(term, "formula")) term[[length(term)]] else term)
     expandSlash(fb(modterm))
 }
 
@@ -413,30 +413,30 @@ expandDoubleVerts <- function(term)
     expandDoubleVert <- function(term) {
         frml <- formula(substitute(~x,list(x=term[[2]])))
         ## FIXME: do this without paste and deparse if possible!
-	## need term.labels not all.vars to capture interactions too:
-	newtrms <- paste0("0+", attr(terms(frml), "term.labels"))
-	if(attr(terms(frml), "intercept")!=0)
-	    newtrms <- c("1", newtrms)
+        ## need term.labels not all.vars to capture interactions too:
+        newtrms <- paste0("0+", attr(terms(frml), "term.labels"))
+        if(attr(terms(frml), "intercept")!=0)
+            newtrms <- c("1", newtrms)
 
-	as.formula(paste("~(",
-			 paste(vapply(newtrms, function(trm)
-				      paste0(trm, "|", deparse(term[[3]])), ""),
-			       collapse=")+("), ")"))[[2]]
+        as.formula(paste("~(",
+                         paste(vapply(newtrms, function(trm)
+                                      paste0(trm, "|", deparse(term[[3]])), ""),
+                               collapse=")+("), ")"))[[2]]
     }
 
     if (!is.name(term) && is.language(term)) {
-	if (term[[1]] == as.name("(")) {
-	    term[[2]] <- expandDoubleVerts(term[[2]])
-	}
-	stopifnot(is.call(term))
-	if (term[[1]] == as.name('||'))
-	    return( expandDoubleVert(term) )
-	## else :
-	term[[2]] <- expandDoubleVerts(term[[2]])
-	if (length(term) != 2) {
-	    if(length(term) == 3)
-		term[[3]] <- expandDoubleVerts(term[[3]])
-	}
+        if (term[[1]] == as.name("(")) {
+            term[[2]] <- expandDoubleVerts(term[[2]])
+        }
+        stopifnot(is.call(term))
+        if (term[[1]] == as.name('||'))
+            return( expandDoubleVert(term) )
+        ## else :
+        term[[2]] <- expandDoubleVerts(term[[2]])
+        if (length(term) != 2) {
+            if(length(term) == 3)
+                term[[3]] <- expandDoubleVerts(term[[3]])
+        }
     }
     term
 }
@@ -581,18 +581,18 @@ subnms <- function(form, nms) {
     sbnm <- function(term)
     {
         if (is.name(term)) {
-	    if (any(term == nms)) 0 else term
-	} else switch(length(term),
-	       term, ## 1
-	   {   ## 2
-	       term[[2]] <- sbnm(term[[2]])
-	       term
-	   },
-	   {   ## 3
-	       term[[2]] <- sbnm(term[[2]])
-	       term[[3]] <- sbnm(term[[3]])
-	       term
-	   })
+            if (any(term == nms)) 0 else term
+        } else switch(length(term),
+               term, ## 1
+           {   ## 2
+               term[[2]] <- sbnm(term[[2]])
+               term
+           },
+           {   ## 3
+               term[[2]] <- sbnm(term[[2]])
+               term[[3]] <- sbnm(term[[3]])
+               term
+           })
     }
     sbnm(form)
 }
@@ -729,12 +729,12 @@ getConv <- function(x) {
 
 .optinfo <- function(opt, lme4conv=NULL)
     list(optimizer = attr(opt, "optimizer"),
-	 control   = attr(opt, "control"),
-	 derivs    = attr(opt, "derivs"),
-	 conv      = list(opt = getConv(opt), lme4 = lme4conv),
-	 feval     = if (is.null(opt$feval)) NA else opt$feval,
-	 warnings  = attr(opt, "warnings"),
-	 val       = opt$par)
+         control   = attr(opt, "control"),
+         derivs    = attr(opt, "derivs"),
+         conv      = list(opt = getConv(opt), lme4 = lme4conv),
+         feval     = if (is.null(opt$feval)) NA else opt$feval,
+         warnings  = attr(opt, "warnings"),
+         val       = opt$par)
 
 ##' Potentically needed in more than one place, be sure to keep consistency!
 ##' hack (NB families have weird names) from @aosmith16; then corrected
@@ -742,7 +742,7 @@ isNBfamily <- function(familyString)
     grepl("^Negative ?Binomial", familyString, ignore.case=TRUE)
 normalizeFamilyName <- function(family) { # such as  object@resp$family
     if(isNBfamily(family$family))
-	family$family <- "negative.binomial"
+        family$family <- "negative.binomial"
     family
 }
 
@@ -833,7 +833,7 @@ mkMerMod <- function(rho, opt, reTrms, fr, mc, lme4conv=NULL) {
         u=if (trivial.y) rep(NA_real_,nrow(pp$Zt)) else pp$u(fac),
         lower=reTrms$lower, devcomp=list(cmp=cmp, dims=dims),
         pp=pp, resp=resp,
-	optinfo = .optinfo(opt, lme4conv))
+        optinfo = .optinfo(opt, lme4conv))
 }## {mkMerMod}
 
 ## generic argument checking
@@ -851,13 +851,13 @@ checkArgs <- function(type,...) {
         }
         ## Check for method argument which is no longer used
         ## (different meanings/hints depending on glmer vs lmer)
-	if (!is.null(l...[["method"]])) {
+        if (!is.null(l...[["method"]])) {
             msg <- paste("Argument", sQuote("method"), "is deprecated.")
-	    if (type == "lmer")
-		msg <- paste(msg, "Use the REML argument to specify ML or REML estimation.")
-	    else if (type == "glmer")
-		msg <- paste(msg, "Use the nAGQ argument to specify Laplace (nAGQ=1) or adaptive",
-			     "Gauss-Hermite quadrature (nAGQ>1).  PQL is no longer available.")
+            if (type == "lmer")
+                msg <- paste(msg, "Use the REML argument to specify ML or REML estimation.")
+            else if (type == "glmer")
+                msg <- paste(msg, "Use the nAGQ argument to specify Laplace (nAGQ=1) or adaptive",
+                             "Gauss-Hermite quadrature (nAGQ>1).  PQL is no longer available.")
             warning(msg,call.=FALSE)
             l... <- l...[names(l...) != "method"]
         }
@@ -1001,19 +1001,16 @@ testLevel <- function()
 ##' Not exported.
 ##'
 ##' TODO:
-##' (1) Write up quick note on theory (e.g. Laplace approximation).
-##' (2) Figure out how to convert between full q-by-q matrix, and
-##'     the format currently in the postVar attributes of the
-##'     elements of the output of ranef.
-##' (3) Test.
-##' (4) Do we need to think carefully about the differences
+##' - Write up quick note on theory (e.g. Laplace approximation).
+##' - Test.  Speed? Correctness?
+##' - Do we need to think carefully about the differences
 ##'     between REML and ML, beyond just multiplying by a different
 ##'     sigma^2 estimate?
+##' - is it better to do this term-by-term as in C++ code?
 ##'
 ##' @param object \code{merMod} object
 ##' @return Sparse covariance matrix
-condVar <- function(object) {
-  s2 <- sigma(object)^2
+condVar <- function(object, scaled=TRUE) {
   Lamt <- getME(object, "Lambdat")
   L <- getME(object, "L")
 
@@ -1023,8 +1020,15 @@ condVar <- function(object) {
   #s2*crossprod(Lamt, V) %*% Lamt
 
   LL <- solve(L, Lamt, system = "A")
-  s2 * crossprod(Lamt, LL)
+  ## From ?Matrix::solve, The default, ‘"A"’, is to solve Ax = b for x
+  ##   where ‘A’ is sparse, positive-definite matrix that was
+  ##   factored to produce ‘a’.
+
+  cc <- crossprod(Lamt, LL)
+  if (scaled) cc <- sigma(object)^2*cc
+  cc
 }
+
 
 mkMinimalData <- function(formula) {
     vars <- all.vars(formula)
@@ -1115,7 +1119,7 @@ mmList.merMod <- function(object, ...) mmList(formula(object), model.frame(objec
 mmList.formula <- function(object, frame, ...) {
     bars <- findbars(object)
     mm <- setNames(lapply(bars, function(b) model.matrix(eval(reexpr(b), frame), frame)),
-		   termnms(bars))
+                   termnms(bars))
     grp <- lapply(lapply(bars, grpfact), eval, frame)
     nl <- vapply(grp, nlevels, 1L)
     if (any(diff(nl) > 0))
@@ -1125,17 +1129,19 @@ mmList.formula <- function(object, frame, ...) {
 }
 ##' examples  ---FIXME?--- put in tests // or export + 'real examples'
 if(FALSE) {
-library(lme4)
-m <- lmer(Reaction ~ Days + (Days | Subject), sleepstudy)
-gm <- glmer(cbind(incidence, size-incidence) ~ period + (1|herd), cbpp, binomial)
-simForm <- y ~ x + z + (x | f) + (z | g)
-simDat <- lme4:::quickSimulate(simForm, 10, 5)
-simDat <- simDat[simDat$f != "10", ] # unbalancedish design requiring
-                                     # a flip in the order of terms
-sm <- lmer(simForm, simDat)
-lme4:::mmList.merMod(m)
-lme4:::mmList.merMod(gm)
-smmm <- lme4:::mmList.merMod(sm)
+    library(lme4)
+    m <- lmer(Reaction ~ Days + (Days | Subject), sleepstudy)
+    gm <- glmer(cbind(incidence, size-incidence) ~ period + (1|herd), cbpp, binomial)
+    simForm <- y ~ x + z + (x | f) + (z | g)
+    ## ::: triggers R CMD check NOTE
+    ## simDat <- lme4:::quickSimulate(simForm, 10, 5)
+    simDat <- simDat[simDat$f != "10", ] # unbalancedish design requiring
+                                        # a flip in the order of terms
+    sm <- lmer(simForm, simDat)
+    ## ::: triggers R CMD check NOTE
+    ## lme4:::mmList.merMod(m)
+    ## lme4:::mmList.merMod(gm)
+    ## smmm <- lme4:::mmList.merMod(sm)
 }
 
 nloptwrap <- local({
@@ -1173,4 +1179,80 @@ glmerLaplaceHandle <- function(pp, resp, nAGQ, tol, maxit, verbose) {
 
 isFlexLambda <- function() FALSE
 
+
+#' convert a list of matrices (n, pxp blocks) to 
+#' a pxpxn array
+mlist_to_array <- function(m) {
+    p <- nrow(m[[1]])
+    n <- length(m)
+    array(unlist(lapply(m,as.matrix)),dim=c(p,p,n))
+}
+#' @inheritParams bdiag_to_array
+bdiag_to_mlist <- function(m,n) {
+    if (length(n)==1 && n<nrow(m)) {
+        n <- rep(n,nrow(m)%/%n)
+    }
+    mm <- list()
+    k <- 1
+    for (i in seq_along(n)) {
+        mm[[i]] <- m[k:(k+n[i]-1),k:(k+n[i]-1),drop=FALSE]
+        k <- k + n[i]
+    }
+    return(mm)
+}
+##' convert a block-diagonal matrix to a pxpxn array
+##' @param m a block-diagonal matrix (typically sparse)
+##' @param n vector of block sizes (if length-1, will be replicated to be consistent
+##' with the matrix dimensions)
+##' @examples
+##' mm <- Matrix::bdiag(matrix(1:4,2,2),matrix(2:5,2,2),matrix(3:6,2,2))
+##' mm2 <- blkmatrix_to_matrixlist(mm,2)
+##' bdiag_to_array(mm,2)
+##' array_to_bdiag(bdiag_to_array(mm,2))
+bdiag_to_array <- function(m,n) {
+    mlist_to_array(
+        bdiag_to_mlist(m,n))
+}
+array_to_bdiag <- function(a) {
+    stopifnot(length(dim(a))==3,dim(a)[1]==dim(a)[2])
+    p <- dim(a)[1]
+    mlist <- split(a,slice.index(a,3))
+    mlist <- lapply(mlist,matrix,nrow=p,ncol=p)
+    return(.bdiag(mlist))
+}
+
+
+augment.RE <- function(object,rr=ranef(object)) {
+    alist <- arrange.condVar(object,condVar(object))
+    for (i in seq_along(rr)) {
+        attr(rr[[i]],"postVar") <- alist[[i]]
+    }
+    class(rr) <- "ranef.mer"
+    rr
+}
+       
+## reorganize condVar matrix into appropriate list of arrays/lists of arrays
+arrange.condVar <- function(object,cv) {
+    rp <- rePos$new(object)
+    trms <- rp$terms      ## mapping between grouping vars and RE terms
+    n <- diff(rp$offsets) ## total number of modes per term
+    cv2 <- bdiag_to_mlist(cv,n)
+    cv3 <- Map(bdiag_to_array,cv2,rp$ncols)
+    names(cv3) <- rp$cnms
+    res <- list()
+    for (i in seq_along(trms)) {
+        tt <- trms[[i]]
+        if (length(tt)==1) {
+            ## keep single-term-per-factor condVar structures
+            ## as naked arrays (not list containing a single array)
+            ## for back-compatibility
+            res[[i]] <- cv3[[tt]]
+        } else {
+            ## list of arrays
+            res[[i]] <- cv3[tt]
+        }
+    }
+    names(res) <- names(rp$flist)
+    return(res)
+}
 
