@@ -4,15 +4,45 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 1.1-19}{
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item influence measure code from \code{car} rolled in (see
+      \code{?influence.merMod})
+      \item \code{mkReTrm} gets new arguments \code{reorder.terms},
+      \code{reorder.vars} to control arrangement of RE terms and
+      individual effects with RE terms within model structures
+      \item adding material from the \pkg{RePsychLing} package
+      (on GitHub; see Bates et al 2015 arXiv:1506.04967) to
+      show orthogonal variance components.
+    }
+  }
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item \code{as.data.frame.merMod} finds conditional variance
+      information stored either as \code{attr(.,"postVar")} or
+      \code{attr(.,"condVar")} (for \code{glmmTMB} compatibility)
+      \item change to defaults of \code{[g]lmerControl} to print a
+      message when fits are singular
+      \item new utility \code{isSingular()} function for
+      detecting singular fits; by default a message is printed
+      for singular fits
+      \item \code{allFit} function/methods have been moved to the main
+      package, rather than being included in an auxiliary source file
+      \item post-fitting convergence checks based on estimated gradient
+      and Hessian (see \code{\link{troubleshooting}}) are no longer
+      performed for (nearly-)singular fits (see \code{\link{isSingular}})
+    }
+  }
+}
 
-\section{CHANGES IN VERSION 1.1-18-1}{
-\itemize{
-  \item This is a minor release; the only change is to 
-  roll back (unexport) the \code{influence.merMod} method, pending resolution of
-  conflicts with the \code{car} package
-}
-}
-\section{CHANGES IN VERSION 1.1-18 (2018-08-16)}{
+\section{CHANGES IN VERSION 1.1-18-1 (2018-08-17)}{
+ \itemize{  
+ \item This is a minor release; the only change is to roll back (unexport) the \code{influence.merMod} method, pending resolution of conflicts with the car package
+ }
+}     
+
+\section{CHANGES IN VERSION 1.1-18 ((2018-08-16)}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item \code{ranef(.,condVar=TRUE)} now works when there
@@ -21,8 +51,8 @@
   }
   \subsection{NEW FEATURES}{
     \itemize{
-        \item \code{rstudent} and \code{influence} methods are available
-           for \code{merMod} objects
+      \item \code{rstudent} and \code{influence} methods are available
+      for \code{merMod} objects
     \item \code{devfun2} function (for generating a deviance
       function that works on the standard deviation/correlation scale)
       is now exported
@@ -126,7 +156,7 @@
       \code{lmerControl()} with \code{glmer} (GH #415)
       \item avoid deparsing big data frames when checking data (GH
       #410)
-      \item pass \code{verbose} options to \code{nloptr} optimizers when
+      \item pass \code{verbose} options to nloptr optimizers when
       using \code{nloptwrap} (previously ignored, with a warning)
       \item the \code{fl} (factor list) component of \code{mkReTrms}
       objects is now returned as a list rather than a data frame
