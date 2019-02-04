@@ -4,6 +4,23 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 1.1-20}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item default value for \code{condVar} (whether to return conditional variances
+      as part of the \code{ranef.merMod} object) is now \code{TRUE}
+      \item changed default optimizer to "nloptwrap" (BOBYQA
+      implementation from the \code{nloptr} package) for \code{lmer} models
+    }
+  }
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item adapted tests to work with R-devel's more consistent
+      \code{formula(model.frame(.))} behavior.
+    }
+  }
+}
+
 \section{CHANGES IN VERSION 1.1-19}{
   \subsection{NEW FEATURES}{
     \itemize{
@@ -15,20 +32,23 @@
       \item adding material from the \pkg{RePsychLing} package
       (on GitHub; see Bates et al 2015 arXiv:1506.04967) to
       show orthogonal variance components.
+      \item new utility \code{isSingular()} function for
+      detecting singular fits
+      \item \code{allFit} function/methods have been moved to the main
+      package, rather than being included in an auxiliary source file;
+      computations can (in principle) be done in parallel
     }
   }
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
+      \item by default a message is now printed for singular fits
+      (i.e., fits with linear combinations of variance components
+      that are exactly zero)
       \item \code{as.data.frame.merMod} finds conditional variance
       information stored either as \code{attr(.,"postVar")} or
       \code{attr(.,"condVar")} (for \code{glmmTMB} compatibility)
       \item change to defaults of \code{[g]lmerControl} to print a
       message when fits are singular
-      \item new utility \code{isSingular()} function for
-      detecting singular fits; by default a message is printed
-      for singular fits
-      \item \code{allFit} function/methods have been moved to the main
-      package, rather than being included in an auxiliary source file
       \item post-fitting convergence checks based on estimated gradient
       and Hessian (see \code{\link{troubleshooting}}) are no longer
       performed for (nearly-)singular fits (see \code{\link{isSingular}})
@@ -37,10 +57,10 @@
 }
 
 \section{CHANGES IN VERSION 1.1-18-1 (2018-08-17)}{
- \itemize{  
+ \itemize{
  \item This is a minor release; the only change is to roll back (unexport) the \code{influence.merMod} method, pending resolution of conflicts with the car package
  }
-}     
+}
 
 \section{CHANGES IN VERSION 1.1-18 ((2018-08-16)}{
   \subsection{USER-VISIBLE CHANGES}{

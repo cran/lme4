@@ -45,11 +45,15 @@ stopifnot(all.equal(fm1, fm1.))
 ##           all.equal(fm1@re@theta, fm1.@re@theta, tolerance = 1.e-7),
 ##           all.equal(ranef(fm1), ranef(fm1.), tolerance = 1.e-7))
 
-stopifnot(all.equal(fixef(fm1), fixef(fm2), tolerance = 1.e-13),
-          all.equal(unname(fixef(fm1)),
-                    c(251.405104848485, 10.467285959595), tolerance = 1e-13),
-	  all.equal(Matrix::cov2cor(vcov(fm1))["(Intercept)", "Days"],
-		    -0.13755, tolerance=1e-4))
+stopifnot(
+    all.equal(fixef(fm1), fixef(fm2), tolerance = 1.e-13)
+   ,
+    all.equal(unname(fixef(fm1)),
+              c(251.405104848485, 10.467285959595), tolerance = 1e-13)
+   ,
+    all.equal(Matrix::cov2cor(vcov(fm1))["(Intercept)", "Days"],
+              -0.1375, tolerance = 4e-4)
+)
 
 fm1ML <- refitML(fm1)
 fm2ML <- refitML(fm2)
@@ -136,9 +140,10 @@ options(oldOpts)
 (sf1 <- summary(fit.1)) # --> now looks as for fit.1
 
 stopifnot(all.equal(fixef(fit.1), c("(Intercept)" = 1.571312129)),
-	  all.equal(unname(ranef(fit.1, drop=TRUE)[["group.id"]]),
+	  all.equal(unname(ranef(fit.1, drop=TRUE)[["group.id"]]), structure(
 		   c(1.8046888, -1.8097665, 1.6146451, 1.5408268, -0.1331995,
                      -3.3306655, -1.8259277, -0.8735145, -0.3591311,  3.3720441),
+                   postVar = rep.int(0.311091076, 10)),
 		    tolerance = 1e-5)
 	  )
 
@@ -197,7 +202,7 @@ stopifnot(all.equal(unname(fixef(r2)) - (1:4)*100,
 ## sparseX version should give same numbers:
 ## (only gives a warning now -- sparseX disregarded)
 r2.  <- lmer(y ~ 0+lagoon + (1|habitat), data = dat,
-             sparseX = TRUE, verbose = TRUE)
+             sparseX = TRUE)
 
 ## the summary() components we do want to compare 'dense X' vs 'sparse X':
 nmsSumm <- c("methTitle", "devcomp", "logLik", "ngrps", "coefficients",
@@ -321,6 +326,3 @@ m5 <- lmer(zbmi ~ (1|DA) , data = fakedat,
 m6 <- update(m5, data=na.omit(fakedat))
 stopifnot(VarCorr(m5)[["DA"]] == 0,
 	  VarCorr(m6)[["DA"]] == 0)
-
-
-
