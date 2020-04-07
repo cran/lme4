@@ -137,26 +137,24 @@ test_that("random-slopes model", {
     newdata$p5 <- predict(fm2,newdata, re.form=~(1|Subject))
 
     ## reference values from an apparently-working run
-    refval <- structure(list(Days = c(0, 9, 0, 9, 0, 9), Subject = structure(c(1L,
-                                                         1L, 2L, 2L, 3L, 3L), .Label = c("308", "309", "310", "330", "331",
-                                                                              "332", "333", "334", "335", "337", "349", "350", "351", "352",
-                                                                              "369", "370", "371", "372"), class = "factor"), p2 = c(253.663652396798,
-                                                                                                                              430.66001930835, 211.006415533628, 227.634788908917, 212.444742696829,
-                                                                                                                              257.61053840953), p3 = c(251.405104848485, 345.610678484848,
-                                                                                                                                                251.405104848485, 345.610678484848, 251.405104848485, 345.610678484848
-                                                                                                                                                       ), p4 = c(251.405104848485, 428.401471760037, 251.405104848485,
-                                                                                                                                                          268.033478223774, 251.405104848485, 296.570900561186), p5 = c(253.663652396798,
-                                                                                                                                                                                                                 347.869226033161, 211.006415533628, 305.211989169991, 212.444742696829,
-                                                                                                                                                                                                                 306.650316333193)), .Names = c("Days", "Subject", "p2", "p3",
-                                                                                                                                                                                                                                     "p4", "p5"), out.attrs = structure(list(dim = structure(c(2L,
-                                                                                                                                                                                                                                                                             18L), .Names = c("Days", "Subject")), dimnames = structure(list(
-                                                                                                                                                                                                                                                                                                                   Days = c("Days=0", "Days=9"), Subject = c("Subject=308",
-                                                                                                                                                                                                                                                                                                                                                 "Subject=309", "Subject=310", "Subject=330", "Subject=331",
-                                                                                                                                                                                                                                                                                                                                                 "Subject=332", "Subject=333", "Subject=334", "Subject=335",
-                                                                                                                                                                                                                                                                                                                                                 "Subject=337", "Subject=349", "Subject=350", "Subject=351",
-                                                                                                                                                                                                                                                                                                                                                 "Subject=352", "Subject=369", "Subject=370", "Subject=371",
-                                                                                                                                                                                                                                                                                                                                                 "Subject=372")), .Names = c("Days", "Subject"))), .Names = c("dim",
-                                                                                                                                                                                                                                                                                                                                                                                                   "dimnames")), row.names = c(NA, 6L), class = "data.frame")
+    refval <- structure(
+        list(Days = c(0, 9, 0, 9, 0, 9),
+             Subject = structure(c(1L, 1L, 2L, 2L, 3L, 3L),
+                                 .Label = c("308", "309", "310", "330", "331", "332",
+                                            "333", "334", "335", "337", "349", "350",
+                                            "351", "352", "369", "370", "371", "372"), class = "factor"),
+             p2 = c(253.663652396798, 430.66001930835, 211.006415533628, 227.634788908917, 212.444742696829, 257.61053840953),
+             p3 = c(251.405104848485, 345.610678484848, 251.405104848485, 345.610678484848, 251.405104848485, 345.610678484848),
+             p4 = c(251.405104848485, 428.401471760037, 251.405104848485, 268.033478223774, 251.405104848485, 296.570900561186),
+             p5 = c(253.663652396798, 347.869226033161, 211.006415533628, 305.211989169991, 212.444742696829, 306.650316333193)),
+        out.attrs =
+            list(dim = c(Days = 2L, Subject = 18L),
+                 dimnames = list(
+                     Days = c("Days=0", "Days=9"),
+                     Subject = c("Subject=308", "Subject=309", "Subject=310", "Subject=330", "Subject=331", "Subject=332",
+                                 "Subject=333", "Subject=334", "Subject=335", "Subject=337", "Subject=349", "Subject=350",
+                                 "Subject=351", "Subject=352", "Subject=369", "Subject=370", "Subject=371", "Subject=372")) ),
+        row.names = c(NA, 6L), class = "data.frame")
 
     expect_equal(head(newdata), refval, tol=5e-7)
 })
@@ -296,5 +294,30 @@ test_that("simulation works with non-factor", {
                                        newparams= list(beta = c("(Intercept)" = 1),
                                                        theta = c(1,1,1))))
     expect_is(test2,"data.frame")
+})
+
+
+set.seed(666)
+n <- 500
+df <- data.frame(y=statmod::rinvgauss(n, mean=1, shape=2),
+                 id=factor(1:20))
+model_fit <- glmer(y ~ 1 + (1|id),
+                   family = inverse.gaussian(link = "inverse"),
+                   data = df,
+                   control=glmerControl(check.conv.singular="ignore"))
+
+test_that("simulation works for inverse gaussian", {
+    expect_equal(mean(simulate(model_fit)[[1]]), 1.02704392575914,
+                 tolerance=1e-5)
+})
+
+test_that("simulation complains appropriately about bad family", {
+    ig <- inverse.gaussian()
+    ig$family <- "junk"
+    model_fit2 <- glmer(y ~ 1 + (1|id),
+                        family = ig,
+                        data = df,
+                        control=glmerControl(check.conv.singular="ignore"))
+    expect_error(simulate(model_fit2),"simulation not implemented for family")
 })
 

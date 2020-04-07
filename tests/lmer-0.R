@@ -25,6 +25,7 @@ stopifnot(all.equal(unname(fixef(fm)), -0.8345, tolerance=.01))
 ## is "Nelder_Mead" default optimizer?
 isNM   <- formals(lmerControl)$optimizer == "Nelder_Mead"
 isOldB <- formals(lmerControl)$optimizer == "bobyqa"
+isOldTol <- environment(nloptwrap)$defaultControl$xtol_abs == 1e-6
 ## check working of Matrix methods on  vcov(.) etc ----------------------
 fm1 <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy)
 V  <- vcov(fm)
@@ -32,10 +33,10 @@ V1 <- vcov(fm1)
 TOL <- 0 # to show the differences below
 TOL <- 1e-5 # for the check
 stopifnot(
-    all.equal(diag(V), if(isNM) 0.176076 else if(isOldB) 0.176068575 else 0.1761714,
+    all.equal(diag(V), if(isNM) 0.176076 else if(isOldB) 0.176068575 else if (isOldTol) 0.1761714 else 0.1760782,
               tolerance = TOL)
    ,
-    all.equal(as.numeric(chol(V)), if(isNM) 0.4196165 else if(isOldB) 0.41960526 else 0.4197278,
+    all.equal(as.numeric(chol(V)), if(isNM) 0.4196165 else if(isOldB) 0.41960526 else if(isOldTol) 0.4197278 else 0.4196167,
               tolerance=TOL)
    ,
     all.equal(diag(V1), c(46.5639, 2.39), tolerance = 40*TOL)# (for "all" algos)
@@ -99,8 +100,11 @@ fm3 <- lmer(y ~ (1|Part) + (1|Operator) + (1|Part:Operator), data = lsDat,
 
 lf29 <- lFormula(y ~ (1|Part) + (1|Operator) + (1|Part:Operator), data = lsD29)
 (fm4 <- update(fm3, data=lsD29))
-fm4. <- update(fm4, REML=FALSE)
-summary(fm4.)
+fm4. <- update(fm4, REML=FALSE,
+               control=lmerControl(optimizer="nloptwrap",
+                                   optCtrl=list(ftol_abs=1e-6,
+                                                xtol_abs=1e-6)))
+## summary(fm4.)
 stopifnot(
     all.equal(as.numeric(formatVC(VarCorr(fm4.))[,"Std.Dev."]),
               c(1.04066, 0.63592, 0.52914, 0.48248), tol = 1e-4)

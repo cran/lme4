@@ -12,11 +12,13 @@ context("fitting lmer models")
 test_that("lmer", {
     set.seed(101)
     d <- data.frame(z=rnorm(200),
-                    f=factor(sample(1:10,200,replace=TRUE)))
+                    f=factor(sample(1:10,200, replace=TRUE)))
 
-    expect_warning(lmer(z~ 1|f, d, method="abc"),"Use the REML argument")
-    expect_warning(lmer(z~ 1|f, d, method="Laplace"),"Use the REML argument")
-    expect_warning(lmer(z~ 1|f, d, sparseX=TRUE),"has no effect at present")
+    ## Using 'method=*' defunct in 2019-05 (after 6 years of deprecation)
+    ## expect_warning(lmer(z~ 1|f, d, method="abc"),"Use the REML argument")
+    ## expect_warning(lmer(z~ 1|f, d, method="Laplace"),"Use the REML argument")
+    ##sp No '...' anymore
+    ##sp expect_warning(lmer(z~ 1|f, d, sparseX=TRUE),"has no effect at present")
     expect_error(lmer(z~ 1|f, ddd), "'data' not found")
     expect_error(lmer(z~ 1|f), "object 'z' not found")
     expect_error(lmer(z~ 1|f, d[,1:1000]), "bad 'data': undefined columns selected")
@@ -117,7 +119,14 @@ test_that("lmer", {
     expect_is(lmer(Yield ~ 1|Batch, Dyestuff, devFunOnly=FALSE), "lmerMod")
     expect_is(lmer(Yield ~ 1|Batch, Dyestuff, control=lmerControl(optimizer="Nelder_Mead")), "lmerMod")
     expect_is(lmer(Yield ~ 1|Batch, Dyestuff, control=lmerControl()), "lmerMod")
-    expect_error(lmer(Yield ~ 1|Batch, Dyestuff, control=lmerControl(optimizer="optimx")),"must be loaded")
+    ## avoid _R_CHECK_LENGTH_1_LOGIC2_ errors ...
+    if (getRversion() < "3.6.0" || packageVersion("optimx")>"2018.7.10") {
+        expect_error(lmer(Yield ~ 1|Batch, Dyestuff, control=lmerControl(optimizer="optimx")),"must specify")
+        expect_is(lmer(Yield ~ 1|Batch, Dyestuff,
+                       control=lmerControl(optimizer="optimx",
+                                           optCtrl=list(method="L-BFGS-B"))),
+                  "lmerMod")
+    }
     expect_error(lmer(Yield ~ 1|Batch, Dyestuff, control=lmerControl(optimizer="junk")), "couldn't find optimizer function")
     ## disable test ... should be no warning
     expect_is(lmer(Reaction ~ 1 + Days + (1 + Days | Subject),
@@ -167,7 +176,7 @@ test_that("lmer", {
                    "some options")
     options(lmerControl=NULL)
     options(warn=0)
-    expect_warning(lmer(Yield ~ 1|Batch, Dyestuff, junkArg=TRUE),"extra argument.*disregarded")
+    expect_error(lmer(Yield ~ 1|Batch, Dyestuff, junkArg=TRUE), "unused argument")
     expect_warning(lmer(Yield ~ 1|Batch, Dyestuff, control=list()),
                     "passing control as list is deprecated")
     if(FALSE) ## Hadley broke this
@@ -250,7 +259,8 @@ test_that("lmer", {
     ## test verbose option for nloptwrap
     cc <- capture.output(lmer(Reaction~1+(1|Subject),
          data=sleepstudy,
-         control=lmerControl(optimizer="nloptwrap"),
+         control=lmerControl(optimizer="nloptwrap",
+                 optCtrl=list(xtol_abs=1e-6, ftol_abs=1e-6)),
          verbose=5))
     expect_equal(sum(grepl("^iteration:",cc)),14)
 
@@ -277,4 +287,12 @@ test_that("coef_lmer", {
                  setNames(c(0.2703951, 0.3832911, 0.451279, 0.6528842, 0.6109819,
                             0.4949802, 0.1222705, 0.08702069, -0.2856431, -0.01596725),
                           nn), tolerance= 6e-6)# 64-bit:  6.73e-9
+})
+
+test_that("getCall", {
+    ## GH #535
+    getClass <- function() "foo"
+    expect_is(glmer(round(Reaction) ~ 1 + (1|Subject), sleepstudy,
+        family=poisson), "glmerMod")
+    rm(getClass)
 })

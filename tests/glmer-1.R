@@ -39,6 +39,9 @@ chkFixed <- function(fm, true.coef, conf.level = 0.95,
 
 m1 <- glmer(cbind(incidence, size - incidence) ~ period + (1 | herd),
              family = binomial, data = cbpp)
+m1. <- update(m1, start = getME(m1, c("theta", "fixef")))
+dm1 <- drop1(m1)
+stopifnot(all.equal(drop1(m1.), dm1, tol = 1e-10))# Lnx(F28) 64b: 4e-12
 ## response as a vector of probabilities and usage of argument "weights"
 m1p <- glmer(incidence / size ~ period + (1 | herd), weights = size,
              family = binomial, data = cbpp)
@@ -216,8 +219,8 @@ stopifnot(isTRUE(chkFixed(m0, true.coef = c(1,2))),
 
 stopifnot(all.equal(a01$Chisq[2], 554.334056, tolerance=1e-5),
 	  all.equal(a01$logLik, c(-1073.77193, -796.604902), tolerance=1e-6),
-          a01$ Df == 3:4,
-	  a01$`Chi Df`[2] == 1)
+          a01$ npar == 3:4,
+	  na.omit(a01$ Df) == 1)
 
 if(lme4:::testLevel() > 1) {
     nsim <- 10
@@ -230,8 +233,8 @@ if(lme4:::testLevel() > 1) {
                     m0 <- glmer(y~x + (1|f),           family="poisson", data=dd)
                     m1 <- glmer(y~x + (1|f) + (1|obs), family="poisson", data=dd)
                     a01 <- anova(m0, m1)
-                    stopifnot(a01$ Df == 3:4,
-                              a01$`Chi Df`[2] == 1)
+                    stopifnot(a01$ npar == 3:4,
+                              na.omit(a01$ Df) == 1)
                     list(chk0 = chkFixed(m0, true.coef = c(1,2)),
                          chk1 = chkFixed(m1, true.coef = c(1,2)),
                          chisq= a01$Chisq[2],

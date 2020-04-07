@@ -3,14 +3,17 @@
 
 ##' Fit a linear mixed model (LMM)
 lmer <- function(formula, data=NULL, REML = TRUE,
-                 control = lmerControl(), start = NULL,
-                 verbose = 0L, subset, weights, na.action, offset,
-                 contrasts = NULL, devFunOnly=FALSE,
-                 ...)
+                 control = lmerControl(), start = NULL
+               , verbose = 0L
+               , subset, weights, na.action, offset
+               , contrasts = NULL
+               , devFunOnly=FALSE
+                )
+    ## , ...)
 {
     mc <- mcout <- match.call()
     missCtrl <- missing(control)
-    ## see functions in modular.R for the body ...
+    ## see functions in modular.R for the body ..
     if (!missCtrl && !inherits(control, "lmerControl")) {
         if(!is.list(control)) stop("'control' is not a list; use lmerControl()")
         ## back-compatibility kluge
@@ -18,12 +21,12 @@ lmer <- function(formula, data=NULL, REML = TRUE,
                 immediate.=TRUE)
         control <- do.call(lmerControl, control)
     }
-    if (!is.null(list(...)[["family"]])) {
-       warning("calling lmer with 'family' is deprecated; please use glmer() instead")
-       mc[[1]] <- quote(lme4::glmer)
-       if(missCtrl) mc$control <- glmerControl()
-       return(eval(mc, parent.frame(1L)))
-    }
+    ## if (!is.null(list(...)[["family"]])) {
+    ##    warning("calling lmer with 'family' is deprecated; please use glmer() instead")
+    ##    mc[[1]] <- quote(lme4::glmer)
+    ##    if(missCtrl) mc$control <- glmerControl()
+    ##    return(eval(mc, parent.frame(1L)))
+    ## }
     mc$control <- control ## update for  back-compatibility kluge
 
     ## https://github.com/lme4/lme4/issues/50
@@ -42,8 +45,7 @@ lmer <- function(formula, data=NULL, REML = TRUE,
     if (identical(control$optimizer,"none"))
         stop("deprecated use of optimizer=='none'; use NULL instead")
     opt <- if (length(control$optimizer)==0) {
-               s <- getStart(start,environment(devfun)$lower,
-                             environment(devfun)$pp)
+               s <- getStart(start, environment(devfun)$pp)
                list(par=s,fval=devfun(s),
                     conv=1000,message="no optimization")
            }  else {
@@ -57,18 +59,23 @@ lmer <- function(formula, data=NULL, REML = TRUE,
                      use.last.params=control$use.last.params)
            }
     cc <- checkConv(attr(opt,"derivs"), opt$par,
-                        ctrl = control$checkConv,
-                        lbound=environment(devfun)$lower)
+                    ctrl = control$checkConv,
+                    lbound = environment(devfun)$lower)
     mkMerMod(environment(devfun), opt, lmod$reTrms, fr = lmod$fr,
              mc = mcout, lme4conv=cc) ## prepare output
 }## { lmer }
 
 
 ##' Fit a generalized linear mixed model (GLMM)
-glmer <- function(formula, data=NULL, family = gaussian,
-                  control = glmerControl(), start = NULL, verbose = 0L, nAGQ = 1L,
-                  subset, weights, na.action, offset,
-                  contrasts = NULL, mustart, etastart, devFunOnly = FALSE, ...)
+glmer <- function(formula, data=NULL
+                , family = gaussian
+                , control = glmerControl()
+                , start = NULL
+                , verbose = 0L
+                , nAGQ = 1L
+                , subset, weights, na.action, offset, contrasts = NULL
+                , mustart, etastart
+                , devFunOnly = FALSE)
 {
     if (!inherits(control, "glmerControl")) {
         if(!is.list(control)) stop("'control' is not a list; use glmerControl()")
@@ -162,7 +169,7 @@ glmer <- function(formula, data=NULL, family = gaussian,
         }
         ## if nAGQ0 was skipped
         ## we don't actually need to do anything here, it seems --
-        ## getStart gets called again in optimizeGlmer ...
+        ## getStart gets called again in optimizeGlmer
 
         if (devFunOnly) return(devfun)
         ## reoptimize deviance function over covariance parameters and fixed effects
@@ -194,7 +201,7 @@ glmer <- function(formula, data=NULL, family = gaussian,
 ##' Fit a nonlinear mixed-effects model
 nlmer <- function(formula, data=NULL, control = nlmerControl(), start = NULL, verbose = 0L,
                   nAGQ = 1L, subset, weights, na.action, offset,
-                  contrasts = NULL, devFunOnly = FALSE, ...)
+                  contrasts = NULL, devFunOnly = FALSE)
 {
 
     vals <- nlformula(mc <- match.call())
@@ -399,7 +406,7 @@ RglmerWrkIter <- function(pp, resp, uOnly=FALSE) {
 ##' @param tol numeric tolerance
 ##' @param GQmat matrix of Gauss-Hermite quad info
 ##' @param compDev compute in C++ (as opposed to doing as much as possible in R)
-##' @param grpFac grouping factor (normally found in environment ...)
+##' @param grpFac grouping factor (normally found in environment ..)
 ##' @param verbose verbosity, of course
 glmerPwrssUpdate <- function(pp, resp, tol, GQmat, compDev=TRUE, grpFac=NULL, maxit = 70L, verbose=0) {
     nAGQ <- nrow(GQmat)
@@ -483,7 +490,7 @@ anovaLmer <- function(object, ..., refit = TRUE, model.names=NULL) {
     .sapply <- function(L, FUN, ...) unlist(lapply(L, FUN, ...))
     modp <- (as.logical(vapply(dots, is, NA, "merMod")) |
              as.logical(vapply(dots, is, NA, "lm")))
-    if (any(modp)) {                    # multiple models - form table
+    if (any(modp)) {   ## multiple models - form table
         ## opts <- dots[!modp]
         mods <- c(list(object), dots[modp])
         nobs.vec <- vapply(mods, nobs, 1L)
@@ -531,10 +538,10 @@ anovaLmer <- function(object, ..., refit = TRUE, model.names=NULL) {
         ## devs <- sapply(mods, deviance)
         llks <- lapply(mods, logLik)
         ## Order models by increasing degrees of freedom:
-        ii <- order(Df <- vapply(llks, attr, FUN.VALUE=numeric(1), "df"))
+        ii <- order(npar <- vapply(llks, attr, FUN.VALUE=numeric(1), "df"))
         mods <- mods[ii]
         llks <- llks[ii]
-        Df   <- Df  [ii]
+        npar   <- npar  [ii]
         calls <- lapply(mods, getCall)
         data <- lapply(calls, `[[`, "data")
         if(!all(vapply(data, identical, NA, data[[1]])))
@@ -547,14 +554,16 @@ anovaLmer <- function(object, ..., refit = TRUE, model.names=NULL) {
             header <- c(header, paste("Subset:", abbrDeparse(subset[[1]])))
         llk <- unlist(llks)
         chisq <- 2 * pmax(0, c(NA, diff(llk)))
-        dfChisq <- c(NA, diff(Df))
-        val <- data.frame(Df = Df,
+        dfChisq <- c(NA, diff(npar))
+        val <- data.frame(npar = npar,
+                          ## afraid to swap in vapply here; wondering
+                          ##   why .sapply was needed in the first place ...
                           AIC = .sapply(llks, AIC), # FIXME? vapply()
                           BIC = .sapply(llks, BIC), #  "       "
                           logLik = llk,
                           deviance = -2*llk,
                           Chisq = chisq,
-                          "Chi Df" = dfChisq,
+                          Df = dfChisq,
                           "Pr(>Chisq)" = pchisq(chisq, dfChisq, lower.tail = FALSE),
                           row.names = names(mods), check.names = FALSE)
         class(val) <- c("anova", class(val))
@@ -565,6 +574,16 @@ anovaLmer <- function(object, ..., refit = TRUE, model.names=NULL) {
                                     unlist(forms), sep = ": ")))
     }
     else { ## ------ single model ---------------------
+        if (length(dots)>0) {
+            warnmsg <- "additional arguments ignored"
+            nd <- names(dots)
+            nd <- nd[nzchar(nd)]
+            if (length(nd)>0) {
+                warnmsg <- paste0(warnmsg,": ",
+                                  paste(sQuote(nd),collapse=", "))
+            }
+            warning(warnmsg)
+        }
         dc <- getME(object, "devcomp")
         X <- getME(object, "X")
         stopifnot(length(asgn <- attr(X, "assign")) == dc$dims[["p"]])
@@ -587,8 +606,8 @@ anovaLmer <- function(object, ..., refit = TRUE, model.names=NULL) {
         table <- data.frame(df, ss, ms, f)
         dimnames(table) <-
             list(nmeffects,
-                 ## c("Df", "Sum Sq", "Mean Sq", "Denom", "F value", "Pr(>F)"))
-                 c("Df", "Sum Sq", "Mean Sq", "F value"))
+                 ## c("npar", "Sum Sq", "Mean Sq", "Denom", "F value", "Pr(>F)"))
+                 c("npar", "Sum Sq", "Mean Sq", "F value"))
         if ("(Intercept)" %in% nmeffects)
             table <- table[-match("(Intercept)", nmeffects), ]
         structure(table, heading = "Analysis of Variance Table",
@@ -825,7 +844,7 @@ drop1.merMod <- function(object, scope, scale = 0, test = c("none", "Chisq", "us
     } else {
         dfs <- ans[1L, 1L] - ans[, 1L]
         dfs[1L] <- NA
-        aod <- data.frame(Df = dfs, AIC = ans[,2])
+        aod <- data.frame(npar = dfs, AIC = ans[,2])
         if(test == "Chisq") {
             ## reconstruct deviance from AIC (ugh)
             dev <- ans[, 2L] - k*ans[, 1L]
@@ -1380,7 +1399,7 @@ refit.merMod <- function(object,
             }
             if (is.factor(newresp)) {
                 ## FIXME: would be better to do this consistently with
-                ## whatever machinery is used in glm/glm.fit/glmer ... ??
+                ## whatever machinery is used in glm/glm.fit/glmer  ??
                 newresp <- as.numeric(newresp)-1
             }
         }
@@ -1447,7 +1466,6 @@ refit.merMod <- function(object,
                     ## when optTheta called refit (github issue #173)
                     # ctrl = eval(object@call$control)$checkConv,
                     ctrl = control$checkConv,
-                    # ctrl = cntrl$checkConv,
                     lbound=lower)
     if (isGLMM(object)) rr$setOffset(baseOffset)
     mkMerMod(environment(ff), opt,
@@ -1720,7 +1738,7 @@ llikAIC <- function(object, devianceFUN = devCrit, chkREML = TRUE, devcomp = obj
     if (cc > 0 || nmsgs > 0 || nwarnings > 0) {
         if (summary) {
             cat(sprintf("convergence code %d; %d optimizer warnings; %d lme4 warnings",
-                cc,nmsgs,nwarnings),"\n")
+                cc,nwarnings,nmsgs),"\n")
         } else {
             cat(sprintf("convergence code: %d", cc),
                 msgs,
@@ -1887,8 +1905,8 @@ mkPfun <- function(diag.only = FALSE, old = TRUE, prefix = NULL){
 ##' @param old (logical) give backward-compatible results?
 ##' @param prefix a character vector with two elements giving the prefix
 ##' for diagonal (e.g. "sd") and off-diagonal (e.g. "cor") elements
-tnames <- function(object,diag.only = FALSE,old = TRUE,prefix = NULL) {
-    pfun <- mkPfun(diag.only = diag.only, old = old, prefix = prefix)
+tnames <- function(object, diag.only = FALSE, old = TRUE, prefix = NULL) {
+    pfun <- mkPfun(diag.only=diag.only, old=old, prefix=prefix)
     c(unlist(mapply(pfun, names(object@cnms), object@cnms)))
 }
 
@@ -1896,7 +1914,7 @@ tnames <- function(object,diag.only = FALSE,old = TRUE,prefix = NULL) {
 getME <- function(object, name, ...) UseMethod("getME")
 
 
-##' Extract or Get Generalize Components from a Fitted Mixed Effects Model
+##' Extract or Get Generalized Components from a Fitted Mixed Effects Model
 getME.merMod <- function(object,
                   name = c("X", "Z","Zt", "Ztlist", "mmList",
                   "y", "mu", "u", "b",
@@ -1931,7 +1949,6 @@ getME.merMod <- function(object,
     PR   <- object@pp
     dc   <- object@devcomp
     th   <- object@theta
-    ## cmp  <- dc $ cmp
     cnms <- object@cnms
     dims <- dc $ dims
     Tpfun <- function(cnms) {
@@ -1943,7 +1960,8 @@ getME.merMod <- function(object,
     ## mmList. <- mmList(object)
     if(any(name == c("p_i", "q_i", "m_i")))
         p_i <- vapply(mmList(object), ncol, 1L)
-    ## l_i <- vapply(object@flist, nlevels, 1L)
+    if(any(name == c("l_i", "q_i")))
+        l_i <- vapply(object@flist, nlevels, 1L)
     switch(name,
            "X" = PR$X, ## ok ? - check -- use model.matrix() method instead?
            "Z" = t(PR$Zt),
@@ -1990,9 +2008,9 @@ getME.merMod <- function(object,
                for (i in 1:nt) { # will need modification for more general Lambda
                    nci <- nc[i]
                    tt <- matrix(0., nci, nci)
-                   inds <- lower.tri(tt,diag=TRUE)
+                   inds <- lower.tri(tt, diag=TRUE)
                    nthi <- sum(inds)
-                   tt[lower.tri(tt, diag=TRUE)] <- th[pos + (1L:nthi)]
+                   tt[inds] <- th[pos + seq_len(nthi)]
                    pos <- pos + nthi
                    ans[[i]] <- tt
                }
@@ -2004,17 +2022,16 @@ getME.merMod <- function(object,
            "n_rtrms" = length(cnms),
            ## number of random-effects grouping factors
            "n_rfacs" = length(object@flist),
-           "N" = dims["N"],
-           "n" = dims["n"],
-           "p" = dims["p"],
-           "q" = dims["q"],
+           "N" = dims[["N"]],
+           "n" = dims[["n"]],
+           "p" = dims[["p"]],
+           "q" = dims[["q"]],
            "p_i" = p_i,
-           "l_i" = vapply(object@flist, nlevels, 1L),
-           "q_i" = ## == p_i * l_i
-               p_i*vapply(object@flist, nlevels, 1L),
+           "l_i" = l_i,
+           "q_i" = p_i * l_i,
            "k" = length(cnms),
            "m_i" = choose(p_i + 1, 2),
-           "m" = dc$dims[["nth"]],
+           "m" = dims[["nth"]],
            "cnms" = cnms,
            "devcomp" = dc,
            "offset" = rsp$offset,
@@ -2026,9 +2043,9 @@ getME.merMod <- function(object,
                    if (isGLMM(object)) {
                        stop("getME('devfun') not yet working for GLMMs")## FIXME
                        baseOffset <- rsp$offset
-                       nAGQ <- unname(dc$dims["nAGQ"])
+                       nAGQ <- dims[["nAGQ"]]
                        list(tolPwrss= dc$cmp ["tolPwrss"],
-                            compDev = dc$dims["compDev"],
+                            compDev = dims[["compDev"]],
                             nAGQ = nAGQ,
                             lp0  = rsp$eta - baseOffset,
                             baseOffset  = baseOffset,
@@ -2557,13 +2574,15 @@ dim.merMod <- function(x) {
 ##' @param optimizer character string ( = function name) *or* function
 getOptfun <- function(optimizer) {
     if (((is.character(optimizer) && optimizer == "optimx") ||
-         deparse(substitute(optimizer)) == "optimx") &&
-        !"package:optimx" %in% search())
-        stop(shQuote("optimx")," package must be loaded in order to ",
-             "use ",shQuote('optimizer="optimx"'))
-    optfun <- if (is.character(optimizer)) {
-        tryCatch(get(optimizer), error = function(e) NULL)
-    } else optimizer
+         deparse(substitute(optimizer)) == "optimx")) {
+        if (!requireNamespace("optimx")) {
+            stop(shQuote("optimx")," package must be installed order to ",
+                 "use ",shQuote('optimizer="optimx"'))
+        }
+        optfun <- optimx::optimx
+    } else if (is.character(optimizer)) {
+        optfun <- tryCatch(get(optimizer), error = function(e) NULL)
+    } else optfun <- optimizer
     if (is.null(optfun)) stop("couldn't find optimizer function ",optimizer)
     if (!is.function(optfun)) stop("non-function specified as optimizer")
     needArgs <- c("fn","par","lower","control")
