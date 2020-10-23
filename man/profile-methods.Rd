@@ -172,6 +172,7 @@ varianceProf(x, ranef = TRUE)
   \code{\link{bootMer}}.
 }
 \examples{
+if (lme4_testlevel() > 1) {
 fm01ML <- lmer(Yield ~ 1|Batch, Dyestuff, REML = FALSE)
 system.time(
   tpr  <- profile(fm01ML, optimizer="Nelder_Mead", which="beta_")
@@ -181,7 +182,7 @@ system.time(
 system.time( tpr  <- profile(fm01ML))
 ## ~1s, + possible warning about bobyqa convergence
 (confint(tpr) -> CIpr)
-\donttest{% too much precision (etc). but just FYI:
+\dontrun{% too much precision (etc). but just FYI:
 stopifnot(all.equal(unname(CIpr),
   array(c(12.1985292, 38.2299848, 1486.4515,
           84.0630513, 67.6576964, 1568.54849), dim = 3:2),
@@ -198,7 +199,7 @@ densityplot(tpr, main="densityplot( profile(lmer(..)) )")
 densityplot(varianceProf(tpr), main=" varianceProf( profile(lmer(..)) )")
 splom(tpr)
 splom(logProf(tpr, ranef=FALSE))
-doMore <- lme4:::testLevel() > 1 %% even more --> ../tests/profile.R
+doMore <- lme4:::testLevel() > 2 %% even more --> ../tests/profile.R
 if(doMore) { ## not typically, for time constraint reasons
  ## Batch and residual variance only
  system.time(tpr2 <- profile(fm01ML, which=1:2, optimizer="Nelder_Mead"))
@@ -221,6 +222,7 @@ if(doMore) { ## not typically, for time constraint reasons
  print( system.time(
      pr4.hr <- profile(gm1, which="theta_", delta.cutoff=1/16)))
  print( xyplot(pr4.hr) )
-}% doMore
+} %% doMore
+} %% lme4_testlevel() > 1
 }
 \keyword{methods}

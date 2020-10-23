@@ -19,7 +19,7 @@ test_that("lmer", {
     ## expect_warning(lmer(z~ 1|f, d, method="Laplace"),"Use the REML argument")
     ##sp No '...' anymore
     ##sp expect_warning(lmer(z~ 1|f, d, sparseX=TRUE),"has no effect at present")
-    expect_error(lmer(z~ 1|f, ddd), "'data' not found")
+    expect_error(lmer(z~ 1|f, ddd), "bad 'data': object 'ddd' not found")
     expect_error(lmer(z~ 1|f), "object 'z' not found")
     expect_error(lmer(z~ 1|f, d[,1:1000]), "bad 'data': undefined columns selected")
     expect_is(fm1 <- lmer(Yield ~ 1|Batch, Dyestuff), "lmerMod")
@@ -295,4 +295,66 @@ test_that("getCall", {
     expect_is(glmer(round(Reaction) ~ 1 + (1|Subject), sleepstudy,
         family=poisson), "glmerMod")
     rm(getClass)
+})
+
+test_that("better info about optimizer convergence",
+{
+    set.seed(14)
+    cbpp$var <- rnorm(nrow(cbpp), 10, 10)
+
+    suppressWarnings(gm2 <-
+                         glmer(cbind(incidence, size - incidence) ~ period * var + (1 | herd),
+                               data = cbpp, family = binomial,
+                               control=glmerControl(optimizer=c("bobyqa","Nelder_Mead")))
+                     )
+
+    ## FIXME: with new update, suppressWarnings(update(gm2)) will give
+    ## Error in as.list.environment(X[[i]], ...) : 
+    ## promise already under evaluation: recursive default argument reference or earlier problems?
+    op <- options(warn=-1)
+    gm3 <- update(gm2,
+                  control=glmerControl(optimizer="bobyqa",
+                                       optCtrl=list(maxfun=2)))
+    options(op)
+
+    cc <-capture.output(print(summary(gm2)))
+    expect_equal(tail(cc,3)[1],
+                 "optimizer (Nelder_Mead) convergence code: 0 (OK)")
+})
+
+context("convergence warnings etc.")
+
+fm1 <- lmer(Reaction~ Days + (Days|Subject), sleepstudy)
+suppressMessages(fm0 <- lmer(Reaction~ Days + (Days|Subject), sleepstudy[1:20,]))
+
+msg_in_output <- function(x, str) {
+    cc <- capture.output(.prt.warn(x))
+    any(grepl(str , cc))
+}
+
+test_that("convergence warnings from limited evals", {
+    expect_warning(fm1B <- update(fm1, control=lmerControl(optCtrl=list(maxeval=3))),
+                   "convergence code 5")
+    expect_true(msg_in_output(fm1B@optinfo, "convergence code: 5"))
+    expect_warning(fm1C <- update(fm1, control=lmerControl(optimizer="bobyqa",optCtrl=list(maxfun=3))),
+                   "maximum number of function evaluations exceeded")
+    expect_true(msg_in_output(fm1C@optinfo,
+                              "maximum number of function evaluations exceeded"))
+    ## one extra (spurious) warning here ...
+    expect_warning(fm1D <- update(fm1, control=lmerControl(optimizer="Nelder_Mead",optCtrl=list(maxfun=3))),
+                   "failure to converge in 3 evaluations")
+    expect_true(msg_in_output(fm1D@optinfo,
+                              "failure to converge in 3 evaluations"))
+    expect_message(fm0D <- update(fm0, control=lmerControl(optimizer="Nelder_Mead")),
+                   "boundary")
+    expect_true(msg_in_output(fm0D@optinfo,
+                              "(OK)"))
+})
+
+## GH 533
+test_that("test for zero non-NA cases", {
+    data_bad <- sleepstudy
+    data_bad$Days <- NA_real_
+    expect_error(lmer(Reaction ~ Days + (1| Subject), data_bad),
+                 "0 \\(non-NA\\) cases")
 })

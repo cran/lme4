@@ -564,7 +564,7 @@ anovaLmer <- function(object, ..., refit = TRUE, model.names=NULL) {
                           deviance = -2*llk,
                           Chisq = chisq,
                           Df = dfChisq,
-                          "Pr(>Chisq)" = pchisq(chisq, dfChisq, lower.tail = FALSE),
+                          "Pr(>Chisq)" = ifelse(dfChisq==0,NA,pchisq(chisq, dfChisq, lower.tail = FALSE)),
                           row.names = names(mods), check.names = FALSE)
         class(val) <- c("anova", class(val))
         forms <- lapply(lapply(calls, `[[`, "formula"), deparse)
@@ -638,7 +638,7 @@ coefMer <- function(object, ...)
         warning('arguments named "', paste(names(list(...)), collapse = ", "),
                 '" ignored')
     fef <- data.frame(rbind(fixef(object)), check.names = FALSE)
-    ref <- ranef(object)
+    ref <- ranef(object, condVar = FALSE)
     ## check for variables in RE but missing from FE, fill in zeros in FE accordingly
     refnames <- unlist(lapply(ref,colnames))
     nmiss <- length(missnames <- setdiff(refnames,names(fef)))
@@ -1457,7 +1457,13 @@ refit.merMod <- function(object,
     ##     rho$pp$updateDecomp()
     ##     rho$lp0 <- rho$pp$linPred(1)
     ## }
-    opt <- optwrap(object@optinfo$optimizer,
+    optimizer <- object@optinfo$optimizer
+    if (!is.null(newopt <- ctrl.arg$optimizer)) {
+        ## we might end up with a length-2 optimizer vector ...
+        ##  use the *last* element
+        optimizer <- newopt[length(newopt)]
+    }
+    opt <- optwrap(optimizer,
                    ff, x0, lower=lower, control=control$optCtrl,
                    calc.derivs=calc.derivs)
     cc <- checkConv(attr(opt,"derivs"),opt$par,
@@ -1736,11 +1742,18 @@ llikAIC <- function(object, devianceFUN = devCrit, chkREML = TRUE, devcomp = obj
     warnings <- optinfo$warnings
     nwarnings <- length(warnings)
     if (cc > 0 || nmsgs > 0 || nwarnings > 0) {
+        m <- if (cc==0) {
+                 "(OK)"
+             } else if (!is.null(optinfo$message)) {
+                 sprintf("(%s)",optinfo$message)
+             } else ""
+        convmsg <- sprintf("optimizer (%s) convergence code: %d %s",
+                           optinfo$optimizer, cc, m)
         if (summary) {
-            cat(sprintf("convergence code %d; %d optimizer warnings; %d lme4 warnings",
-                cc,nwarnings,nmsgs),"\n")
+            cat(convmsg,sprintf("; %d optimizer warnings; %d lme4 warnings",
+                nwarnings,nmsgs),"\n")
         } else {
-            cat(sprintf("convergence code: %d", cc),
+            cat(convmsg,
                 msgs,
                 unlist(warnings),
                 sep="\n")
@@ -2037,29 +2050,21 @@ getME.merMod <- function(object,
            "offset" = rsp$offset,
            "lower" = object@lower,
            "devfun" = {
-               ## copied from refit ... DRY ...
                verbose <- getCall(object)$verbose; if (is.null(verbose)) verbose <- 0L
-               devlist <-
-                   if (isGLMM(object)) {
-                       stop("getME('devfun') not yet working for GLMMs")## FIXME
-                       baseOffset <- rsp$offset
-                       nAGQ <- dims[["nAGQ"]]
-                       list(tolPwrss= dc$cmp ["tolPwrss"],
-                            compDev = dims[["compDev"]],
-                            nAGQ = nAGQ,
-                            lp0  = rsp$eta - baseOffset,
-                            baseOffset  = baseOffset,
-                            pwrssUpdate = glmerPwrssUpdate,
-                            GQmat = GHrule(nAGQ),
-                            fac = object@flist[[1]],
-                            pp=PR, resp=rsp, u0=PR$u0, dpars=seq_along(PR$theta),
-                            verbose=verbose)
-                   }
-                   else
-                       list(pp=PR, resp=rsp, u0=PR$u0, dpars=seq_along(PR$theta), verbose=verbose)
-               mkdevfun(rho=list2env(devlist),
-                        ## FIXME: fragile ... // also pass 'maxit' ?
-                        verbose=verbose, control=object@optinfo$control)
+               if (isGLMM(object)) {
+                   reTrms <- getME(object,c("Zt","theta","Lambdat","Lind","flist","cnms"))
+                   d1 <- mkGlmerDevfun(object@frame, getME(object,"X"),
+                                       reTrms=reTrms, family(object),
+                                       verbose=verbose)
+                   nAGQ <- object@devcomp$dims[["nAGQ"]]
+                   updateGlmerDevfun(d1, reTrms, nAGQ=nAGQ)
+               } else {
+                   ## copied from refit ... DRY ...
+                   devlist <- list(pp=PR, resp=rsp, u0=PR$u0, dpars=seq_along(PR$theta), verbose=verbose)
+                   mkdevfun(rho=list2env(devlist),
+                            ## FIXME: fragile ... // also pass 'maxit' ?
+                            verbose=verbose, control=object@optinfo$control)
+               }
            },
            ## FIXME: current version gives lower bounds for theta parameters only:
            ## -- these must be extended for [GN]LMMs -- give extended value including -Inf values for beta values?
@@ -2657,8 +2662,10 @@ optwrap <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
     ## post-fit tweaking
     if (optName == "bobyqa") {
         opt$convergence <- opt$ierr
-    }
-    else if (optName == "optimx") {
+    } else if (optName == "Nelder_Mead") {
+        ## fix-up: Nelder_Mead treats running out of iterations as "convergence" (!?)
+        if (opt$NM.result==4) opt$convergence <- 4
+    } else if (optName == "optimx") {
         opt <- list(par = coef(opt)[1,],
                     fvalues = opt$value[1],
                     method = method,
@@ -2668,7 +2675,7 @@ optwrap <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
     }
     if ((optconv <- getConv(opt)) != 0) {
         wmsg <- paste("convergence code",optconv,"from",optName)
-        if (!is.null(opt$msg)) wmsg <- paste0(wmsg,": ",opt$msg)
+        if (!is.null(getMsg(opt))) wmsg <- paste0(wmsg,": ",getMsg(opt))
         warning(wmsg)
         curWarnings <<- append(curWarnings,list(wmsg))
     }

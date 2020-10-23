@@ -40,14 +40,15 @@ reFormHack <- function(re.form,ReForm,REForm,REform) {
 }
 
 ## '...' may contain fixed.only=TRUE, random.only=TRUE, ..
-get.orig.levs <- function(object, FUN=levels, newdata=NULL, ...) {
+get.orig.levs <- function(object, FUN=levels, newdata=NULL, sparse = FALSE, ...) {
     Terms <- terms(object,...)
     mf <- model.frame(object, ...)
     isFac <- vapply(mf, is.factor, FUN.VALUE=TRUE)
     ## ignore response variable
     isFac[attr(Terms,"response")] <- FALSE
     mf <- mf[isFac]
-    orig_levs <- if(any(isFac)) lapply(mf, FUN) # else NULL
+    hasSparse <- any(grepl("sparse", names(formals(FUN))))   # check if FUN has sparse argument
+    orig_levs <- if (any(isFac) && hasSparse) lapply(mf, FUN, sparse = sparse) else if(any(isFac) && !hasSparse) lapply(mf, FUN) # else NULL
     ## if necessary (allow.new.levels ...) add in new levels
     if (!is.null(newdata)) {
         for (n in names(mf)) {
@@ -265,14 +266,24 @@ mkNewReTrms <- function(object, newdata, re.form=NULL, na.action=na.pass,
         ## pick out random effects values that correspond to
         ##  random effects incorporated in re.form ...
         ## NB: Need integer indexing, as nRnms can be duplicated: (age|Subj) + (sex|Subj) :
-        re_new <- lapply(seq_along(nRnms), function(i) {
-            rname <- nRnms[i]
-            if (!all(Rcnms[[i]] %in% names(re[[rname]])))
-                stop("random effects specified in re.form that were not present in original model")
-            re_x[[rname]][,Rcnms[[i]]]
-        })
-        re_new <- unlist(lapply(re_new, t))  ## must TRANSPOSE RE matrices before unlisting
-        ## FIXME? use vapply(re_new, t, FUN_VALUE=????)
+        hacked_names <- FALSE
+        get_re <- function(rname, cnms) {
+            nms <- names(re[[rname]])
+            if (identical(cnms,"(Intercept)") && length(nms)==1 && grepl("^s(.*)$",nms)) {
+                ## HACK to allow gamm4 prediction
+                hacked_names <<- TRUE
+                cnms <- nms
+            }
+            miss_names <- setdiff(cnms, nms)
+            if (length(miss_names)>0) {
+                stop("random effects specified in re.form that were not present in original model ",
+                     paste(miss_names, collapse=", "))
+            }
+            t(re_x[[rname]][,cnms]) ## transpose to make sure unlisting works
+        }
+        re_new <- unlist(Map(get_re, nRnms, Rcnms))
+        ## only issue warning once per prediction ...
+        if (hacked_names) warning("modified RE names for gamm4 prediction")
     }
     Zt <- ReTrms$Zt
     attr(Zt, "na.action") <- attr(re_new, "na.action") <- fixed.na.action
@@ -461,7 +472,7 @@ predict.merMod <- function(object, newdata=NULL, newparams=NULL,
             pred <- pred+offset
 
         } ## end !(random.only)
-
+        
         if (isRE(re.form)) {
             if (is.null(re.form))
                 re.form <- reOnly(formula(object)) # RE formula only
@@ -494,20 +505,24 @@ predict.merMod <- function(object, newdata=NULL, newparams=NULL,
 } # end {predict.merMod}
 
 
-##' Simulate responses from the model represented by a fitted model object
-##'
-simulate.formula <- function(object, nsim = 1, seed = NULL, family,
-                             weights=NULL, offset=NULL, ...) {
-    ## N.B. *must* name all arguments so that 'object' is missing in .simulateFun()
-    .simulateFun(formula=object, nsim=nsim, seed=seed,
-                 family=family, weights=weights, offset=offset, ...)
-}
+## all possible LHS evaluated values ...
+simulate.formula_lhs_matrix <- simulate.formula_lhs_numeric <-
+    simulate.formula_lhs_integer <- simulate.formula_lhs_factor <-
+        simulate.formula_lhs_ <-
+        function(object, nsim = 1, seed = NULL,
+                 newdata,
+                 ...) {
+            ## N.B. *must* name all arguments so that 'object' is missing in .simulateFun()
+            .simulateFun(formula=object, nsim=nsim, seed=seed, newdata=newdata, ...)
+        }
 
 simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
                             re.form=NA, ReForm, REForm, REform,
                             newdata=NULL, newparams=NULL,
                             family=NULL,
                             allow.new.levels=FALSE, na.action=na.pass, ...) {
+
+    ## FIXME: is there a reason this can't be a copy of .simulateFun ... ?
     mc <- match.call()
     mc[[1]] <- quote(lme4::.simulateFun)
     eval(mc, parent.frame(1L))
@@ -524,23 +539,25 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
                          cond.sim=TRUE,
                          ...) {
 
+    if (length(list(...)) > 0) warning("unused arguments ignored")
+    
+    if (missing(object) && (is.null(formula) || is.null(newdata) || is.null(newparams))) {
+        stop("if ",sQuote("object")," is missing, must specify all of ",
+             sQuote("formula"),", ",sQuote("newdata"),", and ",
+             sQuote("newparams"))
+    }
+
     nullWts <- FALSE
-
     if (is.null(weights)) {
-        if (is.null(newdata))
+        if (is.null(newdata)) {
             weights <- weights(object)
-        else {
-
+        } else {
             nullWts <- TRUE # this flags that 'weights' wasn't supplied by the user
             weights <- rep(1,nrow(newdata))
         }
     }
+
     if (missing(object)) {
-        if (is.null(formula) || is.null(newdata) || is.null(newparams)) {
-            stop("if ",sQuote("object")," is missing, must specify all of ",
-                 sQuote("formula"),", ",sQuote("newdata"),", and ",
-                 sQuote("newparams"))
-        }
 
         ## construct fake-fitted object from data, params
         ## copied from glm(): DRY; this all stems from the
@@ -562,6 +579,7 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
                                opt = list(par=NA,fval=NA,conv=NA),
                                lmod$reTrms, fr = lmod$fr)
         } else {
+
             glmod <- glFormula(formula,newdata,family=family,
                                weights=weights,
                                offset=offset,
@@ -577,6 +595,7 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
         ## instead we have a special case in fitted()
         ## object@resp$mu <- rep(NA_real_,nrow(model.frame(object)))
     }
+    
     stopifnot((nsim <- as.integer(nsim[1])) > 0,
               is(object, "merMod"))
     if (!is.null(newparams)) {

@@ -1,6 +1,7 @@
 library("testthat")
 library("lme4")
 library("lattice")
+testLevel <- if (nzchar(s <- Sys.getenv("LME4_TEST_LEVEL"))) as.numeric(s) else 1
 
 ## use old (<=3.5.2) sample() algorithm if necessary
 if ("sample.kind" %in% names(formals(RNGkind))) {
@@ -28,6 +29,7 @@ if (getRversion() > "3.0.0") {
     fm4 <- lmer(angle ~ temp + recipe + (1 | replicate), data=cake)
 }
 
+if (testLevel>1) {
 context("predict")
 test_that("fitted values", {
     p0 <- predict(gm1)
@@ -321,3 +323,32 @@ test_that("simulation complains appropriately about bad family", {
     expect_error(simulate(model_fit2),"simulation not implemented for family")
 })
 
+test_that("prediction from large factors", {
+    set.seed(101)
+    N <- 50000
+    X <- data.frame(y=rpois(N, 5), obs=as.factor(1:N))
+    fm <- glmer(y ~ (1|obs), family="poisson", data=X,
+                control=glmerControl(check.conv.singular="ignore"))
+    ## FIXME: weak tests.  The main issue here is that these should
+    ##  be reasonably speedy and non-memory-hogging, but those are
+    ## hard to test portably ...
+    expect_is(predict(fm, re.form=~(1|obs)), "numeric")
+    expect_is(predict(fm, newdata=X), "numeric")
+})
+
+test_that("prediction with gamm4", {
+    if (suppressWarnings(requireNamespace("gamm4"))) {
+        ## loading gamm4 warngs "replacing previous import 'Matrix::update' by 'lme4::update' when loading 'gamm4'"
+        ## from ?gamm4
+        set.seed(0)
+         ## simulate 4 term additive truth
+        dat <- mgcv::gamSim(1,n=400,scale=2,verbose=FALSE)
+        ## Now add 20 level random effect `fac'...
+        dat$fac <- fac <- as.factor(sample(1:20,400,replace=TRUE))
+        dat$y <- dat$y + model.matrix(~fac-1)%*%rnorm(20)*.5
+        br <- gamm4::gamm4(y~s(x0)+x1+s(x2),data=dat,random=~(1|fac))
+        expect_warning(ss <- simulate(br$mer), "modified RE names")
+        expect_equal(dim(ss), c(400,1))
+    }
+})
+} ## testLevel>1

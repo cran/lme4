@@ -30,7 +30,7 @@ namespace optimizer {
         const VectorXd xtol_abs;
         unsigned n, nevals, maxeval;
         Scalar minf_max, ftol_rel, ftol_abs, xtol_rel;
-        bool force_stop;
+        bool force_stop=false;
     public:
         nl_stop(const VectorXd&); // constructor
 
@@ -64,7 +64,7 @@ namespace optimizer {
     inline bool nl_stop::relstop(const Scalar& vold, const Scalar& vnew,
                           const Scalar& reltol, const Scalar& abstol) const {
         int debug=0;
-        bool result;
+        bool result=false;
 
         if (std::abs(vold) == std::numeric_limits<Scalar>::infinity()) return false;
 
@@ -153,7 +153,7 @@ namespace optimizer {
     protected:
         Scalar           d_invratio, d_lower, d_upper;
         Eigen::Vector2d  d_x, d_f;
-        bool             d_init, d_ll;
+        bool             d_init=false, d_ll=false;
     public:
         Golden(const Scalar&, const Scalar&);
         void    newf(const Scalar&);

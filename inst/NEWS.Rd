@@ -4,20 +4,64 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1-23}{
+\section{CHANGES IN VERSION 1.1-25}{
+  \itemize{
+    \item   Set more tests to run only if environment variable
+    \code{LME4_TEST_LEVEL}>1
+  }
+}
+\section{CHANGES IN VERSION 1.1-24 (never on CRAN)}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item \code{anova()} now returns a p-value of \code{NA} if the df
+      difference between two models is 0 (implying they are equivalent
+      models) (GH#583, @MetaEntropy)
+      \item speedup in \code{coef()} for large models, by skipping
+      conditional variance calculation (Alexander Bauer)
+      \item \code{simulate.formula} machinery has changed slightly,
+      for compatibility with the \code{ergm} package (Pavel Krivitsky)
+      \item informational messages about (non-)convergence improved (GH
+      #599)
+      \item improved error messages for 0 non-NA cases in data (GH #533)
+    }
+  } % user-visible changes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item \code{getME(.,"devfun")} now works for \code{glmer} objects.
+      Additionally, \code{profile}/\code{confint} for GLMMs
+      no longer depend on objects in the fitting environment
+      remaining unchanged (GH #589). This change also affects likelihood
+      profiling machinery; results of \code{glmer} profiling/CIs  may
+      not match results from previous versions exactly.
+    }
+  } % new features
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item improved handling/documentation of \code{glmer.nb} controls
+      (GH #556)
+      \item \code{predict} works better for \code{gamm4} objects (GH
+      #575)
+      \item resolved some long-standing UBSAN issues (GH #561)
+    }
+  } % bug fixes
+} % version 1.1-23.9000
+\section{CHANGES IN VERSION 1.1-23 (2020-03-06)}{
   This is primarily for CRAN compliance (previous submission was
   retracted to allow time for downstream package adjustments).
   \itemize{
     \item Some PROTECT/UNPROTECT fixes
   }
 }
-\section{CHANGES IN VERSION 1.1-22}{
+\section{CHANGES IN VERSION 1.1-22 (never on CRAN)}{
   \subsection{USER-VISIBLE CHANGES}{
   \itemize{
-  
-      \item minor changes to argument order in \code{[g]lmerControl};
-      default tolerance for convergence checks increased from 0.001 to 0.002
-      for \code{glmerControl} (now consistent with \code{lmerControl})
+
+    \item prediction now works better for factors with many levels
+    (GH#467, solution by @sihoward)
+    
+    \item minor changes to argument order in \code{[g]lmerControl};
+    default tolerance for convergence checks increased from 0.001 to 0.002
+    for \code{glmerControl} (now consistent with \code{lmerControl})
 
       \item \code{lmer(*, family="<fam>")} is no longer valid; it had been
       deprecated since 2013-06.
@@ -51,6 +95,9 @@
   }
   \subsection{BUG FIXES}{
     \itemize{
+
+      \item improved checking for missing data (@lionel-)
+      
       \item internal \code{checkZrank()} should be able to deal with
       (\code{Matrix} package) \code{rankMatrix()} returning \code{NA}.
 

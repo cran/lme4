@@ -1,5 +1,5 @@
 Package: lme4
-Version: 1.1-23
+Version: 1.1-25
 Title: Linear Mixed-Effects Models using 'Eigen' and S4
 Authors@R: c(
     person("Douglas","Bates", role="aut",
@@ -20,7 +20,10 @@ Authors@R: c(
     person("Gabor", "Grothendieck", role="ctb"),
     person("Peter", "Green", role="ctb",
 	comment=c(ORCID="0000-0002-0238-9852")),
-    person("John", "Fox", role="ctb")
+    person("John", "Fox", role="ctb"),
+    person("Alexander", "Bauer", role="ctb"),
+    person("Pavel N.", "Krivitsky", role=c("ctb","cph"), comment=c(ORCID="0000-0002-9101-3362",
+    "shared copyright on simulate.formula"))
     )
 Contact: LME4 Authors <lme4-authors@lists.r-forge.r-project.org>
 Description: Fit linear and generalized linear mixed-effects models.
@@ -33,8 +36,8 @@ Imports: graphics, grid, splines, utils, parallel, MASS, lattice, boot,
         nlme (>= 3.1-123), minqa (>= 1.1.15), nloptr (>= 1.0.4),
         statmod
 Suggests: knitr, rmarkdown, PKPDmodels, MEMSS, testthat (>= 0.8.1),
-        ggplot2, mlmRev, optimx (>= 2013.8.6), gamm4, pbkrtest, HSAUR2,
-        numDeriv, car, dfoptim
+        ggplot2, mlmRev, optimx (>= 2013.8.6), gamm4, pbkrtest, HSAUR3,
+        numDeriv, car, dfoptim, mgcv
 VignetteBuilder: knitr
 LazyData: yes
 License: GPL (>= 2)
@@ -42,7 +45,7 @@ URL: https://github.com/lme4/lme4/
 BugReports: https://github.com/lme4/lme4/issues
 Encoding: UTF-8
 NeedsCompilation: yes
-Packaged: 2020-04-06 00:39:09 UTC; bolker
+Packaged: 2020-10-14 00:06:57 UTC; bolker
 Author: Douglas Bates [aut] (<https://orcid.org/0000-0001-8316-9503>),
   Martin Maechler [aut] (<https://orcid.org/0000-0002-8685-9910>),
   Ben Bolker [aut, cre] (<https://orcid.org/0000-0002-2127-0443>),
@@ -54,7 +57,10 @@ Author: Douglas Bates [aut] (<https://orcid.org/0000-0001-8316-9503>),
   Fabian Scheipl [ctb] (<https://orcid.org/0000-0001-8172-3603>),
   Gabor Grothendieck [ctb],
   Peter Green [ctb] (<https://orcid.org/0000-0002-0238-9852>),
-  John Fox [ctb]
+  John Fox [ctb],
+  Alexander Bauer [ctb],
+  Pavel N. Krivitsky [ctb, cph] (<https://orcid.org/0000-0002-9101-3362>,
+    shared copyright on simulate.formula)
 Maintainer: Ben Bolker <bbolker+lme4@gmail.com>
 Repository: CRAN
-Date/Publication: 2020-04-07 10:00:21 UTC
+Date/Publication: 2020-10-23 08:20:07 UTC

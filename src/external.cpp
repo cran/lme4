@@ -49,11 +49,15 @@ extern "C" {
 
     // utilities
 
-    SEXP allPerm_int(SEXP v_) {
+    // FIXME: as pointed out here <https://github.com/lme4/lme4/issues/588>, this is potentially
+    //   dangerous when v_ is long ...
+    SEXP allPerm_int(SEXP v_, SEXP sz_) {
         BEGIN_RCPP;
         iVec     v(as<iVec>(v_));   // forces a copy
         int     sz(v.size());
         std::vector<iVec> vec;
+
+        vec.reserve(static_cast<size_t>(INTEGER(sz_)[0]));
 
         std::sort(v.data(), v.data() + sz);
         do {
@@ -304,7 +308,7 @@ extern "C" {
                             double tol, int maxit, int verbose) {
         double oldpdev=std::numeric_limits<double>::max();
         double pdev;
-        int maxstephalfit = 10;
+        int maxstephalfit = 20;
         bool   cvgd = false, verb = verbose > 2, moreverb = verbose > 10;
         int debug=0;
 
@@ -1013,7 +1017,7 @@ static R_CallMethodDef CallEntries[] = {
 
     CALLDEF(Eigen_SSE, 0),
 
-    CALLDEF(allPerm_int, 1),
+    CALLDEF(allPerm_int, 2),
 
     CALLDEF(deepcopy, 1),
 
