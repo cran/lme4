@@ -1,4 +1,13 @@
-if((Rv <- getRversion()) < "3.2.1") {
+if((Rv <- getRversion()) < "4.1.0") {
+ ## not equivalent; this *forces* ... entries whereas true ...length()  aint...
+ ...names <- function() eval(quote(names(list(...))), sys.frame(-1L))
+ if(Rv < "4.0.0") {
+  ## NB: R >= 4.0.0's deparse1() is a generalization of our previous safeDeparse()
+  deparse1 <- function (expr, collapse = " ", width.cutoff = 500L, ...)
+      paste(deparse(expr, width.cutoff, ...), collapse = collapse)
+  ## not equivalent ...
+  ...length <- function() eval(quote(length(list(...))), sys.frame(-1L))
+  if(Rv < "3.2.1") {
     lengths <- function (x, use.names = TRUE) vapply(x, length, 1L, USE.NAMES = use.names)
     if(Rv < "3.1.0") {
         anyNA <- function(x) any(is.na(x))
@@ -8,7 +17,9 @@ if((Rv <- getRversion()) < "3.2.1") {
                 paste0 <- function(...) paste(..., sep = '')
         }
     }
-} ## R < 3.2.1
+  } ## R < 3.2.1
+ } ## R < 4.0.0
+} ## R < 4.1.0
 rm(Rv)
 
 ## From Matrix package  isDiagonal(.) :
@@ -19,17 +30,14 @@ all0 <- function(x) !anyNA(x) && all(!x)
 
 ### Utilities for parsing and manipulating mixed-model formulas
 
-##' deparse(.) returning \bold{one} string
-##' @note Protects against the possibility that results from deparse() will be
-##'       split after 'width.cutoff' (by default 60, maximally 500)
-safeDeparse <- function(x, collapse=" ") paste(deparse(x, 500L), collapse=collapse)
+## abbreviated parse for long strings: deparse1() pastes w/ collapse instead
 abbrDeparse <- function(x, width=60) {
     r <- deparse(x, width)
     if(length(r) > 1) paste(r[1], "...") else r
 }
 
 ##' @param bars result of findbars
-barnames <- function(bars) vapply(bars, function(x) safeDeparse(x[[3]]), "")
+barnames <- function(bars) vapply(bars, function(x) deparse1(x[[3]]), "")
 
 makeFac <- function(x,char.only=FALSE) {
     if (!is.factor(x) && (!char.only || is.character(x))) factor(x) else x
@@ -133,7 +141,7 @@ mkReTrms <- function(bars, fr, drop.unused.levels=TRUE,
   stopifnot(is.list(bars), vapply(bars, is.language, NA),
             inherits(fr, "data.frame"))
   names(bars) <- barnames(bars)
-  term.names <- vapply(bars, safeDeparse, "")
+  term.names <- vapply(bars, deparse1, "")
   ## get component blocks
   blist <- lapply(bars, mkBlist, fr, drop.unused.levels,
                   reorder.vars = reorder.vars)
@@ -1106,7 +1114,7 @@ quickSimulate <- function(formula, nGrps, nPerGrp, family = gaussian) {
 ##' the names of the random effects terms.
 reexpr <- function(REtrm) substitute( ~ foo, list(foo = REtrm[[2]]))
 grpfact <- function(REtrm) substitute(factor(fac), list(fac = REtrm[[3]]))
-termnms <- function(REtrms) vapply(REtrms, safeDeparse, "")
+termnms <- function(REtrms) vapply(REtrms, deparse1, "")
 
 ##' mmList(): list of model matrices
 ##' ------    called from getME() & model.matrix(*, "randomListRaw")
@@ -1275,3 +1283,59 @@ isSingular <- function(x, tol = 1e-4) {
 }
 
 lme4_testlevel <- function() if (nzchar(s <- Sys.getenv("LME4_TEST_LEVEL"))) as.numeric(s) else 1
+
+
+# stolen from car package
+# the following unexported function is useful for combining results of parallel computations
+combineLists <- function(..., fmatrix="list", flist="c", fvector="rbind", 
+                         fdf="rbind", recurse=FALSE){
+    # combine lists of the same structure elementwise
+    
+    # ...: a list of lists, or several lists, each of the same structure
+    # fmatrix: name of function to apply to matrix elements
+    # flist: name of function to apply to list elements
+    # fvector: name of function to apply to data frame elements
+    # recurse: process list element recursively
+    
+    frecurse <- function(...){
+        combineLists(..., fmatrix=fmatrix, fvector=fvector, fdf=fdf, 
+                     recurse=TRUE)
+    }
+    
+    if (recurse) flist="frecurse"
+    list.of.lists <- list(...)
+    if (length(list.of.lists) == 1){
+        list.of.lists <- list.of.lists[[1]]
+        list.of.lists[c("fmatrix", "flist", "fvector", "fdf")] <- 
+            c(fmatrix, flist, fvector, fdf)
+        return(do.call("combineLists", list.of.lists))
+    }
+    if (any(!sapply(list.of.lists, is.list))) 
+        stop("arguments are not all lists")
+    len <- sapply(list.of.lists, length)
+    if (any(len[1] != len)) stop("lists are not all of the same length")
+    nms <- lapply(list.of.lists, names)
+    if (any(unlist(lapply(nms, "!=", nms[[1]])))) 
+        stop("lists do not all have elements of the same names")
+    nms <- nms[[1]]
+    result <- vector(len[1], mode="list")
+    names(result) <- nms
+    for(element in nms){
+        element.list <- lapply(list.of.lists, "[[", element)
+#        clss <- sapply(element.list, class)
+        clss <- lapply(element.list, class)
+#        if (any(clss[1] != clss)) stop("list elements named '", element,
+        if (!all(vapply(clss, function(e) all(e == clss[[1L]]), NA)))
+          stop("list elements named '", element, "' are not all of the same class")
+        
+        is.df <- is.data.frame(element.list[[1]])
+        fn <- if (is.matrix(element.list[[1]])) fmatrix 
+        else if (is.list(element.list[[1]]) && !is.df) flist 
+        else if (is.vector(element.list[[1]])) fvector
+        else if (is.df) fdf
+        else stop("list elements named '", element, 
+                  "' are not matrices, lists, vectors, or data frames")
+        result[[element]] <- do.call(fn, element.list)
+    }
+    result
+}

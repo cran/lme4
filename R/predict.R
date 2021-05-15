@@ -16,7 +16,7 @@ isRE(~0+x) ##  "
 
 ##' Random Effects formula only
 reOnly <- function(f, response=FALSE) {
-    reformulate(paste0("(", vapply(findbars(f), safeDeparse, ""), ")"),
+    reformulate(paste0("(", vapply(findbars(f), deparse1, ""), ")"),
                 response = if(response && length(f)==3L) f[[2]])
 }
 
@@ -381,7 +381,7 @@ predict.merMod <- function(object, newdata=NULL, newparams=NULL,
 
     re.form <- reFormHack(re.form,ReForm,REForm,REform)
 
-    if (length(list(...)) > 0) warning("unused arguments ignored")
+    if (...length() > 0) warning("unused arguments ignored")
 
     type <- match.arg(type)
     if (!is.null(terms))
@@ -472,7 +472,7 @@ predict.merMod <- function(object, newdata=NULL, newparams=NULL,
             pred <- pred+offset
 
         } ## end !(random.only)
-        
+
         if (isRE(re.form)) {
             if (is.null(re.form))
                 re.form <- reOnly(formula(object)) # RE formula only
@@ -508,7 +508,7 @@ predict.merMod <- function(object, newdata=NULL, newparams=NULL,
 ## all possible LHS evaluated values ...
 simulate.formula_lhs_matrix <- simulate.formula_lhs_numeric <-
     simulate.formula_lhs_integer <- simulate.formula_lhs_factor <-
-        simulate.formula_lhs_logical <- 
+        simulate.formula_lhs_logical <-
         simulate.formula_lhs_ <-
         function(object, nsim = 1, seed = NULL,
                  newdata,
@@ -540,8 +540,8 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
                          cond.sim=TRUE,
                          ...) {
 
-    if (length(list(...)) > 0) warning("unused arguments ignored")
-    
+    if (...length() > 0) warning("unused arguments ignored")
+
     if (missing(object) && (is.null(formula) || is.null(newdata) || is.null(newparams))) {
         stop("if ",sQuote("object")," is missing, must specify all of ",
              sQuote("formula"),", ",sQuote("newdata"),", and ",
@@ -596,7 +596,7 @@ simulate.merMod <- function(object, nsim = 1, seed = NULL, use.u = FALSE,
         ## instead we have a special case in fitted()
         ## object@resp$mu <- rep(NA_real_,nrow(model.frame(object)))
     }
-    
+
     stopifnot((nsim <- as.integer(nsim[1])) > 0,
               is(object, "merMod"))
     if (!is.null(newparams)) {
@@ -881,6 +881,10 @@ gamma.shape.merMod <- function(object, ...) {
 inverse.gaussian_simfun <- function(object, nsim, ftd=fitted(object),
                                     wts = weights(object)) {
     if (any(wts != 1)) message("using weights as inverse variances")
+    if (!requireNamespace("statmod")) {
+      stop("The ",sQuote("statmod")," package must be installed ",
+           " in order to simulate inverse-Gaussian distributions")
+    }
     statmod::rinvgauss(nsim * length(ftd), mean = ftd,
                        shape= wts/sigma(object))
 }

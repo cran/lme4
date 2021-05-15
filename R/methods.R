@@ -1,20 +1,21 @@
 ## convert vcov from dpoMatrix to regular matrix (protect against car methods)
 vv <- function(x) Matrix::as.matrix(vcov(x))
 
-## minimal "influence" function (to make broom::augment_columns work)
 influence.merMod <- function(model, groups, data, maxfun=1000, do.coef = TRUE,
+                             ncores=getOption("mc.cores",1),
                              ...) {
 
     .groups <- NULL  ## avoid false-positive code checks
-    
-    if (length(list(...))>0) warning("disregarded additional arguments")
+    .vcov <- function(x) Matrix::as.matrix(vcov(x))
+
+    if (...length()>0) warning("disregarded additional arguments")
     if (!do.coef) {
         ## simple/quick/trivial results
         result <- list(hat=hatvalues(model))
         class(result) <- "influence.merMod"
         return(result)
     }
-    if (missing(data)){
+    if (missing(data)) {
         data <- getCall(model)$data
         data <- if (!is.null(data)) eval(data, parent.frame())
                 else stop("model did not use the data argument")
@@ -68,8 +69,7 @@ influence.merMod <- function(model, groups, data, maxfun=1000, do.coef = TRUE,
     control <- if (inherits(model, "lmerMod")) lmerControl(optCtrl=list(maxfun=maxfun))
         else if (inherits(model, "glmerMod")) glmerControl(optCtrl=list(maxfun=maxfun))
                                         # }
-    ## FIXME: parallelize?
-    for (del in unique.del){
+    deleteGroup <- function(del) {
         data$del <- del
         mod.1 <- suppressWarnings(update(model, data=data,
                                          subset=(.groups != del),
@@ -77,18 +77,38 @@ influence.merMod <- function(model, groups, data, maxfun=1000, do.coef = TRUE,
                                          control=control))
 
         opt <- mod.1@optinfo
-        feval[del] <- opt$feval
-        converged[del] <- opt$conv$opt == 0 && length(opt$warnings) == 0
-        fixed.1[del, ] <- fixef(mod.1)
+        feval <- opt$feval
+        converged <- opt$conv$opt == 0 && length(opt$warnings) == 0
+        fixed.1 <- fixef(mod.1)
         Vs.1 <- VarCorr(mod.1)
         vc.0 <- getME(mod.1, "sigma")^2
         for (V in Vs.1){
             vc.0 <- c(vc.0, V[lower.tri(V, diag=TRUE)])
         }
-        vc.1[del, ] <- vc.0
-
-        vcov.1[[del]] <- vv(mod.1)
+        vc.1 <- vc.0
+        vcov.1 <<- .vcov(mod.1)
+        namedList(fixed.1, vc.1, vcov.1, converged, feval)
     }
+    result <- if(ncores >= 2) {
+        message("Note: using a cluster of ", ncores, " cores")
+        cl <- parallel::makeCluster(ncores)
+        on.exit(parallel::stopCluster(cl))
+        parallel::clusterEvalQ(cl, require("lme4"))
+        parallel::clusterApply(cl, unique.del, deleteGroup)
+    } else {
+        lapply(unique.del, deleteGroup)
+    }
+    result <- combineLists(result)
+    fixed.1 <- result$fixed.1
+    rownames(fixed.1) <- unique.del
+    colnames(fixed.1) <- names(fixed)
+    vc.1 <- result$vc.1
+    rownames(vc.1) <- unique.del
+    colnames(vc.1) <- names(vc)
+    feval <- as.vector(result$feval)
+    converged <- as.vector(result$converged)
+    vcov.1 <- result$vcov.1
+    names(vcov.1) <- names(feval) <- names(converged) <- unique.del
     left <- "[-"
     right <- "]"
     if (groups == ".case") {
@@ -136,7 +156,7 @@ cooks.distance.merMod <- function(model, ...) {
     res
 }
 
-cooks.distance.influence.merMod <- function(model, ...) { 
+cooks.distance.influence.merMod <- function(model, ...) {
     db <- dfbeta(model)
     n <- nrow(db)
     p <- ncol(db)
@@ -209,16 +229,29 @@ update.merMod <- function(object, formula., ..., evaluate = TRUE) {
             call <- as.call(call)
         }
     }
-    if (evaluate) {
-        ff <- environment(formula(object))
-        pf <- parent.frame()  ## save parent frame in case we need it
-        sf <- sys.frames()[[1]]
-        tryCatch(eval(call, envir=ff),
-                 error=function(e) {
-                     tryCatch(eval(call, envir=sf),
-                              error=function(e) {
-                                  eval(call, pf)
-                              })
-                 })
-    } else call
+    if (!evaluate) return(call)
+    ## should be able to find model components somewhere in (1) formula env; (2) calling env;
+    ##  (3) parent frame [plus its parent frames]
+    ## see discusion at https://stackoverflow.com/questions/64268994/evaluate-call-when-components-may-be-scattered-among-environments
+    ## FIXME: suppressWarnings(update(model)) will give
+    ## Error in as.list.environment(X[[i]], ...) :
+    ## promise already under evaluation: recursive default argument reference or earlier problems?
+
+    ff <- environment(formula(object))
+    pf <- parent.frame()
+    sf <- sys.frames()[[1]]
+    tryCatch(eval(call,  envir = ff),  ## try formula environment
+             error = function(e) {
+               tryCatch(eval(call, envir = sf),  ## try stack frame
+                        error = function(e) {
+                          eval(call, envir=pf) ## try parent frame
+                        })
+             })
+
+    ##
+    ## combf <- tryCatch(
+    ##     do.call("c", lapply(list(ff, sf), as.list)),
+    ##     error=function(e) as.list(ff)
+    ## )
+    ## eval(call,combf, enclos=pf)
 }

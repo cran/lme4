@@ -4,7 +4,30 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1-26}{
+\section{CHANGES IN VERSION 1.1-27 (2021-05-14)}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item improvements from Lionel Henry (via
+      https://github.com/lme4/lme4/pull/587) to fix corner cases in
+      data checking; also resolves GH #601 (allFit scoping)
+      \item \code{getME(., "lower")} now has names (request of GH #609)
+      \item improved detection of \code{NaN} in internal calculations
+      (typically due to underflow/overflow or out-of-bounds linear
+      predictors from non-constraining link functions such as identity-link
+      Gamma models)
+      \item \code{influence.merMod} allows parallel computation
+      \item \code{statmod} package no longer required unless attempting
+      to simulate results from a model with an inverse Gaussian response
+    }
+  }
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item long formulas work better in \code{anova} headings (GH #611)
+    }
+  }
+}
+
+\section{CHANGES IN VERSION 1.1-26 (2020-11-30)}{
   \subsection{BUG FIXES}{
     \itemize{
       \item \code{predict}, \code{model.frame(.,fixed.only=TRUE)} work
