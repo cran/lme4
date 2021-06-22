@@ -4,7 +4,27 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1-27 (2021-05-14)}{
+\section{CHANGES IN VERSION 1.1-27.1}{
+ \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item \code{influence.merMod} allows user-specified starting parameters
+      \item cleaned up performance vignette
+    }
+ }
+ \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{cooks.distance} now works with objects computed
+      by \code{influence} method
+      \item \code{influence.merMod} now works with \code{glmer} models
+      using \code{nAGQ=0}
+      \item \code{predict} (with new data) and \code{simulate} methods
+      now work for models with >100 levels in a random effect grouping
+      variable (GH #631)
+    }
+  }    
+}
+
+\section{CHANGES IN VERSION 1.1-27 (2021-05-15)}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item improvements from Lionel Henry (via
@@ -16,7 +36,7 @@
       predictors from non-constraining link functions such as identity-link
       Gamma models)
       \item \code{influence.merMod} allows parallel computation
-      \item \code{statmod} package no longer required unless attempting
+      \item the \code{statmod} package is no longer required unless attempting
       to simulate results from a model with an inverse Gaussian response
     }
   }

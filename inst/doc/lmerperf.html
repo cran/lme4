@@ -11,7 +11,7 @@
 
 
 
-<title>lmer Performance tips</title>
+<title>lme4 performance tips</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -360,47 +360,104 @@ pre code {
 
 
 
-<h1 class="title toc-ignore">lmer Performance tips</h1>
+<h1 class="title toc-ignore">lme4 performance tips</h1>
 
 </div>
 
 
 <!--
 %\VignetteEngine{knitr::rmarkdown}
-%\VignetteIndexEntry{lmer Performance Tips}
+%\VignetteIndexEntry{lme4 performance tips}
 -->
 <pre class="r"><code>library(&quot;lme4&quot;)</code></pre>
-<div id="lme4-performance-tips" class="section level1">
-<h1>lme4 Performance Tips</h1>
-<ul>
-<li>use control = <code>[g]lmerControl(calc.derivs = FALSE)</code> to turn off the time consuming derivative calculation that is performed after the optmization is finished, e.g.</li>
-</ul>
-<pre class="r"><code>lmer(y ~ service * dept + (1|s) + (1|d), InstEval,
+<div id="overview" class="section level2">
+<h2>overview</h2>
+<p>In general <code>lme4</code>’s algorithms scale reasonably well with the number of observations and the number of random effect levels. The biggest bottleneck is in the number of <em>top-level parameters</em>, i.e. covariance parameters for <code>lmer</code> fits or <code>glmer</code> fits with <code>nAGQ</code>=0 [<code>length(getME(model, &quot;theta&quot;))</code>], covariance and fixed-effect parameters for <code>glmer</code> fits with <code>nAGQ</code>&gt;0. <code>lme4</code> does a derivative-free (by default) nonlinear optimization step over the top-level parameters.</p>
+<p>For this reason, “maximal” models involving interactions of factors with several levels each (e.g. <code>(stimulus*primer | subject)</code>) will be slow (as well as hard to estimate): if the two factors have <code>f1</code> and <code>f2</code> levels respectively, then the corresponding <code>lmer</code> fit will need to estimate <code>(f1*f2)*(f1*f2+1)/2</code> top-level parameters.</p>
+<p><code>lme4</code> automatically constructs the random effects model matrix (<span class="math inline">\(Z\)</span>) as a sparse matrix. At present it does <em>not</em> allow an option for a sparse fixed-effects model matrix (<span class="math inline">\(X\)</span>), which is useful if the fixed-effect model includes factors with many levels. Treating such factors as random effects instead, and using the modular framework (<code>?modular</code>) to fix the variance of this random effect at a large value, will allow it to be modeled using a sparse matrix. (The estimates will converge to the fixed-effect case in the limit as the variance goes to infinity.)</p>
+</div>
+<div id="setting-calc.derivs-false" class="section level2">
+<h2>setting <code>calc.derivs = FALSE</code></h2>
+<p>After finding the best-fit model parameters (in most cases using <em>derivative-free</em> algorithms such as Powell’s BOBYQA or Nelder-Mead, <code>[g]lmer</code> does a series of finite-difference calculations to estimate the gradient and Hessian at the MLE. These are used to try to establish whether the model has converged reliably, and (for <code>glmer</code>) to estimate the standard deviations of the fixed effect parameters (a less accurate approximation is used if the Hessian estimate is not available. As currently implemented, this computation takes <code>2*n^2 -  n + 1</code> additional evaluations of the deviance, where <code>n</code> is the total number of top-level parameters. Using <code>control = [g]lmerControl(calc.derivs = FALSE)</code> to turn off this calculation can speed up the fit, e.g.</p>
+<pre class="r"><code>m0 &lt;- lmer(y ~ service * dept + (1|s) + (1|d), InstEval,
      control = lmerControl(calc.derivs = FALSE))</code></pre>
-<p>Note that this will disable some of the convergence tests, as well as (for <code>glmer</code> only) making <code>lme4</code> use a less accurate approximation to compute the standard errors of the fixed effects.</p>
+<p>Benchmark results for this run with and without derivatives show an approximately 20% speedup (from 54 to 43 seconds on a Linux machine with AMD Ryzen 9 2.2 GHz processors). This is a case with only 2 top-level parameters, but the fit took only 31 deviance function evaluations (see <code>m0@optinfo$feval</code>) to converge, so the effect of the additional 7 (<span class="math inline">\(n^2 -n +1\)</span>) function evaluations is noticeable.</p>
+</div>
+<div id="choice-of-optimizer" class="section level2">
+<h2>choice of optimizer</h2>
+<p><code>lmer</code> uses the “nloptwrap” optimizer by default; <code>glmer</code> uses a combination of bobyqa (<code>nAGQ=0</code> stage) and Nelder_Mead. These are reasonably good choices, although switching <code>glmer</code> fits to <code>nloptwrap</code> for both stages may be worth a try.</p>
+<p><code>allFits()</code> gives an easy way to check the timings of a large range of optimizers:</p>
+<table>
+<thead>
+<tr class="header">
+<th align="left">optimizer</th>
+<th align="right">elapsed</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td align="left">bobyqa</td>
+<td align="right">51.466</td>
+</tr>
+<tr class="even">
+<td align="left">nloptwrap.NLOPT_LN_BOBYQA</td>
+<td align="right">53.432</td>
+</tr>
+<tr class="odd">
+<td align="left">nlminbwrap</td>
+<td align="right">66.236</td>
+</tr>
+<tr class="even">
+<td align="left">nloptwrap.NLOPT_LN_NELDERMEAD</td>
+<td align="right">90.780</td>
+</tr>
+<tr class="odd">
+<td align="left">nmkbw</td>
+<td align="right">94.727</td>
+</tr>
+<tr class="even">
+<td align="left">Nelder_Mead</td>
+<td align="right">99.828</td>
+</tr>
+<tr class="odd">
+<td align="left">optimx.L-BFGS-B</td>
+<td align="right">117.965</td>
+</tr>
+</tbody>
+</table>
+<p>As expected, bobyqa - both the implementation in the <code>minqa</code> package [<code>[g]lmerControl(optimizer=&quot;bobyqa&quot;)</code>] and the one in <code>nloptwrap</code> [<code>optimizer=&quot;nloptwrap&quot;</code> or <code>optimizer=&quot;nloptwrap&quot;, optCtrl = list(algorithm = &quot;NLOPT_LN_BOBYQA&quot;</code>] - are fastest.</p>
+</div>
+<div id="changing-optimizer-tolerances" class="section level2">
+<h2>changing optimizer tolerances</h2>
+<p>Occasionally, the default optimizer stopping tolerances are unnecessarily strict. These tolerances are specific to each optimizer, and can be set via the <code>optCtrl</code> argument in <code>[g]lmerControl</code>. To see the defaults for <code>nloptwrap</code>:</p>
+<pre class="r"><code>environment(nloptwrap)$defaultControl</code></pre>
+<pre><code>## $algorithm
+## [1] &quot;NLOPT_LN_BOBYQA&quot;
+## 
+## $xtol_abs
+## [1] 1e-08
+## 
+## $ftol_abs
+## [1] 1e-08
+## 
+## $maxeval
+## [1] 1e+05</code></pre>
+<p>In the particular case of the <code>InstEval</code> example, this doesn’t help much - loosening the tolerances to <code>ftol_abs=1e-4</code>, <code>xtol_abs=1e-4</code> only saves 2 functional evaluations and a few seconds, while loosening the tolerances still further gives convergence warnings.</p>
+</div>
+<div id="parallelizationblas" class="section level2">
+<h2>parallelization/BLAS</h2>
+<p>There are not many options for parallelizing <code>lme4</code>. Optimized BLAS does not seem to help much.</p>
+</div>
+<div id="other-packages" class="section level2">
+<h2>other packages</h2>
 <ul>
-<li><p>models that only contain random effects of the form <code>(1|f)</code> use better starting values for the optimization which in tests have cut run time in certain examples by up to 50% relative to the previous default starting values. The <code>InstEval</code> fit shown above is one such example.</p></li>
-<li><p><code>lmer</code> uses the <code>bobyqa</code> optimizer from the <code>minqa</code> package by default; <code>glmer</code> uses a combination of Nelder-Mead and <code>bobyqa</code>. If you are specifying the <code>optimx</code> package optimizer, note that by default <code>optimx</code> performs certain time-consuming processing at the beginning and end which can be turned off as follows (here we have specified the <code>&quot;nlminb&quot;</code> method but this applies to any <code>optimx</code> method):</p></li>
-</ul>
-<pre class="r"><code>library(&quot;optimx&quot;)
-lmer(y ~ service * dept + (1|s) + (1|d), InstEval,
-     control = lmerControl(optimizer = &quot;optimx&quot;, calc.derivs = FALSE,
-     optCtrl = list(method = &quot;nlminb&quot;, starttests = FALSE, kkt = FALSE)))</code></pre>
+<li><code>glmmTMB</code> may be faster than <code>lme4</code> for GLMMs with large numbers of top-level parameters, especially for negative binomial models (i.e. compared to <code>glmer.nb</code>)</li>
+<li>the <code>MixedModels.jl</code> package in Julia may be <em>much</em> faster for some problems. You do need to install Julia.
 <ul>
-<li>the <code>nloptr</code> package supports a variety of algorithms and importantly supports additional stopping criteria which can stop the optimization earlier if it believes it has reached the optimum. For many problems using these stopping criteria will result in the same solution or nearly the same solution as the default optimizer but in less time (up to 50 percent savings have been observed); however, in some cases it may stop prematurely giving suboptimal results. (In the example below omit <code>print_level</code> if output tracing is not desired and increase <code>maxeval</code> if the optimization requires more than 1000 iterations and you wish to allow it to proceed.)</li>
+<li>see <a href="https://github.com/ginettelafit/MixedModelswithRandJulia">this short tutorial</a> or <a href="https://github.com/RePsychLing/MixedModels-lme4-bridge/blob/master/using_jellyme4.ipynb">this example</a> (Jupyter notebook)</li>
+<li>the <a href="https://github.com/palday/JellyMe4.jl">JellyMe4</a> and <a href="https://github.com/mikabr/jglmm">jglmm</a> packages provide R interfaces</li>
+</ul></li>
 </ul>
-<pre class="r"><code>nlopt &lt;- function(par, fn, lower, upper, control) {
-    .nloptr &lt;&lt;- res &lt;- nloptr(par, fn, lb = lower, ub = upper, 
-        opts = list(algorithm = &quot;NLOPT_LN_BOBYQA&quot;, print_level = 1,
-        maxeval = 1000, xtol_abs = 1e-6, ftol_abs = 1e-6))
-    list(par = res$solution,
-         fval = res$objective,
-         conv = if (res$status &gt; 0) 0 else res$status,
-         message = res$message
-    )
-}
-lmer(y ~ service * dept + (1|s) + (1|d), InstEval,
-    control = lmerControl(optimizer = &quot;nloptwrap&quot;, calc.derivs = FALSE))</code></pre>
 </div>
 
 
