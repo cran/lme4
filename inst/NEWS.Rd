@@ -4,7 +4,38 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1-27.1}{
+\section{CHANGES IN VERSION 1.1-28 (2022-02-02)}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item construction of interacting factors (e.g. when \code{f1:f2} or
+      \code{f1/f2} occur in random effects terms) is now more efficient
+      for partially crossed designs
+      (doesn't try to create all combinations of \code{f1} and
+      \code{f2}) (GH #635 and #636)
+      \item \code{mkNewReTrms} is exported
+      \item singular-fit message now refers to \code{help("isSingular")}
+  rather than \code{?isSingular}
+    }
+  } %% user-visible changes
+  \subsection{TESTS}{
+    \itemize{
+      \item fix \code{all.equal(p1,p2,p3)} and similar \code{expect_equal()} thinkos
+      \item fix some tests only run when \code{lme4:::testLevel() > 1};
+      adapt tests for upcoming Matrix 1.4-1 which has \code{names(diag(<sparse>))}
+    }
+  }
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{reOnly} preserves environment (GH #654, Mikael Jagan)
+      \item backward-compatibility hooks changed to evaluate at run-time
+      (i.e., in \code{.onLoad()}) rather than at build time (GH #649)
+      \item \code{lmList} no longer warns when \code{data} is a tibble
+  (GH #645)
+    }
+  } %% bug fixes
+} %% version 1.1-28
+
+\section{CHANGES IN VERSION 1.1-27.1 (2021-06-22)}{
  \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item \code{influence.merMod} allows user-specified starting parameters
@@ -21,7 +52,7 @@
       now work for models with >100 levels in a random effect grouping
       variable (GH #631)
     }
-  }    
+  }
 }
 
 \section{CHANGES IN VERSION 1.1-27 (2021-05-15)}{
@@ -60,7 +91,7 @@
   \subsection{NEW FEATURES}{
     \itemize{
       \item \code{thpr} method for \code{densityplot()} (for plotting
-  profiles scaled as densities) gets new arguments 
+  profiles scaled as densities) gets new arguments
     }
   }
 }
@@ -119,7 +150,7 @@
 
     \item prediction now works better for factors with many levels
     (GH#467, solution by @sihoward)
-    
+
     \item minor changes to argument order in \code{[g]lmerControl};
     default tolerance for convergence checks increased from 0.001 to 0.002
     for \code{glmerControl} (now consistent with \code{lmerControl})
@@ -158,7 +189,7 @@
     \itemize{
 
       \item improved checking for missing data (@lionel-)
-      
+
       \item internal \code{checkZrank()} should be able to deal with
       (\code{Matrix} package) \code{rankMatrix()} returning \code{NA}.
 

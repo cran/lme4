@@ -8,16 +8,11 @@ S4_2list <- function(obj) {   # no longer used
    sn <- slotNames(obj)
    structure(lapply(sn, slot, object = obj), .Names = sn)
 }
-## Is now (2010-09-03) in Matrix' test-tools.R above
-## showProc.time <- local({
-##     pct <- proc.time()
-##     function() { ## CPU elapsed __since last called__
-## 	ot <- pct ; pct <<- proc.time()
-## 	cat('Time elapsed: ', (pct - ot)[1:3],'\n')
-##     }
-## })
 
-if (lme4:::testLevel() > 1) {
+if (lme4:::testLevel() <= 1)
+    quit("no")
+## otherwise *print* normally:
+
 oldOpts <- options(digits=2)
 (fm1 <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy))
 (fm1a <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy, REML = FALSE))
@@ -58,8 +53,10 @@ stopifnot(
 
 fm1ML <- refitML(fm1)
 fm2ML <- refitML(fm2)
-print(AIC(fm1ML)); print(AIC(fm2ML))
-print(BIC(fm1ML)); print(BIC(fm2ML))
+(cbind(AIC= c(m1= AIC(fm1ML), m2= AIC(fm2ML)),
+       BIC= c(    BIC(fm1ML),     BIC(fm2ML))) -> ICm)
+stopifnot(all.equal(c(ICm), c(1763.94, 1762, 1783.1, 1777.97),
+                    tolerance = 1e-5))# see 1.2e-6
 
 (fm3 <- lmer(Yield ~ 1|Batch, Dyestuff2))
 stopifnot(all.equal(coef(summary(fm3)),
@@ -335,4 +332,5 @@ m5 <- lmer(zbmi ~ (1|DA) , data = fakedat,
 m6 <- update(m5, data=na.omit(fakedat))
 stopifnot(VarCorr(m5)[["DA"]] == 0,
 	  VarCorr(m6)[["DA"]] == 0)
-} ## skip level<1
+
+showProc.time()

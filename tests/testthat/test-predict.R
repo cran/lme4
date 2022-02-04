@@ -118,9 +118,10 @@ test_that("multi-group model with new data", {
     ## new data, level-0
     p3 <- predict(fm3,newdata, re.form=NA)
     ## explicitly specify RE
-    p4 <- predict(fm3,newdata, re.form=~(1|plate)+(~1|sample))
-    p4B <- predict(fm3,newdata, re.form=~(1|sample)+(~1|plate)) ## ****
-    expect_equal(p2,p4,p4B)
+    p4 <-  predict(fm3,newdata, re.form= ~(1|plate)+(~1|sample))
+    p4B <- predict(fm3,newdata, re.form= ~(1|sample)+(~1|plate)) ## ****
+    expect_equal(p2,p4)
+    expect_equal(p4,p4B)
 
     p5 <- predict(fm3,newdata, re.form=~(1|sample))
     p6 <- predict(fm3,newdata, re.form=~(1|plate))
@@ -396,6 +397,7 @@ test_that("sparse contrasts don't mess up predict()", {
   m1 <- lmer( y ~ 1 + (1|f), data = dd)
   p1 <- predict(m1)
   p2 <- predict(m1, newdata = dd)
+  expect_identical(p1, p2)
 })
 
 } ## testLevel>1

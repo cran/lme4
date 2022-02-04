@@ -1,26 +1,3 @@
-if((Rv <- getRversion()) < "4.1.0") {
- ## not equivalent; this *forces* ... entries whereas true ...length()  aint...
- ...names <- function() eval(quote(names(list(...))), sys.frame(-1L))
- if(Rv < "4.0.0") {
-  ## NB: R >= 4.0.0's deparse1() is a generalization of our previous safeDeparse()
-  deparse1 <- function (expr, collapse = " ", width.cutoff = 500L, ...)
-      paste(deparse(expr, width.cutoff, ...), collapse = collapse)
-  ## not equivalent ...
-  ...length <- function() eval(quote(length(list(...))), sys.frame(-1L))
-  if(Rv < "3.2.1") {
-    lengths <- function (x, use.names = TRUE) vapply(x, length, 1L, USE.NAMES = use.names)
-    if(Rv < "3.1.0") {
-        anyNA <- function(x) any(is.na(x))
-        if(Rv < "3.0.0") {
-            rep_len <- function(x, length.out) rep(x, length.out=length.out)
-            if(Rv < "2.15")
-                paste0 <- function(...) paste(..., sep = '')
-        }
-    }
-  } ## R < 3.2.1
- } ## R < 4.0.0
-} ## R < 4.1.0
-rm(Rv)
 
 ## From Matrix package  isDiagonal(.) :
 all0 <- function(x) !anyNA(x) && all(!x)
@@ -69,6 +46,49 @@ colSort <- function(x) {
     unlist(iterms)
 }
 
+## copied from glmmTMB, replace by upstream utility package?
+## test formula: does it contain a particular element?
+## inForm(z~.,quote(.))
+## inForm(z~y,quote(.))
+## inForm(z~a+b+c,quote(c))
+## inForm(z~a+b+(d+e),quote(c))
+## f <- ~ a + offset(x)
+## f2 <- z ~ a
+## inForm(f,quote(offset))
+## inForm(f2,quote(offset))
+## @export
+## @keywords internal
+inForm <- function(form,value) {
+    if (any(sapply(form,identical,value))) return(TRUE)
+    if (all(sapply(form,length)==1)) return(FALSE)
+    return(any(vapply(form,inForm,value,FUN.VALUE=logical(1))))
+}
+
+## was called "replaceForm" there but replaceTerm is better
+## (decide on camelCase vs snake_case!)
+replaceTerm <- function(term,target,repl) {
+    if (identical(term,target)) return(repl)
+    if (!inForm(term,target)) return(term)
+    if (length(term) == 2) {
+        return(substitute(OP(x),list(OP=replaceTerm(term[[1]],target,repl),
+                                     x=replaceTerm(term[[2]],target,repl))))
+    }
+    return(substitute(OP(x,y),list(OP=replaceTerm(term[[1]],target,repl),
+                                   x=replaceTerm(term[[2]],target,repl),
+                                   y=replaceTerm(term[[3]],target,repl))))
+}
+
+`%i%` <- function(f1, f2, fix.order = TRUE) {
+    if (!is.factor(f1) || !is.factor(f2)) stop("both inputs must be factors")
+    f12 <- paste(f1, f2, sep = ":")
+    ## explicitly specifying levels is faster in any case ...
+    u <- which(!duplicated(f12))
+    if (!fix.order) return(factor(f12, levels = f12[u]))
+    ## deal with order of factor levels
+    levs_rank <- length(levels(f2))*as.numeric(f1[u])+as.numeric(f2[u])
+    return(factor(f12, levels = (f12[u])[order(levs_rank)]))
+}
+
 ##' @param x a language object of the form  effect | groupvar
 ##' @param frloc model frame
 ##' @param drop.unused.levels (logical)
@@ -77,16 +97,21 @@ mkBlist <- function(x,frloc, drop.unused.levels=TRUE,
                     reorder.vars=FALSE) {
     frloc <- factorize(x,frloc)
     ## try to evaluate grouping factor within model frame ...
-    if (is.null(ff <- tryCatch(eval(substitute(makeFac(fac),
-                                               list(fac = x[[3]])), frloc),
-                error=function(e) NULL)))
+    ff0 <- replaceTerm(x[[3]], quote(`:`), quote(`%i%`))
+    ff <- try(eval(substitute(makeFac(fac),
+                              list(fac = ff0)),
+                   frloc), silent = TRUE)
+    if (inherits(ff, "try-error")) {
         stop("couldn't evaluate grouping factor ",
-             deparse(x[[3]])," within model frame:",
-             " try adding grouping factor to data ",
+             deparse1(x[[3]])," within model frame:",
+             "error =",
+             c(ff),
+             " Try adding grouping factor to data ",
              "frame explicitly if possible",call.=FALSE)
+    }
     if (all(is.na(ff)))
         stop("Invalid grouping factor specification, ",
-             deparse(x[[3]]),call.=FALSE)
+             deparse1(x[[3]]),call.=FALSE)
     ## NB: *also* silently drops <NA> levels - and mkReTrms() and hence
     ##     predict.merMod() have relied on that property  :
     if (drop.unused.levels) ff <- factor(ff, exclude=NA)
@@ -96,11 +121,11 @@ mkBlist <- function(x,frloc, drop.unused.levels=TRUE,
     ##    x[[2]] is the LHS (terms) of the a|b formula
     has.sparse.contrasts <- function(x) {
       cc <- attr(x, "contrasts")
-      !is.null(cc) && inherits(cc, "Matrix")
+      !is.null(cc) && is(cc, "sparseMatrix")
     }
     any.sparse.contrasts <- any(vapply(frloc, has.sparse.contrasts, FUN.VALUE = TRUE))
-    mm.fun <- if (!any.sparse.contrasts) model.matrix else Matrix::sparse.model.matrix
-    mm <- mm.fun(eval(substitute( ~ foo, list(foo = x[[2]]))), frloc)
+    mMatrix <- if (!any.sparse.contrasts) model.matrix else sparse.model.matrix
+    mm <- mMatrix(eval(substitute( ~ foo, list(foo = x[[2]]))), frloc)
     if (reorder.vars) {
         mm <- mm[colSort(colnames(mm)),]
     }

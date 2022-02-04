@@ -1,7 +1,7 @@
 ## examples for eval lookup
 testthat::skip_on_cran()
 
-if (require(car)) {
+if (require(car, quietly = TRUE)) {
   test_that("infIndexPlot env lookup OK", {
     fm1 <- lmer(Reaction ~ Days + (Days | Subject), sleepstudy)
     ## silly test; the point is to see if this errors out with
@@ -12,7 +12,7 @@ if (require(car)) {
   })
 }
 
-if (require(rr2)) {
+if (require(rr2, quietly = TRUE)) {
   test_that("rr2 env lookup OK", {
     ## Error under alternate eval lookup
     ##     Error: bad 'data': object 'd' not found
@@ -39,14 +39,16 @@ if (require(rr2)) {
 })
 }
 
-
+## semEff::VIF() is here being applied to a previously fitted lmer
+## model (shipley.growth[[3]])
+## previous messing around with env evaluation had messed this up
 if (suppressWarnings(require(semEff))) {
   ## suppress warning about 'cov2cor' import replacement
   test_that("semEff env lookup OK", {
     ##   Error in as.list.environment(X[[i]], ...) :
     ##     promise already under evaluation: recursive default argument reference or earlier problems?
     ##   Calls: VIF ... update.merMod -> do.call -> lapply -> FUN -> as.list.environment
-  m <- Shipley.Growth[[3]]
+  m <- shipley.growth[[3]]
   expect_equal(VIF(m),
                c(Date = 6.06283840168881,
                  DD = 6.07741017455859, lat = 1.01215136160858)
