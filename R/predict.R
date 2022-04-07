@@ -42,7 +42,7 @@ reFormHack <- function(re.form,ReForm,REForm,REform) {
 
 ## '...' may contain fixed.only=TRUE, random.only=TRUE, ..
 get.orig.levs <- function(object, FUN=levels, newdata=NULL, sparse = FALSE, ...) {
-    Terms <- terms(object,...)
+    Terms <- terms(object, data = newdata, ...)
     mf <- model.frame(object, ...)
     isFac <- vapply(mf, is.factor, FUN.VALUE=TRUE)
     ## ignore response variable
@@ -293,10 +293,20 @@ mkNewReTrms <- function(object, newdata, re.form=NULL, na.action=na.pass,
 
 ##' @param x a random effect (i.e., data frame with rows equal to levels, columns equal to terms
 ##' @param n vector of new levels
-levelfun <- function(x,nl.n,allow.new.levels=FALSE) {
+levelfun <- function(x, nl.n, allow.new.levels=FALSE) {
     ## 1. find and deal with new levels
-    if (!all(nl.n %in% rownames(x))) {
-        if (!allow.new.levels) stop("new levels detected in newdata")
+
+    new.levels <- setdiff(nl.n, rownames(x))
+    if (length(new.levels)>0) {
+        if (!allow.new.levels) {
+            max.err.len <- 60
+            err.str <- paste(new.levels, collapse = ", ")
+            if (nchar(err.str) > max.err.len) {
+                err.str <- substr(err.str, 1, max.err.len)
+                err.str <- gsub(",[^,]*$", ", ...", err.str)
+            }
+            stop("new levels detected in newdata: ", err.str)
+        }
         ## create an all-zero data frame corresponding to the new set of levels ...
         nl.n.comb <- union(nl.n, rownames(x))
         newx <- as.data.frame(matrix(0, nrow=length(nl.n.comb), ncol=ncol(x),
@@ -441,9 +451,11 @@ predict.merMod <- function(object, newdata=NULL, newparams=NULL,
                 ##    attr(newdata[[j]], "contrasts") <- NULL
                 ## }
 
-                orig.fixed.levs <- get.orig.levs(object, fixed.only=TRUE)
+              orig.fixed.levs <- get.orig.levs(object, fixed.only=TRUE,
+                                               newdata = newdata)
                 mfnew <- suppressWarnings(
-                    model.frame(delete.response(terms(object,fixed.only=TRUE)),
+                    model.frame(delete.response(terms(object, fixed.only=TRUE,
+                                                      data = newdata)),
                                 newdata,
                                 na.action = na.action, xlev = orig.fixed.levs))
 
@@ -453,7 +465,7 @@ predict.merMod <- function(object, newdata=NULL, newparams=NULL,
                 ## X <- X[,colnames(X0)]
 
                 offset <- 0 # rep(0, nrow(X))
-                tt <- terms(object)
+                tt <- terms(object, data  = newdata)
                 if (!is.null(off.num <- attr(tt, "offset"))) {
                     for (i in off.num)
                         offset <- offset + eval(attr(tt,"variables")[[i + 1]], newdata)
