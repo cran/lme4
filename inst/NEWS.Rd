@@ -4,7 +4,19 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1-30}{
+\section{CHANGES IN VERSION 1.1-31}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{confint(fm, <single string>)} now works (after years of
+      being broken) again.
+      \item simulating from binomial model with a factor response, when
+  the simulated response contains only a single factor level, now works
+  (Daniel Kennedy)
+} % itemize
+ } % bug fixes
+} % version 1.1-31
+
+\section{CHANGES IN VERSION 1.1-30 (2022-07-08)}{
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
       \item \code{nl} (term names) component added to output list of
@@ -13,9 +25,9 @@
       \code{etastart}) (GH #686: not actually "user-visible" unless
       \code{getOption("warnPartialMatchDollar")} is \code{TRUE})
       \item \code{summary} method doesn't break for GLMMs other than
-  binomial/Poisson when \code{merDeriv}'s \code{vcov.glmerMod} method is
-  attached (GH #688)
-}
+      binomial/Poisson when \code{merDeriv}'s \code{vcov.glmerMod} method is
+      attached (GH #688)
+    }
   } % user-visible changes
   \subsection{BUG FIXES}{
     \itemize{

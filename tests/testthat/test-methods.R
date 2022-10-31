@@ -495,6 +495,10 @@ if (testLevel>1) {
 
   ## testLevel>1
   test_that("simulate", {
+    ## simulate() will look for data in environment of formula, find
+    ##   unmodified version of cbpp -- need to re-add observation-level factor
+    ee <- environment(formula(gm2))
+    ee$cbpp$obs <- factor(seq(nrow(ee$cbpp)))
     expect_is(simulate(gm2), "data.frame")
     expect_warning(simulate(gm2, ReForm = NA), "is deprecated")
     expect_warning(simulate(gm2, REForm = NA), "is deprecated")
@@ -865,12 +869,13 @@ if (testLevel>1) {
                  c(252.323536264131, 10.3222704729148))
   })
   cd <- cooks.distance(i1)
-  expect_equal(head(cd,2),
+  expect_equal(unname(head(cd,2)),
                c(0.016503344184025, 0.0106634053477361))
   if (parallel::detectCores()>1) {
     test_that("parallel influence", {
-      i2 <- suppressMessages(influence(fm1,ncores=2))
-      expect_equal(i1,i2)
+        i2 <- suppressMessages(influence(fm1, ncores=2))
+        ## if (packageVersion("Matrix") != "1.4.2")
+        expect_equal(i1, i2)
     })
   }
 }
