@@ -4,16 +4,38 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
+\section{CHANGES IN VERSION 1.1-32}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item \code{formatVC()} gets a new
+      optional argument \code{corr} indicating if correlations or
+      covariances should be used for vector random effects;
+      this corresponds to \code{print(<merMod>, ranef.corr = ...)} .
+      By default, it is FALSE for \code{comp = "Variance"}, fixing (GH #707).
+      \item \code{qqmath.merMod} adds a (useless) \code{data} argument
+      for S3 compatibility. Going forward, the \code{id} and
+      \code{idLabels} arguments should always be specified by name.
+      We have added code to try to detect/warn when this is not done.
+    }
+  }
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{nobars} now retains the environment of its formula
+  argument (GH #713, Mikael Jagan)
+    }
+  }
+} % 1.1-32
+
 \section{CHANGES IN VERSION 1.1-31}{
   \subsection{BUG FIXES}{
     \itemize{
       \item \code{confint(fm, <single string>)} now works (after years of
       being broken) again.
       \item simulating from binomial model with a factor response, when
-  the simulated response contains only a single factor level, now works
-  (Daniel Kennedy)
-} % itemize
- } % bug fixes
+      the simulated response contains only a single factor level, now works
+      (Daniel Kennedy)
+    }
+  } % bug fixes
 } % version 1.1-31
 
 \section{CHANGES IN VERSION 1.1-30 (2022-07-08)}{

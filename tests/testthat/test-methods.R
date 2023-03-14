@@ -117,6 +117,18 @@ test_that("lmer anova", {
                "models were not all fitted to the same size of dataset")
 })
 
+if (requireNamespace("merDeriv")) {
+    test_that("summary with merDeriv", {
+        library(merDeriv)
+        cc <- capture.output(print(summary(fm1)))
+        expect_true(any(grepl("Correlation of Fixed Effects", cc)))
+        ## WARNING, this will detach package but may not undo
+        ##  method loading ...
+        detach("package:merDeriv")
+    })
+}
+    
+
 ## Github issue #256  from Jonas Lindeløv -- issue is *not* specific for this dataset
 test_that("Two models with subset() within lmer()", {
     full3 <- lmer(y ~ kind + (1|unit), subset(d12, kind != 'boring'), REML=FALSE)
@@ -671,8 +683,10 @@ test_that("plot", {
                      recipe=as.numeric(recipe))
   fm2 <- lmer(angle ~ recipe + temp        +
                 (1|recipe:replicate), cake2, REML= FALSE)
-  expect_is(lattice::qqmath(fm2,id=0.05), "trellis")
-  expect_is(lattice::qqmath(fm2,id=0.05, idLabels=~recipe), "trellis")
+  expect_is(lattice::qqmath(fm2, id=0.05), "trellis")
+  expect_is(lattice::qqmath(fm2, id=0.05, idLabels=~recipe), "trellis")
+  expect_warning(lattice::qqmath(fm2, 0.05, ~recipe))
+  expect_warning(lattice::qqmath(fm2, 0.05))
 })
 
 context("misc")

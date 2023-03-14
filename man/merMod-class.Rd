@@ -63,13 +63,16 @@ REMLcrit(object)
 \S3method{model.matrix}{merMod}(object, type = c("fixed", "random", "randomListRaw"), ...)
 \S3method{print}{merMod}(x, digits = max(3, getOption("digits") - 3),
       correlation = NULL, symbolic.cor = FALSE,
-      signif.stars = getOption("show.signif.stars"), ranef.comp = "Std.Dev.", ...)
+      signif.stars = getOption("show.signif.stars"), 
+      ranef.comp = "Std.Dev.",
+      ranef.corr = any(ranef.comp == "Std.Dev."), ...)
 
 \S3method{summary}{merMod}(object, correlation = , use.hessian = NULL, \dots)
 \S3method{print}{summary.merMod}(x, digits = max(3, getOption("digits") - 3),
       correlation = NULL, symbolic.cor = FALSE,
       signif.stars = getOption("show.signif.stars"),
-      ranef.comp = c("Variance", "Std.Dev."), show.resids = TRUE, ...)
+      ranef.comp = c("Variance", "Std.Dev."),
+      ranef.corr = any(ranef.comp == "Std.Dev."), show.resids = TRUE, ...)
 \S3method{update}{merMod}(object, formula., ..., evaluate = TRUE)
 \S3method{weights}{merMod}(object, type = c("prior", "working"), ...)
 }
@@ -149,7 +152,9 @@ REMLcrit(object)
 	\code{"random"} giving the random effects model matrix, or
 	\code{"randomListRaw"} giving a list of the raw random effects model
 	matrices associated with each random effects term.}
-     }}
+  }}
+  \item{ranef.corr}{(logical) print correlations (rather than covariances) of
+    random effects?}
   \item{\dots}{potentially further arguments passed from other methods.}
 }
 \section{Objects from the Class}{
@@ -321,6 +326,10 @@ The following S3 methods with arguments given above exist (this list is currentl
 \examples{
 showClass("merMod")
 methods(class="merMod")## over 30  (S3) methods available
+
+m1 <- lmer(Reaction ~ Days + (Days | Subject), sleepstudy)
+print(m1, ranef.corr = TRUE)   ## print correlations of REs
+print(m1, ranef.corr = FALSE)  ## print covariances of REs
 
 ## -> example(lmer)  for an example of vcov.merMod()
 }
