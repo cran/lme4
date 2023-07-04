@@ -1836,8 +1836,8 @@ print.summary.merMod <- function(x, digits = max(3, getOption("digits") - 3),
         ## }
         if(is.null(correlation)) { # default
             cor.max <- getOption("lme4.summary.cor.max")
-            correlation <- hasCor && p <= cor.max
-            if(!correlation && p > cor.max) {
+            correlation <- hasCor && (isTRUE(x$corrSet) || p <= cor.max)
+            if(!correlation && p > cor.max && is.na(x$corrSet)) {
                 nam <- deparse(substitute(x))
                 if(length(nam) > 1 || nchar(nam) >= 32) nam <- "...."
                 message(sprintf(paste(
@@ -2406,21 +2406,27 @@ summary.merMod <- function(object,
     structure(list(methTitle = methTitle(dd),
                    objClass = class(object),
                    devcomp = devC,
-                   isLmer = is(resp, "lmerResp"), useScale = useSc,
+                   isLmer = is(resp, "lmerResp"),
+                   useScale = useSc,
                    logLik = llAIC[["logLik"]],
-                   family = famL$family, link = famL$link,
+                   family = famL$family,
+                   link = famL$link,
                    ngrps = ngrps(object),
-                   coefficients = coefs, sigma = sig,
+                   coefficients = coefs,
+                   sigma = sig,
                    ## explicitly call method to avoid getting m
                    ## essed up by merDeriv's vcov method
                    ##  (which doesn't assign a VC attribute)
-
                    vcov = vcov.merMod(object, correlation = correlation, sigm = sig),
                    varcor = varcor, # and use formatVC(.) for printing.
-                   AICtab = llAIC[["AICtab"]], call = object@call,
+                   AICtab = llAIC[["AICtab"]],
+                   call = object@call,
                    residuals = residuals(object,"pearson",scaled = TRUE),
                    fitMsgs = .merMod.msgs(object),
-                   optinfo = object@optinfo
+                   optinfo = object@optinfo,
+                   ## put corrSet **last** so we don't mess up people relying on numeric indexing
+                   ##  of elements (!!)
+                   corrSet = if(!missing(correlation)) correlation else NA # TRUE/FALSE (when set) / NA
                    ), class = "summary.merMod")
 }
 

@@ -4,17 +4,37 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 1.1-33}{
+\section{CHANGES IN VERSION 1.1-34}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{summary(<merMod>)} now records if \code{correlation} was
+      specified explicitly and to what; and its \code{print()} method takes it
+      into account; notably  summary(<merMod>, correlation=TRUE) will by
+      default print the correlation (matrix of the fixed effects) fixing GH #725
+    }
+  } % bug fixes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item \code{refit} gains a \code{newweights} argument
+    }
+  } % new features
+} % 1.1-34
+
+\section{CHANGES IN VERSION 1.1-33 (2023-04-25)}{
   \subsection{BUG FIXES}{
     \itemize{
       \item a boundary check could fail occasionally when large data
       produced an NA value in a computed gradient; now warns instead
       (GH #719, Mathias Ambuehl)
+
       \item \code{allFit} now works better when \code{optimx} and
       \code{dfoptim} packages are not installed (GH #724)
+
       \item \code{refit} reset internal degrees of freedom component
       incorrectly for REML fits (resulted in incorrect reported REML criteria,
       but otherwise harmless: side effect of GH #678)
+
+
     }
   } % bug fixes
   \subsection{NEW FEATURES}{
