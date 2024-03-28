@@ -471,3 +471,22 @@ test_that("prediction standard error", {
   expect_equal(p7, p9)  
   
 })
+
+test_that("NA + re.form = NULL + simulate OK (GH #737)", {
+    d <- lme4::sleepstudy
+    d$Reaction[1] <- NA
+    fm1 <- lmer(Reaction ~ Days + (Days | Subject), d)
+    ss <- simulate(fm1, seed = 101, re.form = NULL)[[1]]
+    expect_equal(c(head(ss)),
+                   c(266.139101412856, 308.148180398426,
+                     296.081377893883, 338.367909016478, 
+                     360.294339946214, 401.91050930589))
+    ss0 <- simulate(fm1, seed = 101, re.form = NA)[[1]]
+    expect_equal(length(ss), length(ss0))
+    ## correct dimensions with na.exclude as well ?
+    fm2 <- update(fm1, na.action = na.exclude)
+    ss2 <- simulate(fm2, seed = 101, re.form = NULL)[[1]]
+    ss3 <- simulate(fm2, seed = 101, re.form = NA)[[1]]
+    expect_equal(length(ss2), nrow(d))
+    expect_equal(length(ss3), nrow(d))
+})
