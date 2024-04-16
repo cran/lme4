@@ -1,5 +1,5 @@
 2e5b726f280690ac96aa8279ec72c848 *ChangeLog
-5a42e3f361584cc61bfd739ee49ab778 *DESCRIPTION
+48bd136212d63adb17395e9dbdeab69f *DESCRIPTION
 c75721978ea4c8363ac3575f9c73ab5b *LICENSE.note
 336fd453d19dab80f73d9c632a6317ce *NAMESPACE
 5fe0f470bd4d5996c4f2e6bc46fb6aa6 *R/AllClass.R
@@ -29,8 +29,8 @@ e057bf248efa620aa2c5c7ad122cd98d *R/sysdata.rda
 47767026906d97fffa57f3794d87e462 *R/utilities.R
 6eedd85037874069e2d5564c3cd19206 *R/vcconv.R
 0ba27624906e58040c9d6015ef2e9a99 *R/zzz.R
-f61db891eb928123aba4412ca322f508 *build/partial.rdb
-c737b951e182ddc13d7be294ab3f3890 *build/vignette.rds
+b52aabe9a2757fc86742763db9dafc9b *build/partial.rdb
+7bc318bd78805986c1c56819f9e1bb12 *build/vignette.rds
 7b16a3ab29bb34e105b8edd5333ae95d *data/Arabidopsis.rda
 8cf70603a6660d10c170d9e7159c2951 *data/Dyestuff.rda
 2f1c751f7de40daa241601f64726c9e0 *data/Dyestuff2.rda
@@ -43,16 +43,16 @@ c80348b333f026d7fe927398894c6f34 *data/cake.rda
 28d1ffd0a450108d274431f7335e859d *data/grouseticks.rda
 3eb17ae1551f7a264c4214460041908c *data/sleepstudy.rda
 8c81a4cdd4cd634e4102999545422b7e *inst/CITATION
-6755967f882f3387ea5cf7109c986635 *inst/NEWS.Rd
+b9eaaa5959fca5a4f9cb0e0414a1ab2f *inst/NEWS.Rd
 7ea2caa8013f7ffc6e4c333fa1db1534 *inst/doc/PLSvGLS.R
 f84eeec527edf425f54bb4754e23da61 *inst/doc/PLSvGLS.Rnw
-f984d2e6679f110fb1014cdb0190e763 *inst/doc/PLSvGLS.pdf
+7ede583e070256b77f799c84ba263f78 *inst/doc/PLSvGLS.pdf
 8734899d5f18360ec1ea4ea4e5e3d59e *inst/doc/Theory.R
 4f0f087495b31139690072d1aca33c00 *inst/doc/Theory.Rnw
-025cd0e23122f9026ccd4359e357e5a0 *inst/doc/Theory.pdf
+44be7792b135dba8c6922f389069b7c1 *inst/doc/Theory.pdf
 87a9f507422583f5bf15d93d6661e629 *inst/doc/lmer.R
 cc65fb9e5c6b9aab891eea75cd11a2ac *inst/doc/lmer.Rnw
-06e4d21896f0c7a5d07fb2517d407bde *inst/doc/lmer.pdf
+4085ebb77bb3c37a479c2b10bb0119e1 *inst/doc/lmer.pdf
 0da36551f5dbbe4f704ead467fc19dbf *inst/doc/lmerperf.R
 ecde401260019bb51fa974bcda985f37 *inst/doc/lmerperf.Rmd
 88ff2257d08bd8a6ac4229dd10321284 *inst/doc/lmerperf.html
@@ -182,7 +182,7 @@ d36ee08626d65f230c54f0e26fe19284 *src/Makevars
 2ad2fef6fff1b12bd60f5cb4c8646aaa *src/external.cpp
 29f517a9f513c55cb34ede9d56604895 *src/glmFamily.cpp
 fd71b2c3113a00e013aa1818b5e316a3 *src/glmFamily.h
-f30fdb8c2335dfee361ccee0e3fcc848 *src/lme4CholmodDecomposition.h
+6479d79445f25040d13ea9bde81920a9 *src/lme4CholmodDecomposition.h
 32c841db506eca816f556d7afa42dff6 *src/optimizer.cpp
 e84ed1741b657d321391c2e98b24083b *src/optimizer.h
 6f8be5f77ddf46abfee81e11a95a9201 *src/predModule.cpp
@@ -219,7 +219,6 @@ fd186269bb93bbac5dd07ec81ea3ec2f *tests/lmList-tst.R
 1d2d60b8842fae30078e428d29c253d6 *tests/lme4_nlme.R
 0e1a2e95602e958f00b0802afd210dee *tests/lmer-0.R
 deb3ea8a35d4a647eae7d7579acef6f3 *tests/lmer-1.R
-df7155d2067fbd1459a33431a6b89b09 *tests/lmer-1.Rout.save
 d01e36cf014c17a45a448da442fec402 *tests/lmer-conv.R
 3626933bc63874cc482b23542cfb1325 *tests/lmer2_ex.R
 b14e84bbdf9344cb4514151d99d513d4 *tests/methods.R
@@ -228,7 +227,6 @@ dc038e000b1d664c0c3fc1afa713dd73 *tests/modFormula.R
 28829ec0b0f7434390fd2801805e095c *tests/nbinom.R
 c44581c823bf500428f485bb6d02ea84 *tests/nlmer-conv.R
 4182acd6af58c584c25d745f98d3491f *tests/nlmer.R
-e79341288e4dbbba2380bd36b5b63473 *tests/nlmer.Rout.save
 b7265658c2f03aef75e1ae2fe1617fd2 *tests/offset.R
 f3f4fe4f43b835de94f56df46940c87e *tests/optimizer.R
 243906ce404ce78f0e54487f9f128419 *tests/polytomous.R
