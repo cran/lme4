@@ -205,7 +205,7 @@ mkNewReTrms <- function(object, newdata, re.form=NULL, na.action=na.pass,
             ##  be used later ...
             pv <- attr(tt,"predvars")
             for (i in 2:(length(pv))) {
-                missvars <- setdiff(all.vars(pv[[i]]),all.vars(re.form))
+                missvars <- setdiff(all.vars(pv[[i]]), all.vars(re.form))
                 for (mv in missvars) {
                     newdata.NA[[mv]] <- NA
                 }
@@ -217,8 +217,9 @@ mkNewReTrms <- function(object, newdata, re.form=NULL, na.action=na.pass,
             model.frame(tt, newdata.NA, na.action=na.pass, xlev=orig.random.levs))
         ## restore contrasts (why???)
         ## find *factor* variables involved in terms (left-hand side of RE formula): reset their contrasts
-        termvars <- unique(unlist(lapply(findbars(formula(object,random.only=TRUE)),
-                                  function(x) all.vars(x[[2]]))))
+        ## only interested in components in re.form, not al REs
+        ff <- re.form  ## was: formula(object,random.only=TRUE)
+        termvars <- unique(unlist(lapply(findbars(ff), function(x) all.vars(x[[2]]))))
         for (fn in Reduce(intersect, list(
                               names(orig.random.cntr), termvars, names(rfd)))) {
             ## a non-factor grouping variable *may* sneak in here via simulate(...)
@@ -502,8 +503,12 @@ predict.merMod <- function(object, newdata=NULL, newparams=NULL,
             newRE <- mkNewReTrms(object, rfd, re.form, na.action=na.action,
                                  allow.new.levels=allow.new.levels)
             REvals <- base::drop(as(newRE$b %*% newRE$Zt, "matrix"))
-            if (class(fit.na.action) %in% c("omit", "exclude") && length(fit.na.action)>0) {
-                REvals <- REvals[-fit.na.action]
+            ## only needed if called as simulation? NAs sometimes excluded within mkNewReTrms ...
+            if (length(pred) != length(REvals)) {
+                if (!class(fit.na.action) %in% c("omit", "exclude") && length(fit.na.action)>0) {
+                    stop("fixed/RE pred length mismatch")
+                }                    
+                 REvals <- REvals[-fit.na.action]
             }
             pred <- pred + REvals
             if (random.only) {
@@ -934,7 +939,7 @@ Gamma_simfun <- function(object, nsim, ftd=fitted(object),
     if (any(wts != 1)) message("using weights to scale shape parameter")
     ## used to use gamma.shape(), but sigma() is more general
     ## (wouldn't work *outside* of the merMod context though)
-    shape <- sigma(object)*wts
+    shape <- 1/sigma(object)^2*wts
     rgamma(nsim*length(ftd), shape = shape, rate = shape/ftd)
 }
 

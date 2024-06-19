@@ -244,7 +244,10 @@ plot.merMod <-
     dots <- list(...)
     args <- if (length(dots) > 0) dots else list()
     ## appending object to data, and adding observation-number variable
-    data <- as.list(c(as.list(cbind(data,.obs=seq(nrow(data)))), . = list(object)))
+    if (length(data) > 0) {
+        data <- cbind(data, .obs = seq(nrow(data)))
+    }
+    data <- as.list(c(as.list(data), . = list(object)))
     ## covariate - must always be present
     covF <- getCovariateFormula(form)
     .x <- eval(covF[[2]], data)
@@ -434,8 +437,6 @@ qqmath.merMod <- function(x, data = NULL, id=NULL, idLabels=NULL, ...) {
     if (!is.null(data)) {
         idLabels <- id
         id <- data
-        print(id)
-        print(idLabels)
         warning("qqmath.merMod takes ", sQuote("data"), "as its ",
                 "first argument for S3 method compatibility: ",
                 "in the future, please ",
