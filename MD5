@@ -1,5 +1,5 @@
 2e5b726f280690ac96aa8279ec72c848 *ChangeLog
-d9d628cd4fc0339e9f833d6bd546e027 *DESCRIPTION
+10b5b06e21d7d3a4404f3ddf7a869aa5 *DESCRIPTION
 c75721978ea4c8363ac3575f9c73ab5b *LICENSE.note
 336fd453d19dab80f73d9c632a6317ce *NAMESPACE
 afd711c6c33c483ebe5399e100dc0b13 *R/AllClass.R
@@ -20,7 +20,7 @@ fce30fededd71e3c542daf4f1a12f04c *R/nbinom.R
 e81eeaea1aed45340dc7c174f1d70291 *R/optimizer.R
 86314743a4dfee67e59594518bb09360 *R/plot.R
 8d2664f50aa1a47013591cf615bba911 *R/plots.R
-84dd73b2f2f98a15c7575067061ea5fd *R/predict.R
+5457209a8147211706bb58ab6481d910 *R/predict.R
 859f74c7d3a88475c790ac182b79eba6 *R/profile.R
 b0c02d0440df7255bfebefc55ecf9881 *R/rePCA.R
 301c7dc5694f9591adf7c237c0f1284e *R/simulate.formula.R
@@ -43,16 +43,16 @@ c80348b333f026d7fe927398894c6f34 *data/cake.rda
 28d1ffd0a450108d274431f7335e859d *data/grouseticks.rda
 3eb17ae1551f7a264c4214460041908c *data/sleepstudy.rda
 8c81a4cdd4cd634e4102999545422b7e *inst/CITATION
-a49e1752d7e1e98b6d7124af1812ba4f *inst/NEWS.Rd
+ecdace8304705fd5de0c6db4f79a5b97 *inst/NEWS.Rd
 7ea2caa8013f7ffc6e4c333fa1db1534 *inst/doc/PLSvGLS.R
 f84eeec527edf425f54bb4754e23da61 *inst/doc/PLSvGLS.Rnw
-7fd370793f541b3f0ec1da815df778d1 *inst/doc/PLSvGLS.pdf
+372032d9e0c41ca78c77036e5c0f24cf *inst/doc/PLSvGLS.pdf
 8734899d5f18360ec1ea4ea4e5e3d59e *inst/doc/Theory.R
 4f0f087495b31139690072d1aca33c00 *inst/doc/Theory.Rnw
-a2f67436d4756e3fd0d985ff7aa64b3f *inst/doc/Theory.pdf
-f7ccdef7a9ecb85c64f3f318a62a84a9 *inst/doc/lmer.R
+3f2f8a143b368f2612b3260b7fe158ff *inst/doc/Theory.pdf
+e02382c0dd2485db6aa5517df5192425 *inst/doc/lmer.R
 abece788c951856256aa6f9251276c73 *inst/doc/lmer.Rnw
-7425e29ec361f7a82664ef102420c085 *inst/doc/lmer.pdf
+19ef2367019117ba83987a87cda3e1d1 *inst/doc/lmer.pdf
 0da36551f5dbbe4f704ead467fc19dbf *inst/doc/lmerperf.R
 ecde401260019bb51fa974bcda985f37 *inst/doc/lmerperf.Rmd
 88ff2257d08bd8a6ac4229dd10321284 *inst/doc/lmerperf.html
@@ -94,7 +94,6 @@ f3e1a564e23849bf8db38440b543c944 *inst/testdata/sbTobb.Rdata
 dca0ccff30089606e068a486f5b51d67 *inst/testdata/tprfm1.RData
 0eec27a5b9eab6d5b3d190cd37ec6634 *inst/testdata/trees513.R
 145eb2c3cf4bac44b217618a0525e0e4 *inst/testdata/trees513.RData
-eeb7607787b40c58c2db9685e5939eeb *inst/tinytest/test_lme4.R
 9873b3dc101b4bf520d632f42bc04a80 *man/Arabidopsis.Rd
 e763b611e70a7697cb6fe31b0561aaac *man/Dyestuff.Rd
 e2529dc3f21a20ede6b95e15e1f0db92 *man/GHrule.Rd
@@ -129,7 +128,7 @@ b595fec321f7ca73ed88b843126baeef *man/glmFamily.Rd
 a2f6e4133eff7b2288bcc20c01ca3c29 *man/glmer.nb.Rd
 36383a0393e3f8f285f7c1d3fe04160b *man/glmerLaplaceHandle.Rd
 dc26eb9f86b5056b90e2e90d531490c1 *man/golden-class.Rd
-f54fec64c989dd817c76d23f4e6b4a52 *man/grouseticks.Rd
+c1544d416f87de6777ee2281e5f8fc71 *man/grouseticks.Rd
 c4236aab077a04046402a23b86635a7b *man/hatvalues.merMod.Rd
 a68e2467e44316a346f4daf8bfba3e31 *man/influence.merMod.Rd
 3af905a45dfae46c1eda3ac1be6dd36c *man/isNested.Rd
@@ -142,7 +141,7 @@ d9e3572637ffe3760c4a531f0a9828c0 *man/lmResp.Rd
 5be68d6000e53966c5c7fbb470609929 *man/lme4-package.Rd
 36b814d230675b6fedced4d5aeaa8840 *man/lme4_testlevel.Rd
 be220de1fca5446cbdb36a122f44d7e8 *man/lmer.Rd
-77788f83cfbfe20a25e67a7e7684f288 *man/lmerControl.Rd
+96a63c1a6133cf3f9fb27586e9844f9f *man/lmerControl.Rd
 f299cea8d4a1b715d97ffa5e672507f9 *man/merMod-class.Rd
 67daa8376c15b9f3eebf77f83cd5b6c7 *man/merPredD-class.Rd
 2c4a82fb8f0e4d1d3a5f754c242ccee5 *man/merPredD.Rd
@@ -151,7 +150,7 @@ ec1d3b36d1ae7b26ea8062b25097f9f7 *man/mkReTrms.Rd
 0b8a7c8eb451e46d3c2f589fe257faab *man/mkRespMod.Rd
 97cd5db2899f0c8587e1205df415cd21 *man/mkSimulationTemplate.Rd
 c061c134315aa205c8f412e3114e6617 *man/mkVarCorr.Rd
-6b8a3c579a205ea8a59e5f9c028cc5ad *man/modular.Rd
+96753925f2baeaebd6923a2a70404914 *man/modular.Rd
 1afe7f8a3c84ec0759662f5c8718c2ae *man/namedList.Rd
 b6a57f539f0628c52c83ec28a3a1e1c2 *man/ngrps.Rd
 b31bc40c7d30f7c7661f74f4ae6529b4 *man/nlformula.Rd
@@ -159,8 +158,8 @@ b31bc40c7d30f7c7661f74f4ae6529b4 *man/nlformula.Rd
 9d0550af0e7bca952d48bc8e25535e6e *man/nloptwrap.Rd
 f6ab89312ba0f6e6312c4ad7a2a91eaf *man/nobars.Rd
 6aa1db26560fca6afc99a6c988441f5b *man/plot.merMod.Rd
-bf66eb13efc52a06cb2d0772db8adc4e *man/plots.thpr.Rd
-b1f099dbf65868c9149b42ddc0940058 *man/predict.merMod.Rd
+ca94cfa042f96d97bf2639c88f508f63 *man/plots.thpr.Rd
+6b6b81db97d494acb567f47f934ce3ce *man/predict.merMod.Rd
 f672d2c45e719f937dc9ce3c98075583 *man/profile-methods.Rd
 64d299749bf5c9a8ed4889a14edd0dad *man/pvalues.Rd
 b88b10a913d43a8c2625b03185c48c09 *man/ranef.Rd
@@ -169,10 +168,10 @@ f1619455da67c1fe4ebb48da69d41663 *man/rePos-class.Rd
 24efcd0c579045d6aa2b74818a3b3e62 *man/rePos.Rd
 5f0d75e8351fd01aea599bf45d233292 *man/refit.Rd
 fc1dffbf663939a2c12d6a64ab2488a1 *man/refitML.Rd
-3ff721cd182a7592f8b0d0488a4934e7 *man/residuals.merMod.Rd
+dbe8547e6c2911509a4310514b506803 *man/residuals.merMod.Rd
 a124183851ef5f2b787f310dcd53436e *man/sigma.Rd
 ac312d5990e96c04a3bef4613ab693a6 *man/simulate.formula.Rd
-2634e59be2d2b111be165c68847ebaf1 *man/simulate.merMod.Rd
+3d982cc9e00e4680300ee6e80fbe33bd *man/simulate.merMod.Rd
 beeed79153193c18bb44d318d3b41652 *man/sleepstudy.Rd
 74597be45b8bc7612dfd345902340bfb *man/subbars.Rd
 a6be665c1a6b719b2ef02a30d1d16068 *man/troubleshooting.Rd
@@ -232,8 +231,8 @@ b7265658c2f03aef75e1ae2fe1617fd2 *tests/offset.R
 f3f4fe4f43b835de94f56df46940c87e *tests/optimizer.R
 243906ce404ce78f0e54487f9f128419 *tests/polytomous.R
 d43a3e94c09040bc3ea42155f9ac3e11 *tests/prLogistic.R
-19e545e54e714fcfacdf54b379856d6d *tests/predict_basis.R
-92c0965fdb5d59d8308c686f583eeadf *tests/predsim.R
+b9add26a39ae6e9b7640010a25ff4ce0 *tests/predict_basis.R
+bd056d4618a5af1874bbd14e36f99ea9 *tests/predsim.R
 962e548f367fac7d7ac6f6a74fd0aac8 *tests/priorWeights.R
 f66f45c2d7efe66c1a899ac004c6cc7c *tests/priorWeightsModComp.R
 851ab07ade90afa06519d5b6524f9c2c *tests/profile-tst.R
@@ -264,7 +263,7 @@ a21af6bea8c9606475a02187d8de558b *tests/testthat/test-methods.R
 7d3cc50d5f8999d96bb6ae0338f0bb1c *tests/testthat/test-nbinom.R
 45ef0bfa99cdf9d184bf91a67f945c97 *tests/testthat/test-nlmer.R
 c5a2a10463306115ca7aa399dbcc0fb6 *tests/testthat/test-oldRZXfailure.R
-8c5e3a118fb0a825ae21f4107529df36 *tests/testthat/test-predict.R
+20394c3afdc7775716c4ec51534bd386 *tests/testthat/test-predict.R
 3e2b37cdca465ac1121000fa1b73fda7 *tests/testthat/test-ranef.R
 47463f8098d8db9155e9d8d98aa3f330 *tests/testthat/test-rank.R
 32cc5a87610206067aecf0c6282d7865 *tests/testthat/test-resids.R
