@@ -1595,7 +1595,9 @@ residuals.glmResp <- function(object, type = c("deviance", "pearson",
     mu <- object$mu
     switch(type,
            deviance = {
-               d.res <- sqrt(object$devResid())
+               ## protect against slightly negative resids
+               ## (GH 812)
+               d.res <- sqrt(pmax(0,object$devResid()))
                ifelse(y > mu, d.res, -d.res)
            },
            pearson = object$wtres,
@@ -2139,9 +2141,13 @@ NULL
 ## Extract the conditional variance-covariance matrix of the fixed-effects
 ## parameters
 vcov.merMod <- function(object, correlation = TRUE, sigm = sigma(object),
-                        use.hessian = NULL, ...)
+                        use.hessian = NULL, full = FALSE, ...)
 {
 
+    ## FIXME: warn/message if GLMM (RX-computation is approximate),
+    ## if other vars are specified?
+    if (full) return(vcov_full(object, sigm))
+    
     hess.avail <-
          ## (1) numerical Hessian computed?
         (!is.null(h <- object@optinfo$derivs$Hessian) &&
@@ -2210,6 +2216,36 @@ vcov.merMod <- function(object, correlation = TRUE, sigm = sigma(object),
         rr@factors$correlation <-
             if(!is.na(sigm)) as(rr, "corMatrix") else rr # (is NA anyway)
     rr
+}
+
+vcov_full <- function(object, s = sigma(object)) {
+
+    L <- getME(object, "L")
+    RX <- getME(object, "RX")
+    RZX <- getME(object, "RZX")
+    Lambdat <- getME(object, "Lambdat")
+
+    RXtinv <- solve(t(RX))
+    LinvLambdat <- solve(L, Lambdat, system = "L")
+    Minv <- s * rbind(
+                    cbind(LinvLambdat,
+                          Matrix(0, nrow = nrow(L), ncol = ncol(RX))),
+                    cbind(-RXtinv %*% t(RZX) %*% LinvLambdat, RXtinv)
+                )
+    Cmat <- crossprod(Minv)
+
+    ## do we have machinery elsewhere for this (names for b-vector) ?
+    ## should this be extracted into a utility f'n (e.g. for getME(., "b") ?
+    fix_nms <- colnames(object@pp$X)
+    rr <- ranef(object, condVar = FALSE)
+
+    gnms <- function(x) c(outer(colnames(x), rownames(x), function(x,y) paste(y, x, sep = ".")))
+    rnms <- lapply(rr, gnms)
+    re_nms <- unlist(Map(function(n, r) paste(n, r, sep = "."), names(rr), rnms))
+
+    all_nms <- unname(c(re_nms, fix_nms))
+    dimnames(Cmat) <- list(all_nms, all_nms)
+    return(Cmat)
 }
 
 ##' @importFrom stats vcov
