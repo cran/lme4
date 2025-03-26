@@ -1,5 +1,5 @@
 2e5b726f280690ac96aa8279ec72c848 *ChangeLog
-a1522643b7005dc5097a1bcf14526a7f *DESCRIPTION
+31c7a7a9b0823731a6fc4d5ee7db3722 *DESCRIPTION
 c75721978ea4c8363ac3575f9c73ab5b *LICENSE.note
 85ee104cd3c16e444ad0371fc1beed3f *NAMESPACE
 afd711c6c33c483ebe5399e100dc0b13 *R/AllClass.R
@@ -11,7 +11,7 @@ f6c82f2f97193a78e485bc127598fffd *R/allFit.R
 6cdc50a61ae595a0694fecbd5ac4c3d9 *R/deriv.R
 977d9b9359bf2288205f43ce6ec2a4f8 *R/error_factory.R
 29b6afe495b5ece2876fae4437028406 *R/lmList.R
-8bbfd61507967e2024de3e5083e9a104 *R/lmer.R
+168ad63d770540661016dda1b40384a5 *R/lmer.R
 cc1cd19af8888f6c89f772b86419a788 *R/lmerControl.R
 4bde5438bd9ddba5d3cd26e5a43a494b *R/mcmcsamp.R
 552b034ea37bd4a89141ae77be462ab3 *R/methods.R
@@ -20,7 +20,7 @@ fce30fededd71e3c542daf4f1a12f04c *R/nbinom.R
 e81eeaea1aed45340dc7c174f1d70291 *R/optimizer.R
 86314743a4dfee67e59594518bb09360 *R/plot.R
 8d2664f50aa1a47013591cf615bba911 *R/plots.R
-db69f4250ccf46c51e3763cf1d5434d9 *R/predict.R
+5b9ddf002b624928a884063feb67c18d *R/predict.R
 859f74c7d3a88475c790ac182b79eba6 *R/profile.R
 b0c02d0440df7255bfebefc55ecf9881 *R/rePCA.R
 301c7dc5694f9591adf7c237c0f1284e *R/simulate.formula.R
@@ -29,8 +29,8 @@ e057bf248efa620aa2c5c7ad122cd98d *R/sysdata.rda
 41b03bda4bbf37258ece5fb057b797d9 *R/utilities.R
 6eedd85037874069e2d5564c3cd19206 *R/vcconv.R
 0ba27624906e58040c9d6015ef2e9a99 *R/zzz.R
-b52aabe9a2757fc86742763db9dafc9b *build/partial.rdb
-7bc318bd78805986c1c56819f9e1bb12 *build/vignette.rds
+533839446f70bde34a1050627ce80586 *build/partial.rdb
+b76987590ea23bf9d7de12efa1af06c8 *build/vignette.rds
 7b16a3ab29bb34e105b8edd5333ae95d *data/Arabidopsis.rda
 8cf70603a6660d10c170d9e7159c2951 *data/Dyestuff.rda
 2f1c751f7de40daa241601f64726c9e0 *data/Dyestuff2.rda
@@ -43,19 +43,19 @@ c80348b333f026d7fe927398894c6f34 *data/cake.rda
 28d1ffd0a450108d274431f7335e859d *data/grouseticks.rda
 3eb17ae1551f7a264c4214460041908c *data/sleepstudy.rda
 8c81a4cdd4cd634e4102999545422b7e *inst/CITATION
-43339e0c90139a04bf2c1fc7faa383c7 *inst/NEWS.Rd
+513f3337a2049a610e8c70ad90b5a97b *inst/NEWS.Rd
 7ea2caa8013f7ffc6e4c333fa1db1534 *inst/doc/PLSvGLS.R
 f84eeec527edf425f54bb4754e23da61 *inst/doc/PLSvGLS.Rnw
-c0ac5918ea7e6b504d893a03e3813583 *inst/doc/PLSvGLS.pdf
+3e9746a8177e1c713fe829980c6c9a15 *inst/doc/PLSvGLS.pdf
 8734899d5f18360ec1ea4ea4e5e3d59e *inst/doc/Theory.R
 4f0f087495b31139690072d1aca33c00 *inst/doc/Theory.Rnw
-a2bb124988a988379cc953727a59d697 *inst/doc/Theory.pdf
-393c8deb8e038fc4b785764c97f2db53 *inst/doc/lmer.R
+58f89d526d6483b501d4947015473489 *inst/doc/Theory.pdf
+93f238ec7b74da27501505bf5141bcf7 *inst/doc/lmer.R
 abece788c951856256aa6f9251276c73 *inst/doc/lmer.Rnw
-966ea74f440bfbadb4b37a862024f5f0 *inst/doc/lmer.pdf
+fbebff6374324d28ffa5a3b98d71f228 *inst/doc/lmer.pdf
 e9ab0fb8b5c0d7d8df0b0be3dda381d0 *inst/doc/lmerperf.R
 ecde401260019bb51fa974bcda985f37 *inst/doc/lmerperf.Rmd
-81ed432c59bca55675a5e694b5d110b0 *inst/doc/lmerperf.html
+88ff2257d08bd8a6ac4229dd10321284 *inst/doc/lmerperf.html
 b63ce45d087ac1ac15e011620990b796 *inst/testdata/Johnson.rda
 0ad4852aad9639f10ad13606ecf09908 *inst/testdata/SO_sep25.RData
 56173e2cb895c04358bf1bf81bab1495 *inst/testdata/Thailand.rda
@@ -94,6 +94,7 @@ f3e1a564e23849bf8db38440b543c944 *inst/testdata/sbTobb.Rdata
 dca0ccff30089606e068a486f5b51d67 *inst/testdata/tprfm1.RData
 0eec27a5b9eab6d5b3d190cd37ec6634 *inst/testdata/trees513.R
 145eb2c3cf4bac44b217618a0525e0e4 *inst/testdata/trees513.RData
+eeb7607787b40c58c2db9685e5939eeb *inst/tinytest/test_lme4.R
 9873b3dc101b4bf520d632f42bc04a80 *man/Arabidopsis.Rd
 e763b611e70a7697cb6fe31b0561aaac *man/Dyestuff.Rd
 e2529dc3f21a20ede6b95e15e1f0db92 *man/GHrule.Rd
@@ -171,7 +172,7 @@ fc1dffbf663939a2c12d6a64ab2488a1 *man/refitML.Rd
 dbe8547e6c2911509a4310514b506803 *man/residuals.merMod.Rd
 a124183851ef5f2b787f310dcd53436e *man/sigma.Rd
 ac312d5990e96c04a3bef4613ab693a6 *man/simulate.formula.Rd
-3d982cc9e00e4680300ee6e80fbe33bd *man/simulate.merMod.Rd
+a7d9f64a4d137ae2ecd2e8bb2660885b *man/simulate.merMod.Rd
 beeed79153193c18bb44d318d3b41652 *man/sleepstudy.Rd
 74597be45b8bc7612dfd345902340bfb *man/subbars.Rd
 a6be665c1a6b719b2ef02a30d1d16068 *man/troubleshooting.Rd
@@ -193,7 +194,7 @@ cdf2dbfbe86509142c71bc0f240da638 *src/respModule.cpp
 8bbacc62f05c91663ae579ddf04f7a35 *tests/AAAtest-all.R
 0c78c74ab39d4d99cdceb6c66c30c43f *tests/HSAURtrees.R
 a810120b26ea54a7c44ec24aa9f441f5 *tests/README
-833ceca53231ca073bae73550da70f67 *tests/REMLdev.R
+98a404e235e377a972b4bc6684b67231 *tests/REMLdev.R
 1d7c93d885154b156d3a387f1735e080 *tests/ST.R
 4d36e8f04cc6dc309d6fe69f715271a0 *tests/agridat_gotway.R
 82889c8158caa7257cae9143f34d407f *tests/bootMer.R
@@ -212,7 +213,7 @@ bae09675aa2568fe2505d8b62d1264b7 *tests/elston.R
 88d16563d7fe047623b4ccb992dc8114 *tests/glmer-1.R
 87fbf8bcb9704fe0d95928f441e2c85d *tests/glmerControlPass.R
 46de511d77c5e07b8de44c9abcb7b63f *tests/glmerWarn.R
-b028e45f129fdecfb7971d307cfb213d *tests/glmmExt.R
+07b053d64e430c968e7849adacbb4e4a *tests/glmmExt.R
 1c3dbc408c2995ffd9263f68fc40f944 *tests/glmmWeights.R
 214757f88c9e26dc7936ea9ec1594bf9 *tests/hatvalues.R
 3693e1cc55ebb3bcf5aaf46ee0bf1eb1 *tests/is.R
@@ -225,7 +226,7 @@ d01e36cf014c17a45a448da442fec402 *tests/lmer-conv.R
 b14e84bbdf9344cb4514151d99d513d4 *tests/methods.R
 ef374523e11228e4f2df65883ac1ba42 *tests/minval.R
 dc038e000b1d664c0c3fc1afa713dd73 *tests/modFormula.R
-28829ec0b0f7434390fd2801805e095c *tests/nbinom.R
+59670cafae675128957c07dc8307e4c3 *tests/nbinom.R
 c44581c823bf500428f485bb6d02ea84 *tests/nlmer-conv.R
 4182acd6af58c584c25d745f98d3491f *tests/nlmer.R
 b7265658c2f03aef75e1ae2fe1617fd2 *tests/offset.R
@@ -240,7 +241,7 @@ f66f45c2d7efe66c1a899ac004c6cc7c *tests/priorWeightsModComp.R
 b2a49dcf6fde0fd4c2f163604fbfa613 *tests/refit.R
 f41d72b2048efd5d4aee555f78e1292f *tests/resids.R
 59b7d77420eed731836649460fabdd3e *tests/respiratory.R
-a9317aae91786b40504846f236281fa9 *tests/simulate.R
+7ff092a47c0f3c2f0d951b907388e520 *tests/simulate.R
 14328f790312794d092fe203766763dc *tests/test-glmernbref.R
 8375fd1d85d82c024a5a2bbab8b01a14 *tests/testOptControl.R
 8c2cb194b2102d830e8ec03a7d90e05c *tests/testcolonizer.R
@@ -260,7 +261,7 @@ f9d09b2b3dd33645659b89014eac6783 *tests/testthat/test-glmer.R
 b56599eb941945b0bff60be870cc0df6 *tests/testthat/test-lmList.R
 141e58abde1440be21513668a11fdc05 *tests/testthat/test-lmer.R
 1ef8bc825d617df86ba8128cef02eff4 *tests/testthat/test-lmerResp.R
-150bc9e0ef5b5adcd1a3f697b94e1e77 *tests/testthat/test-methods.R
+ea993280d9aee84efa528e268c3fc27b *tests/testthat/test-methods.R
 7d3cc50d5f8999d96bb6ae0338f0bb1c *tests/testthat/test-nbinom.R
 45ef0bfa99cdf9d184bf91a67f945c97 *tests/testthat/test-nlmer.R
 c5a2a10463306115ca7aa399dbcc0fb6 *tests/testthat/test-oldRZXfailure.R
