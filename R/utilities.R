@@ -142,123 +142,6 @@ mkBlist <- function(x,frloc, drop.unused.levels=TRUE,
     list(ff = ff, sm = sm, nl = nl, cnms = colnames(mm))
 }
 
-##' From the result of \code{\link{findbars}} applied to a model formula and
-##' and the evaluation frame, create the model matrix, etc. associated with
-##' random-effects terms.  See the description of the returned value for a
-##' detailed list.
-##'
-##' @title Create Z, Lambda, Lind, etc.
-##' @param bars a list of parsed random-effects terms
-##' @param fr a model frame in which to evaluate these terms
-##' @return a list with components
-##' \item{Zt}{transpose of the sparse model matrix for the random effects}
-##' \item{Lambdat}{transpose of the sparse relative covariance factor}
-##' \item{Lind}{an integer vector of indices determining the mapping of the
-##'     elements of the \code{theta} to the \code{"x"} slot of \code{Lambdat}}
-##' \item{theta}{initial values of the covariance parameters}
-##' \item{lower}{lower bounds on the covariance parameters}
-##' \item{flist}{list of grouping factors used in the random-effects terms}
-##' \item{cnms}{a list of column names of the random effects according to
-##'     the grouping factors}
-##' @importFrom Matrix sparseMatrix drop0
-##' @importMethodsFrom Matrix coerce rbind
-##' @family utilities
-##' @export
-mkReTrms <- function(bars, fr, drop.unused.levels=TRUE,
-                     reorder.terms=TRUE,
-                     reorder.vars=FALSE) {
-  if (!length(bars))
-    stop("No random effects terms specified in formula",call.=FALSE)
-  stopifnot(is.list(bars), vapply(bars, is.language, NA),
-            inherits(fr, "data.frame"))
-  names(bars) <- barnames(bars)
-  term.names <- vapply(bars, deparse1, "")
-  ## get component blocks
-  blist <- lapply(bars, mkBlist, fr, drop.unused.levels,
-                  reorder.vars = reorder.vars)
-  nl <- vapply(blist, `[[`, 0L, "nl")   # no. of levels per term
-                                        # (in lmer jss:  \ell_i)
-
-  ## order terms stably by decreasing number of levels in the factor
-  if (reorder.terms) {
-      if (any(diff(nl) > 0)) {
-          ord <- rev(order(nl))
-          blist      <- blist     [ord]
-          nl         <- nl        [ord]
-          term.names <- term.names[ord]
-      }
-  }
-  Ztlist <- lapply(blist, `[[`, "sm")
-  Zt <- do.call(rbind, Ztlist)  ## eq. 7, JSS lmer paper
-  names(Ztlist) <- term.names
-  q <- nrow(Zt)
-
-  ## Create and install Lambdat, Lind, etc.  This must be done after
-  ## any potential reordering of the terms.
-  cnms <- lapply(blist, `[[`, "cnms")   # list of column names of the
-                                        # model matrix per term
-  nc <- lengths(cnms)                   # no. of columns per term
-                                        # (in lmer jss:  p_i)
-  nth <- as.integer((nc * (nc+1))/2)    # no. of parameters per term
-                                        # (in lmer jss:  ??)
-  nb <- nc * nl                         # no. of random effects per term
-                                        # (in lmer jss:  q_i)
-  ## eq. 5, JSS lmer paper
-  if (sum(nb) != q) {
-      stop(sprintf("total number of RE (%d) not equal to nrow(Zt) (%d)",
-                   sum(nb),q))
-  }
-  boff <- cumsum(c(0L, nb))             # offsets into b
-  thoff <- cumsum(c(0L, nth))           # offsets into theta
-  ### FIXME: should this be done with cBind and avoid the transpose
-  ### operator?  In other words should Lambdat be generated directly
-  ### instead of generating Lambda first then transposing?
-  Lambdat <-
-    t(do.call(sparseMatrix,
-              do.call(rbind,
-                      lapply(seq_along(blist), function(i)
-                      {
-                        mm <- matrix(seq_len(nb[i]), ncol = nc[i],
-                                     byrow = TRUE)
-                        dd <- diag(nc[i])
-                        ltri <- lower.tri(dd, diag = TRUE)
-                        ii <- row(dd)[ltri]
-                        jj <- col(dd)[ltri]
-                        ## unused: dd[cbind(ii, jj)] <- seq_along(ii)
-                        data.frame(i = as.vector(mm[, ii]) + boff[i],
-                                   j = as.vector(mm[, jj]) + boff[i],
-                                   x = as.double(rep.int(seq_along(ii),
-                                                         rep.int(nl[i], length(ii))) +
-                                                   thoff[i]))
-                      }))))
-  thet <- numeric(sum(nth))
-  ll <- list(Zt = drop0(Zt), theta = thet, Lind = as.integer(Lambdat@x),
-             Gp = unname(c(0L, cumsum(nb))))
-  ## lower bounds on theta elements are 0 if on diagonal, else -Inf
-  ll$lower <- -Inf * (thet + 1)
-  ll$lower[unique(diag(Lambdat))] <- 0
-  ll$theta[] <- is.finite(ll$lower) # initial values of theta are 0 off-diagonal, 1 on
-  Lambdat@x[] <- ll$theta[ll$Lind]  # initialize elements of Lambdat
-  ll$Lambdat <- Lambdat
-  # massage the factor list
-  fl <- lapply(blist, `[[`, "ff")
-  # check for repeated factors
-  fnms <- names(fl)
-  if (length(fnms) > length(ufn <- unique(fnms))) {
-    fl <- fl[match(ufn, fnms)]
-    asgn <- match(fnms, ufn)
-  } else asgn <- seq_along(fl)
-  names(fl) <- ufn
-  ## DON'T need fl to be a data.frame ...
-  ## fl <- do.call(data.frame, c(fl, check.names = FALSE))
-  attr(fl, "assign") <- asgn
-  ll$flist <- fl
-  ll$cnms <- cnms
-  ll$Ztlist <- Ztlist
-  ll$nl <- nl
-  ll
-} ## {mkReTrms}
-
 ##' Create an lmerResp, glmResp or nlsResp instance
 ##'
 ##' @title Create an lmerResp, glmResp or nlsResp instance
@@ -456,7 +339,7 @@ nlformula <- function(mc) {
     X <- model.matrix(fe, frE)
     rownames(X) <- NULL
 
-    reTrms <- mkReTrms(lapply(findbars(meform),
+    reTrms <- reformulas::mkReTrms(lapply(reformulas::findbars(meform),
                               function(expr) {
                                   expr[[2]] <- substitute(0+foo, list(foo=expr[[2]]))
                                   expr
@@ -601,22 +484,6 @@ mkMerMod <- function(rho, opt, reTrms, fr, mc, lme4conv=NULL) {
     }
     ## weights <- resp$weights
     beta    <- pp$beta(fac)
-    ## rescale
-    if (!is.null(sc <- attr(pp$X, "scaled:scale"))) {
-        warning("auto(un)scaling not yet finished/tested")
-        ## FIXME: test/handle no-intercept models
-        ##   (only need to worry if we do centering as well as scaling)
-        ## FIXME: adjust Hessian/vcov
-        ## FIXME: where else will these changes propagate?
-        ##        profiling?
-        beta2 <- beta
-        beta2[names(sc)] <- sc*beta2[names(sc)]
-        beta <- beta2
-    }
-    if (!is.null(attr(pp$X, "scaled:center"))) {
-        warning("auto(un)centering not yet implemented")
-    }
-    #sigmaML <- pwrss/sum(weights)
     sigmaML <- pwrss/n
     if (rcl != "lmerResp") {
         pars <- opt$par
@@ -820,9 +687,9 @@ mkMinimalData <- function(formula) {
 ##' Make template for mixed model parameters
 mkParsTemplate <- function(formula, data){
     if(missing(data)) data <- mkMinimalData(formula)
-    mfRanef <- model.frame( subbars(formula), data)
-    mmFixef <- model.matrix(nobars(formula) , data)
-    reTrms <- mkReTrms(findbars(formula), mfRanef)
+    mfRanef <- model.frame( reformulas::subbars(formula), data)
+    mmFixef <- model.matrix( reformulas::nobars(formula) , data)
+    reTrms <- reformulas::mkReTrms( reformulas::findbars(formula), mfRanef)
     cnms <- reTrms$cnms
     thetaNamesList <- mapply(mkPfun(), names(cnms), cnms)
     thetaNames <- unlist(thetaNamesList)
@@ -846,7 +713,7 @@ mkDataTemplate <- function(formula, data,
                            nGrps = 2, nPerGrp = 1,
                            rfunc = NULL, ...){
     if(missing(data)) data <- mkMinimalData(formula)
-    grpFacNames <- unique(barnames(findbars(formula)))
+    grpFacNames <- unique(barnames(reformulas::findbars(formula)))
     varNames <- all.vars(formula)
     covariateNames <- setdiff(varNames, grpFacNames)
     nGrpFac <- length(grpFacNames)
@@ -896,7 +763,7 @@ termnms <- function(REtrms) vapply(REtrms, deparse1, "")
 mmList <- function(object, ...) UseMethod("mmList")
 mmList.merMod <- function(object, ...) mmList(formula(object), model.frame(object))
 mmList.formula <- function(object, frame, ...) {
-    bars <- findbars(object)
+    bars <- reformulas::findbars(object)
     mm <- setNames(lapply(bars, function(b) model.matrix(eval(reexpr(b), frame), frame)),
                    termnms(bars))
     grp <- lapply(lapply(bars, grpfact), eval, frame)
@@ -1051,7 +918,11 @@ initialize.parallel <- expression({
     }
 })
 
-isSingular <- function(x, tol = 1e-4) {
+getSingTol <- function() {
+  getOption("lme4.singular.tolerance", 1e-4)
+}
+
+isSingular <- function(x, tol = getSingTol()) {
     lwr <- getME(x, "lower")
     theta <- getME(x, "theta")
     any(theta[lwr==0] < tol)
@@ -1115,10 +986,6 @@ combineLists <- function(..., fmatrix="list", flist="c", fvector="rbind",
     result
 }
 
-## re-export from reformulas
-expandDoubleVerts <- reformulas::expandDoubleVerts
-isNested <- reformulas::isNested
-
 ## copied from glmmTMB::check_dots
 checkDots <- function (..., .ignore = NULL, .action = "stop") 
 {
@@ -1140,4 +1007,92 @@ checkDots <- function (..., .ignore = NULL, .action = "stop")
 quad.tdiag <- function(M, x) {
     ## only real-valued, so drop Conj
     rowSums(tcrossprod(x, M) * x)
+}
+
+##' attempt to modularize vcov scaling; more details in the autoscale vignette
+##' @param vv represents the variance-covariance matrix before modification
+##' @param sc represents the scale vector
+##' @param ce represents the center vector
+scale_vcov <- function(vv, sc, ce) {
+  other_vars <- setdiff(colnames(vv), "(Intercept)")
+  ## 1. Modifying the intercept
+  sig_0sq <- vv["(Intercept)", "(Intercept)"]
+  sig_0isq <- vv["(Intercept)", other_vars]
+  total1 <- -2 *sum((ce/sc) * sig_0isq)
+  small_vv <- as.matrix(vv[other_vars, other_vars])
+  total2 <- crossprod(ce / sc, small_vv %*% (ce / sc))[[1]]
+  vv["(Intercept)", "(Intercept)"] <- sig_0sq + total1 + total2
+  ## 2. Modifying without intercept
+  updated_2 <- (sig_0isq)/sc - (small_vv %*% (ce/sc))/sc
+  vv["(Intercept)", other_vars] <- updated_2
+  vv[other_vars, "(Intercept)"] <- updated_2
+  vv[other_vars, other_vars] <- vv[other_vars, other_vars] * outer(1/sc, 1/sc)
+  vv <- as(vv, "dpoMatrix")
+}
+
+##' Used for padding NAs to Cmat accordingly in predict.merMod
+##' @param mat represents the matrix that needs to be modified
+##' @param mat_names represents the names of the new modified matrix
+##' @param insert_after represents the placement before the zeros that need to 
+##' be added
+##' @param n_add represents the number rows/columns that will be padded with zeros
+zero_padding <- function(mat, mat_names, insert_after, n_add = 1) {
+  mat <- as.matrix(mat)
+  old_dim <- nrow(mat)
+  new_dim <- old_dim + n_add
+  m_pad <- matrix(0, new_dim, new_dim)
+  rownames(m_pad) <- mat_names
+  colnames(m_pad) <- mat_names
+  
+  ## Top right corner
+  m_pad[1:insert_after, 1:insert_after] <- mat[1:insert_after, 1:insert_after]
+  
+  ## Top left corner
+  m_pad[1:insert_after, (insert_after + n_add + 1):new_dim] <-
+    mat[1:insert_after, (insert_after + 1):old_dim]
+  
+  ## Bottom right corner
+  m_pad[(insert_after + n_add + 1):new_dim, 1:insert_after] <-
+    mat[(insert_after + 1):old_dim, 1:insert_after]
+  
+  ## Bottom left corner
+  m_pad[(insert_after + n_add + 1):new_dim, (insert_after + n_add + 1):new_dim] <-
+    mat[(insert_after + 1):old_dim, (insert_after + 1):old_dim]
+  
+  m_pad
+}
+
+##' if allow.new.levels = TRUE, then adds 0 padding to Cmat for prediction
+##' @param Cmat represents Cmat that was computed prior to subsetting
+##' @param C_factors represents the factors explicitly shown in Cmat
+##' @param Z_factors represents the factors represented in the Z matrix, which
+##' includes only levels of groups that need to be predicted
+##' @param Cmat_names represents the names of the Cmat matrix
+##' @param cnms same as cnms from object
+pad_Cmat <- function(Cmat, C_factors, Z_factors, Cmat_names, cnms){
+  n_padded = 0
+  for (grp in intersect(names(C_factors), names(Z_factors))) {
+    n_lvl <- length(levels(C_factors[[grp]]))
+    added_levels <- setdiff(levels(Z_factors[[grp]]), 
+                            levels(C_factors[[grp]]))
+    if ((n_add <- length(added_levels)) == 0) next
+    levels(C_factors[[grp]]) <- c(levels(C_factors[[grp]]), added_levels) 
+    
+    ## add names for clarity
+    added_nms <- as.vector(sapply(added_levels, function(lv)
+      paste0(grp, ".", lv, ".", cnms[[grp]])
+    ))
+    ## add padding
+    n_padded <- n_padded + n_lvl * length(cnms[[grp]])
+    n_new <- n_add * length(cnms[[grp]])
+    
+    Cmat_names <- c(Cmat_names[1:n_padded], 
+                    added_nms, 
+                    Cmat_names[(n_padded+1):length(Cmat_names)])
+    ## alter Cmat
+    Cmat <- zero_padding(Cmat, Cmat_names, insert_after = n_padded,
+                         n_add = n_new)
+    n_padded <- n_padded + n_new
+  }
+  list("Cmat" = Cmat, "C_factors" = C_factors, "Cmat_names" = Cmat_names)
 }
