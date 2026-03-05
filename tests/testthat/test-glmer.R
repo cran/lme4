@@ -275,7 +275,7 @@ if(FALSE) { ## Hadley broke this
 
     ## try higher-order AGQ
     expect_is   (update(gm1,nAGQ=90), "glmerMod")
-    expect_error(update(gm1,nAGQ=101),"ord < 101L")
+    expect_error(update(gm1,nAGQ=101),"nAGQ <= 100")
 
     ## non-numeric response variables
     ss <- transform(sleepstudy, Reaction = as.character(Reaction))
@@ -333,9 +333,10 @@ if(FALSE) { ## Hadley broke this
                  family = gaussian(link="log"),
                  data=dd,
                  mustart=pmax(dd$y,0.1))
+    
     msum <- c(fixef(g1),unlist(c(VarCorr(g1))),c(logLik(g1)))
     expect_equal(msum,
-                 c(`(Intercept)` = 0.23389405, x = 1.0017436, f = 0.24602992, -156.7773),
+                 c(`(Intercept)` = 0.23389405, x = 1.0017436, f = 0.3187655, -156.7773),
                  tolerance=1e-5)
 
     ## GH 415

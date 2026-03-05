@@ -1,3 +1,4 @@
+lme4_specials <- c("us", "diag", "cs", "ar1")
 
 ## From Matrix package  isDiagonal(.) :
 all0 <- function(x) !anyNA(x) && all(!x)
@@ -330,20 +331,39 @@ nlformula <- function(mc) {
 
     chck1(meform <- form[[3L]])
     pnameexpr <- parse(text=paste(pnames, collapse='+'))[[1]]
-    nb <- nobars_(meform)  ## call ORIGINAL recursive form
-    fe <- eval(substitute(~ 0 + nb + pnameexpr))
-    environment(fe) <- environment(form)
+    formula <- as.formula(substitute(~0 + (pnameexpr) + (meform)),
+                          env = environment(form))
+
+    ## substitute  special(x | f)  with  (x | f)
+    fr.form. <- noSpecials(formula, specials = lme4_specials, delete = FALSE)
+    ## substitute  (x | f)  and  (x || f)  with  (x + f)
+    fr.form <- sub_specials(fr.form., specials = c("|", "||"),
+                            keep_args = c(2L, 2L))
+    environment(fr.form.) <- environment(fr.form) <-
+        environment(formula)
+
+    fixedform <- fr.form.
+    RHSForm(fixedform) <- reformulas::nobars(RHSForm(fixedform))
     frE <- do.call(rbind, lapply(seq_along(nlpars), function(i) fr)) # rbind s copies of the frame
     for (nm in pnames) # convert these variables in fr to indicators
         frE[[nm]] <- as.numeric(rep(nm == pnames, each = n))
-    X <- model.matrix(fe, frE)
+    X <- model.matrix(fixedform, frE)
     rownames(X) <- NULL
 
-    reTrms <- reformulas::mkReTrms(lapply(reformulas::findbars(meform),
-                              function(expr) {
-                                  expr[[2]] <- substitute(0+foo, list(foo=expr[[2]]))
-                                  expr
-                              }), frE)
+    ## get list of calls whose first argument is a call to '|'
+    ##                x | f  ->      us(x | f)
+    ##     nonspecial(x | f) ->      us(x | f)
+    ##        special(x | f) -> special(x | f)
+    bb1 <- findbars_x(formula, specials = lme4_specials,
+                      default.special = "us", target = "|",
+                      expand_doublevert_method = getDoublevertDefault())
+    bb0 <- lapply(bb1, function(call) {
+        call <- call[[2L]]
+        call[[2L]] <- substitute(0 + (foo), list(foo = call[[2L]]))
+        call
+    })
+    reTrms <- reformulas::mkReTrms(bb0, frE, calc.lambdat = FALSE)
+    reTrms <- upReTrms(reTrms, bb1) # local calc.lambdat=TRUE step
     list(respMod=respMod, frame=fr, X=X, reTrms=reTrms, pnames=pnames)
 } ## {nlformula}
 
@@ -385,7 +405,7 @@ nlformula <- function(mc) {
 ##     if(missing(wrss)) wrss <- resp$wrss()
 ##     if(missing(sqrLenU)) sqrLenU <- pp$sqrL(fac)
 ##     if(missing(pwrss)) pwrss <- wrss + sqrLenU
-##     if(missing(sigmaML)) sigmaML <- pwrss/dims['n']
+##     if(missing(sigmaML)) sigmaML <- pwrss/dims[["n"]]
 ##     c(ldL2=pp$ldL2(), ldRX2=pp$ldRX2(), wrss=wrss,
 ##       ussq=sqrLenU, pwrss=pwrss,
 ##       drsum=if (rcl=="glmResp" && !trivial.y) resp$resDev() else NA,
@@ -393,8 +413,8 @@ nlformula <- function(mc) {
 ##       opt$fval else NA,
 ##       ## FIXME: construct 'REML deviance' here?
 ##       dev=if (rcl=="lmerResp" && resp$REML != 0L || trivial.y) NA else opt$fval,
-##       sigmaML=sqrt(unname(if (!dims["useSc"] || trivial.y) NA else sigmaML)),
-##       sigmaREML=sqrt(unname(if (rcl!="lmerResp" || trivial.y) NA else sigmaML*(dims['n']/dims['nmp']))),
+##       sigmaML=sqrt(unname(if (!dims[["useSc"]] || trivial.y) NA else sigmaML)),
+##       sigmaREML=sqrt(unname(if (rcl!="lmerResp" || trivial.y) NA else sigmaML*(dims[["n"]]/dims[["nmp"]]))),
 ##       tolPwrss=rho$tolPwrss)
 ## }
 ################################################################################
@@ -496,12 +516,13 @@ mkMerMod <- function(rho, opt, reTrms, fr, mc, lme4conv=NULL) {
                   opt$fval else NA,
              ## FIXME: construct 'REML deviance' here?
              dev=if (rcl=="lmerResp" && resp$REML != 0L || trivial.y) NA else opt$fval,
-             sigmaML=sqrt(unname(if (!dims["useSc"] || trivial.y) NA else sigmaML)),
+             sigmaML=sqrt(unname(if (!dims[["useSc"]] || trivial.y) NA else sigmaML)),
              sigmaREML=sqrt(unname(if (rcl!="lmerResp" || trivial.y) NA else
-                                   sigmaML*(dims['n']/dims['nmp']))),
+                                   sigmaML*(dims[["n"]]/dims[["nmp"]]))),
              tolPwrss=rho$tolPwrss)
     ## TODO:  improve this hack to get something in frame slot (maybe need weights, etc...)
     if(missing(fr)) fr <- data.frame(resp$y)
+    ans <-
     new(switch(rcl, lmerResp = "lmerMod", glmResp = "glmerMod", nlsResp = "nlmerMod"),
         call=mc, frame=fr, flist=reTrms$flist, cnms=reTrms$cnms,
         Gp=reTrms$Gp, theta=pp$theta, beta=beta,
@@ -509,6 +530,9 @@ mkMerMod <- function(rho, opt, reTrms, fr, mc, lme4conv=NULL) {
         lower=reTrms$lower, devcomp=list(cmp=cmp, dims=dims),
         pp=pp, resp=resp,
         optinfo = .optinfo(opt, lme4conv))
+    attr(ans, "upper") <- reTrms$upper %||% rep(Inf, length(reTrms$lower))
+    attr(ans, "reCovs") <- upReCovs(reTrms$reCovs %||% getReCovs(ans), rho$pp$theta)
+    ans
 }## {mkMerMod}
 
 ## generic argument checking
@@ -907,26 +931,25 @@ arrange.condVar <- function(object,cv) {
 ## generic machinery for setting parallel options
 ## uses eval() (as in family()$initialize) to avoid too much list
 initialize.parallel <- expression({
-    have_mc <- have_snow <- FALSE
-    if (length(parallel)>1) parallel <- match.arg(parallel)
-    do_parallel <- (parallel != "no" && ncpus > 1L)
-    if (do_parallel) {
-        if (parallel == "multicore") have_mc <- .Platform$OS.type != "windows"
-        else if (parallel == "snow") have_snow <- TRUE
-        if (!(have_mc || have_snow))
-            do_parallel <- FALSE # (only for "windows")
+    if (length(parallel) > 1) parallel <- match.arg(parallel)
+    if (!is.null(cl)) {
+        stopifnot(inherits(cl, "cluster"))
+        parallel <- "snow"
+    }
+    if (parallel == "multicore") {
+        stopifnot(is.numeric(ncpus), length(ncpus) == 1L, is.finite(ncpus), ncpus >= 1L)
+        if (.Platform$OS.type == "windows" || ncpus == 1L)
+            parallel <- "no"
+    } else if (parallel == "snow") {
+        if (is.null(cl)) {
+            stopifnot(is.numeric(ncpus), length(ncpus) == 1L, is.finite(ncpus), ncpus >= 1L)
+            if (ncpus == 1L)
+                parallel <- "no"
+        }
     }
 })
 
-getSingTol <- function() {
-  getOption("lme4.singular.tolerance", 1e-4)
-}
-
-isSingular <- function(x, tol = getSingTol()) {
-    lwr <- getME(x, "lower")
-    theta <- getME(x, "theta")
-    any(theta[lwr==0] < tol)
-}
+getSingTol <- function() getOption("lme4.singular.tolerance", 1e-4)
 
 lme4_testlevel <- function() if (nzchar(s <- Sys.getenv("LME4_TEST_LEVEL"))) as.numeric(s) else 1
 
@@ -1095,4 +1118,13 @@ pad_Cmat <- function(Cmat, C_factors, Z_factors, Cmat_names, cnms){
     n_padded <- n_padded + n_new
   }
   list("Cmat" = Cmat, "C_factors" = C_factors, "Cmat_names" = Cmat_names)
+}
+
+
+getDoublevertDefault <- function() {
+  getOption("lme4.doublevert.default", "split")
+}
+
+na.action.merMod <- function(object, ...) {
+  na.action(model.frame(object))
 }

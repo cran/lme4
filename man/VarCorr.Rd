@@ -1,18 +1,24 @@
 \name{VarCorr}
-\title{Extract Variance and Correlation Components}
+\title{Extract Variance and Correlation Components of Covariance}
 \alias{VarCorr}
 \alias{VarCorr.merMod}
 \alias{as.data.frame.VarCorr.merMod}
 \alias{print.VarCorr.merMod}
+\description{
+  This function calculates the estimated variances, standard deviations,
+  and correlations between the random-effects terms in a mixed-effects
+  model, of class \code{\linkS4class{merMod}} (linear, generalized or
+  nonlinear).  The within-group error variance and standard deviation
+  are also calculated.
+}
 \usage{
-\method{VarCorr}{merMod}(x, sigma=1, \dots)
+\method{VarCorr}{merMod}(x, sigma = 1, \dots)
 
 %% documented because of "surprising arguments":
-\method{as.data.frame}{VarCorr.merMod}(x, row.names = NULL,
-    optional = FALSE, order = c("cov.last", "lower.tri"), \dots)
-\method{print}{VarCorr.merMod}(x, digits = max(3, getOption("digits") - 2),
-    comp = "Std.Dev.", corr = any(comp == "Std.Dev."),
-    formatter = format, \dots)
+\method{as.data.frame}{VarCorr.merMod}(x, row.names = NULL, optional = FALSE,
+              order = c("cov.last", "lower.tri"), \dots)
+\method{print}{VarCorr.merMod}(x, digits = max(3L, getOption("digits") - 2L),
+      comp = "Std.Dev.", formatter = format, \dots)
 }
 \arguments{
   \item{x}{for \code{VarCorr}: a fitted model object, usually an object inheriting from
@@ -34,17 +40,6 @@
     to be printed; simply passed to \code{\link{formatVC}()}.}
   \item{formatter}{a \code{\link{function}} for formatting the numbers;
     simply passed to \code{\link{formatVC}()}.}
-  \item{corr}{(logical) print correlations (rather than covariances) of
-    random effects?}
-
-}
-\description{
-  This function calculates the estimated variances,
-  standard deviations, and correlations between the
-  random-effects terms in a mixed-effects model, of class
-  \code{\linkS4class{merMod}} (linear, generalized or
-  nonlinear).  The within-group error variance and standard
-  deviation are also calculated. 
 }
 \value{
   An object of class \code{VarCorr.merMod}. The internal
@@ -54,9 +49,15 @@
   correlation matrices for each grouping term are stored as
   attributes \code{"stddev"} and \code{"correlation"},
   respectively, of the variance-covariance matrix, and the
-  residual standard deviation is stored as attribute
-  \code{"sc"} (for \code{glmer} fits, this attribute stores
-  the scale parameter of the model).
+  residual standard deviation of LMMs is stored as attribute
+  \code{"sc"}.
+  
+  Users may also access the attributes \code{"theta"} and 
+  \code{"rho"} (if applicable) which is explained in greater 
+  detail within the covariance structures vignette, and 
+  \code{"profpar"}, which is a different parameterization 
+  of \code{"theta"} but suitable for profiling.
+
 
 The \code{as.data.frame} method produces a combined data frame with one
 row for each variance or covariance parameter (and a row for the

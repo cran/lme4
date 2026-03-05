@@ -2,7 +2,7 @@
 
 mkWarnFun <- function(FUN) {
   fn <- function(...) {
-    msg <- sprintf("the %s function has moved to the reformulas package. Please update your imports, or ask an upstream package maintainter to do so.", sQuote(FUN))
+    msg <- sprintf("the %s function has moved to the reformulas package. Please update your imports, or ask an upstream package maintainer to do so.", sQuote(FUN))
     rlang::warn(msg, .frequency = "once", .frequency_id = FUN)
     reformulas_fun <- getExportedValue("reformulas", FUN)
     reformulas_fun(...)
@@ -15,3 +15,8 @@ for (f in c("findbars","subbars", "nobars",
   mkWarnFun(f)
 }
 
+## handle reOnly separately, it needs to be wrapped to return a formula properly
+## reformulas 0.4.5 will fix this (can then move back to the deprecation block above)
+reOnly <- function(...) {
+  res <- lme4_reOnly(...)
+}

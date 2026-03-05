@@ -1,14 +1,18 @@
-## --> ../man/profile-methods.Rd
-
 profnames <- function(object, signames=TRUE,
                       useSc=isLMM(object), prefix=c("sd","cor")) {
-    ntp <- length(getME(object,"theta"))
-    ## return
-    c(if(signames) sprintf(".sig%02d", seq(ntp))
-      else tnames(object, old=FALSE, prefix=prefix),
-      if(useSc) if (signames) ".sigma" else "sigma")
+  res <- if (signames) {
+    sprintf(".sig%02d", seq_len(getParLength(object)))
+  } else {
+    vv <- getVCNames(object, prf=prefix, old=FALSE)
+    ## result is stored as {vcomp, ccomp}; 'zip' it
+    unlist(Map(c, vv$vcomp, vv$ccomp))
+  }
+  if (useSc) {
+    sdname <- if (signames) ".sigma" else "sigma"
+    res <- c(res, sdname)
+  }
+  res
 }
-
 
 ##' @importFrom splines backSpline interpSpline periodicSpline
 ##' @importFrom stats profile
@@ -40,9 +44,11 @@ profile.merMod <- function(fitted,
     ## FIXME: allow for failure of bounds (non-pos-definite correlation matrices) when >1 cor parameter
 
     prof.scale <- match.arg(prof.scale)
-    parallel   <- match.arg(parallel)
-    do_parallel <- have_mc <- have_snow <- NULL # "-Wall" are set here:
-    eval(initialize.parallel)# (parallel, ncpus)
+
+    parallel <- match.arg(parallel)
+
+    # (parallel, ncpus, cl) -> (parallel)
+    eval(initialize.parallel)
 
     if (is.null(optimizer)) optimizer <- fitted@optinfo$optimizer
     ## hack: doesn't work to set bobyqa parameters to *ending* values stored
@@ -59,28 +65,18 @@ profile.merMod <- function(fitted,
     useSc <- isLMM(fitted) || isNLMM(fitted)
     prof.prefix <-
         switch(prof.scale,
-               "sdcor" = {
-                   transfuns <- list(from.chol= Cv_to_Sv,
-                                     to.chol  = Sv_to_Cv,
-                                     to.sd    = identity)
-                   c("sd", "cor")
-               },
-               "varcov" = {
-                   transfuns <- list(from.chol= Cv_to_Vv,
-                                     to.chol  = Vv_to_Cv,
-                                     to.sd    = sqrt)
-                   c("var", "cov")
-               },
+               "sdcor" = c("sd", "cor"),
+               "varcov" = c("var", "cov"),
                stop("internal error, prof.scale=", prof.scale))
     dd <- devfun2(fitted, useSc=useSc, signames=signames,
-                  transfuns=transfuns, prefix=prof.prefix, ...)
+                  prefix=prof.prefix, scale = prof.scale, ...)
     ## FIXME: figure out to what do here ...
     if (isGLMM(fitted) && fitted@devcomp$dims[["useSc"]])
         stop("can't (yet) profile GLMMs with non-fixed scale parameters")
     stopifnot(devtol >= 0)
     base <- attr(dd, "basedev")
     ## protect against accidental tampering by later devfun calls
-    thopt <- forceCopy(attr(dd, "thopt"))
+    paropt <- forceCopy(attr(dd, "paropt"))
     stderr <- attr(dd, "stderr")
     pp <- environment(dd)$pp
     X.orig <- pp$X
@@ -166,35 +162,33 @@ profile.merMod <- function(fitted,
     fillmat <- function(mat, lowcut, upcut, zetafun, cc) {
         nr <- nrow(mat)
         i <- 2L
+        ## REF: is.na(curzeta) behaviour last modified in commit b1a28914e72be845e
         while (i < nr && mat[i, cc] > lowcut && mat[i,cc] < upcut &&
-                   (is.na(curzeta <- abs(mat[i, ".zeta"])) || curzeta <= cutoff)) {
-            np <- nextpar(mat, cc, i, delta, lowcut, upcut)
-            ns <- nextstart(mat, pind = cc-1, r=i, method=startmethod)
-            mat[i + 1L, ] <- zetafun(np,ns)
-            if (verbose>0) {
-                cat(i,cc,mat[i+1L,],"\n")
+               (i > 1 && !is.na(curzeta <- abs(mat[i, ".zeta"]))) && curzeta <= cutoff) {
+                np <- nextpar(mat, cc, i, delta, lowcut, upcut)
+                ns <- nextstart(mat, pind = cc-1, r=i, method=startmethod)
+                mat[i + 1L, ] <- zetafun(np,ns)
+                if (verbose>0) {
+                    cat(i,cc,mat[i+1L,],"\n")
+                }
+                i <- i + 1L
             }
-            i <- i + 1L
-        }
         if (mat[i-1,cc]==lowcut) {
             ## fill in more values near the minimum
         }
         if (mat[i-1,cc]==upcut) {
             ## fill in more values near the maximum
         }
+        mat <- mat[!is.na(mat[,".zeta"]),]
         mat
     }
 
     ## bounds on Cholesky (== fitted@lower): [0,Inf) for diag, (-Inf,Inf) for off-diag
     ## bounds on sd-corr:  [0,Inf) for diag, (-1.0,1.0) for off-diag
-    ## bounds on var-corr: [0,Inf) for diag, (-Inf,Inf) for off-diag
-    if (prof.scale=="sdcor") {
-        lower <- pmax(fitted@lower, -1.)
-        upper <- ifelse(fitted@lower==0, Inf, 1.0)
-    } else {
-        lower <- fitted@lower
-        upper <- rep(Inf,length.out=length(fitted@lower))
-    }
+  ## bounds on var-corr: [0,Inf) for diag, (-Inf,Inf) for off-diag
+    covs <- getReCovs(fitted)
+    lower <- unlist(lapply(covs, getProfLower, prof.scale))
+    upper <- unlist(lapply(covs, getProfUpper, prof.scale))
     if (useSc) { # bounds for sigma
         lower <- c(lower,0)
         upper <- c(upper,Inf)
@@ -230,7 +224,7 @@ profile.merMod <- function(fitted,
     FUN <- local({
         function(w) {
         if (verbose) cat(if(isLMM(fitted)) "var-cov " else "",
-                             "parameter ",w,":\n",sep="")
+                         "parameter ",w,":\n",sep="")
         wp1 <- w + 1L
         pw <- opt[w]
         lowcut <- lower[w]
@@ -318,22 +312,19 @@ profile.merMod <- function(fitted,
     }}) ## FUN()
 
     ## copied from bootMer: DRY!
-    L <- if (do_parallel) {
-        if (have_mc) {
-            parallel::mclapply(seqnvp, FUN, mc.cores = ncpus)
-        } else if (have_snow) {
-            if (is.null(cl)) {
-                cl <- parallel::makePSOCKcluster(rep("localhost", ncpus))
-                ## explicit export of the lme4 namespace since most FUNs will probably
-                ## use some of them
-                parallel::clusterExport(cl, varlist=getNamespaceExports("lme4"))
-                if(RNGkind()[1L] == "L'Ecuyer-CMRG")
-                    parallel::clusterSetRNGStream(cl)
-                pres <- parallel::parLapply(cl, seqnvp, FUN)
-                parallel::stopCluster(cl)
-                pres
-            } else parallel::parLapply(cl, seqnvp, FUN)
+    L <- if (parallel == "multicore") {
+        parallel::mclapply(seqnvp, FUN, mc.cores = ncpus)
+    } else if (parallel == "snow") {
+        if (is.null(cl)) {
+            cl <- parallel::makeCluster(ncpus)
+            on.exit(parallel::stopCluster(cl))
+            ## explicit export of the lme4 namespace since most FUNs will probably
+            ## use some of them
+            parallel::clusterExport(cl, varlist=getNamespaceExports("lme4"))
+            if(RNGkind()[1L] == "L'Ecuyer-CMRG")
+                parallel::clusterSetRNGStream(cl)
         }
+        parallel::parLapply(cl, seqnvp, FUN)
     } else lapply(seqnvp, FUN)
     nn <- names(opt[seqnvp])
     ans <-    setNames(lapply(L, `[[`,  "bres"), nn)
@@ -342,6 +333,9 @@ profile.merMod <- function(fitted,
 
     ## profile fixed effects separately (for LMMs)
     if (isLMM(fitted)) {
+        reCovs <- getReCovs(fitted)
+        mkPar <- mkMkPar(reCovs)
+        mkTheta <- mkMkTheta(reCovs)
         offset.orig <- fitted@resp$offset
         fp <- seq_len(p)
         fp <- fp[(fp+nvp) %in% which]
@@ -367,19 +361,21 @@ profile.merMod <- function(fitted,
             fe.zeta <- function(fw, start) {
                 ## (start parameter ignored)
                 rr$setOffset(Xw * fw + offset.orig)
-                rho <- list2env(list(pp=pp1, resp=rr), parent = parent.frame())
-                ores <- optwrap(optimizer, par = thopt, fn = mkdevfun(rho, 0L),
+                rho <- list2env(list(pp=pp1, resp=rr,
+                                     mkPar=mkPar, mkTheta=mkTheta),
+                                parent = parent.frame())
+                ## optimization on `par` scale (not `theta`)
+                ores <- optwrap(optimizer, par = paropt, fn = mkdevfun(rho, 0L),
+                                ## FIXME: do we need to extend this for GLMMs?
                                 lower = fitted@lower)
                 ## this optimization is done on the ORIGINAL
-                ##   theta scale (i.e. not the sigma/corr scale)
-                ## upper=Inf for all cases
-                ## lower = pmax(fitted@lower, -1.0),
-                ## upper = 1/(fitted@lower != 0))## = ifelse(fitted@lower==0, Inf, 1.0)
+                ##   `par` scale (i.e. not the sigma/corr scale)
                 fv <- ores$fval
                 sig <- sqrt((rr$wrss() + pp1$sqrL(1))/n)
+                ## translate from ores$par (`par` scale) back to `profPar` scale
+                ppars <- convParToProfPar(ores$par, fitted, profscale = prof.scale, sc = sig)
                 c(sign(fw - est) * sqrt(fv - base),
-                  Cv_to_Sv(ores$par, lengths(fitted@cnms), s=sig),
-                  ## ores$par * sig, sig,
+                  ppars,
                   mkpar(p, j, fw, pp1$beta(1)))
             }
             nres[1, ] <- pres[2, ] <- fe.zeta(est + delta * std)
@@ -481,30 +477,32 @@ get.which <- function(which, nvp, nptot, parnames, verbose=FALSE) {
 ## @return a function for evaluating the deviance in the extended
 ##     parameterization.  This is profiled with respect to the
 ##     variance-covariance parameters (fixed-effects done separately).
-devfun2 <- function(fm, useSc = if(isLMM(fm)) TRUE else NA,
-                    transfuns = list(from.chol = Cv_to_Sv,
-                                       to.chol = Sv_to_Cv, to.sd = identity),
+devfun2 <- function(fm,
+                    useSc = if(isLMM(fm)) TRUE else NA,
+                    scale = c("sdcor", "varcov"),
                     ...)
 {
+
+    scale <- match.arg(scale)
+    if (scale == "varcov" && anyStructured(fm))
+        stop("haven't thought about varcov scale for structured cov matrices")
+    ## TODO: change to work with 'par' instead of 'theta'
+
     ## FIXME: have to distinguish between
     ## 'useSc' (GLMM: report profiled scale parameter) and
     ## 'useSc' (NLMM/LMM: scale theta by sigma)
-    ## hasSc := GLMMuseSc <- fm@devcomp$dims["useSc"]
+    ## hasSc := GLMMuseSc <- fm@devcomp$dims[["useSc"]]
     stopifnot(is(fm, "merMod"))
     fm <- refitML(fm)
+    mkTheta <- mkMkTheta(getReCovs(fm))
     basedev <- -2*c(logLik(fm))  ## no longer deviance()
     vlist <- lengths(fm@cnms)
     ## "has scale" := isLMM  or  GLMM with scale parameter
     hasSc <- as.logical(fm@devcomp$dims[["useSc"]])
     stdErr <- unname(coef(summary(fm))[,2])
     pp <- fm@pp$copy()
-    if (useSc) {
-        sig <- sigma(fm)  ## only if hasSc is TRUE?
-        ## opt <- c(pp$theta*sig, sig)
-        opt <- transfuns$from.chol(pp$theta, n=vlist, s=sig)
-    } else {
-        opt <- transfuns$from.chol(pp$theta, n=vlist)
-    }
+    sig <- if (useSc) sigma(fm) else NULL
+    opt <- getProfPar(fm, profscale = scale, sc = sig)
     names(opt) <- profnames(fm, useSc=useSc, ...)
     opt <- c(opt, fixef(fm))
     resp <- fm@resp$copy()
@@ -515,16 +513,16 @@ devfun2 <- function(fm, useSc = if(isLMM(fm)) TRUE else NA,
     if (isLMM(fm)) { # ==> hasSc
         ans <- function(pars)
         {
-            stopifnot(is.numeric(pars), length(pars) == np)
-            ## Assumption:  we can translate the *last* parameter back
-            ##   to sigma (SD) scale ...
-            sigma <- transfuns$to.sd(pars[np])
-            ## .Call(lmer_Deviance, pp$ptr(), resp$ptr(), pars[-np]/sigma)
-            ## convert from sdcor vector back to 'unscaled theta'
-            thpars <- transfuns$to.chol(pars, n=vlist, s=sigma)
-            .Call(lmer_Deviance, pp$ptr(), resp$ptr(), thpars)
-            sigsq <- sigma^2
-            pp$ldL2() - ldW + (resp$wrss() + pp$sqrL(1))/sigsq + n * log(2 * pi * sigsq)
+          pp <- fm@pp$copy() ## fresh copy of predictor object
+          ## convert 'profPar' -> 'pars'
+          sig <- pars[length(pars)]
+          thpars <- try(
+              convProfParToPar(pars, fm, profscale = scale, sc = sig),
+              silent = TRUE)
+          if (inherits(thpars, "try-error")) return(NA)
+          .Call(lmer_Deviance, pp$ptr(), resp$ptr(), mkTheta(thpars))
+          sigsq <- if (scale=="varcov") sig else sig^2
+          pp$ldL2() - ldW + (resp$wrss() + pp$sqrL(1))/sigsq + n * log(2 * pi * sigsq)
         }
         ldW <- sum(log(environment(ans)$resp$weights))
         assign("ldW", ldW, envir = environment(ans))
@@ -537,17 +535,18 @@ devfun2 <- function(fm, useSc = if(isLMM(fm)) TRUE else NA,
         ans <- function(pars)
         {
             stopifnot(is.numeric(pars), length(pars) == np+nf)
-            thpars <- if(!useSc)
-                          transfuns$to.chol(pars[seq(np)], n=vlist)
-                      else
-                          transfuns$to.chol(pars[seq(np)], n=vlist, s=pars[np])
+            thpars <- try(
+                convProfParToPar(pars, fm, profscale = scale, sc = NULL),
+                silent = TRUE)
+            if (inherits(thpars, "try-error")) return(NA)
             fixpars <- pars[-seq(np)]
-            d0(c(thpars,fixpars))
+            d0(c(thpars, fixpars))
         }
     }
     attr(ans, "optimum") <- opt         # w/ names()
     attr(ans, "basedev") <- basedev
-    attr(ans, "thopt") <- pp$theta
+    ## FIXME: should make this GLMM-aware
+    attr(ans, "paropt") <- getPar(fm)
     attr(ans, "stderr") <- stdErr
     class(ans) <- "devfun"
     ans
@@ -801,12 +800,14 @@ confint.thpr <- function(object, parm, level = 0.95, zeta,
 ##' @param \dots additional parameters to be passed to  \code{\link{profile.merMod}} or \code{\link{bootMer}}
 ##' @return a numeric table of confidence intervals
 confint.merMod <- function(object, parm, level = 0.95,
-                           method = c("profile","Wald","boot"),
-                           zeta, nsim=500, boot.type = c("perc","basic","norm"),
-                           FUN = NULL, quiet=FALSE, oldNames, signames = TRUE, ...)
+                           method = c("profile", "Wald", "boot"),
+                           zeta, nsim=500, boot.type = c("perc", "basic", "norm"),
+                           FUN = NULL, quiet=FALSE, oldNames, signames = TRUE,
+                           boot.scale = c("sdcor", "vcov"), ...)
 {
-    method <- match.arg(method)
+    method <- tolower(match.arg(method))
     boot.type <- match.arg(boot.type)
+    boot.scale <- match.arg(boot.scale)
     if (!missing(oldNames)) {
       warning("'oldNames' is deprecated. Please use 'signames' instead.", call. = FALSE)
       signames <- oldNames
@@ -818,7 +819,7 @@ confint.merMod <- function(object, parm, level = 0.95,
         ## "use scale" = GLMM with scale parameter *or* LMM ..
         useSc <- as.logical(object@devcomp$dims[["useSc"]])
         vn <- profnames(object, signames, useSc=useSc)
-        an <- c(vn,names(fixef(object)))
+        an <- c(vn, names(fixef(object)))
         parm <- if(missing(parm)) seq_along(an)
                 else
                     get.which(parm, nvp=length(vn), nptot=length(an), parnames=an)
@@ -834,7 +835,7 @@ confint.merMod <- function(object, parm, level = 0.95,
                ## confint.thpr() with missing(parm) using all names:
                confint(pp, level=level, zeta=zeta)
            },
-           "Wald" = {
+           "wald" = {
                a <- (1 - level)/2
                a <- c(a, 1 - a)
                ci.vcov <- array(NA,dim = c(length(vn), 2L),
@@ -847,37 +848,29 @@ confint.merMod <- function(object, parm, level = 0.95,
                ci.fixed <- array(cf + ses %o% qnorm(a),
                                  dim = c(length(pnames), 2L),
                                  dimnames = list(pnames, format.perc(a, 3)))
-               vnames <- tnames(object)
                ci.all <- rbind(ci.vcov,ci.fixed)
                ci.all[parm,,drop=FALSE]
            },
            "boot" = {
-               bootFun <- function(x) {
-                   th <- x@theta
-                   nvec <- lengths(x@cnms)
-                   scaleTh <- (isLMM(x) || isNLMM(x))
-                   ## FIXME: still ugly.  Best cleanup via Cv_to_Sv ...
-                   ss <- if (scaleTh) {  ## scale variances by sigma and include it
-                       Cv_to_Sv(th, n=nvec, s=sigma(x))
-                   } else if (useSc) { ## don't scale variances but do include sigma
-                       c(Cv_to_Sv(th, n=nvec), sigma(x))
-                   } else {  ## no scaling, no sigma
-                       Cv_to_Sv(th, n=nvec)
-                   }
-                   c(setNames(ss, vn), fixef(x))
+             bootFun <- function(x) {
+               ## need to get profile-scale pars from fitted model
+               useSc <- !(isGLMM(x) && hasNoScale(family(x)))
+               sc <- if (useSc) sigma(x) else NULL
+               ss <- convParToProfPar(x@optinfo$val, x, profscale = boot.scale, sc = sc)
+               c(setNames(ss, vn), fixef(x))
+             }
+             if (is.null(FUN)) FUN <- bootFun
+             bb <- bootMer(object, FUN=FUN, nsim=nsim,...)
+             if (all(is.na(bb$t))) stop("*all* bootstrap runs failed!")
+             print.bootWarnings(bb, verbose=FALSE)
+             citab <- confint(bb,level=level,type=boot.type)
+             if (missing(parm)) {
+               ## only happens if we have custom boot method
+               if (is.null(parm <- rownames(citab))) {
+                 parm <- seq(nrow(citab))
                }
-               if (is.null(FUN)) FUN <- bootFun
-               bb <- bootMer(object, FUN=FUN, nsim=nsim,...)
-               if (all(is.na(bb$t))) stop("*all* bootstrap runs failed!")
-               print.bootWarnings(bb, verbose=FALSE)
-               citab <- confint(bb,level=level,type=boot.type)
-               if (missing(parm)) {
-                   ## only happens if we have custom boot method
-                   if (is.null(parm <- rownames(citab))) {
-                       parm <- seq(nrow(citab))
-                   }
-               }
-               citab[parm, , drop=FALSE]
+             }
+             citab[parm, , drop=FALSE]
            },
            ## should never get here ...
            stop("unknown confidence interval method"))
@@ -960,6 +953,7 @@ splom.thpr <- function (x, data,
                         conf = c(50, 80, 90, 95, 99)/100, which = 1:nptot,
                         draw.lower = TRUE, draw.upper = TRUE, ...)
 {
+    x <- na.omit(x)
     stopifnot(1 <= (nptot <- length(nms <- names(attr(x, "forward")))))
     singfit <- FALSE
     for (i in grep("^(\\.sig[0-9]+|sd_)", names(x)))

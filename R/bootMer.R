@@ -43,10 +43,13 @@ bootMer <- function(x, FUN, nsim = 1, seed = NULL,
         pb <- do.call(pbfun,PBargs)
     }
 
-    do_parallel <- have_mc <- have_snow <- NULL # '-Wall', set here:
+
+    parallel <- match.arg(parallel)
+
+    # (parallel, ncpus, cl) -> (parallel)
     eval(initialize.parallel)
 
-    if (do_parallel && .progress != "none")
+    if (parallel != "no" && .progress != "none")
         message("progress bar disabled for parallel operations")
 
     FUN <- match.fun(FUN)
@@ -60,6 +63,7 @@ bootMer <- function(x, FUN, nsim = 1, seed = NULL,
     if (!is.numeric(t0))
         stop("bootMer currently only handles functions that return numeric vectors")
 
+    ## FIXME: make parameters match profiling output!
     mle <- list(beta = getME(x,"beta"), theta = getME(x,"theta"))
     if (isLMM(x)) mle <- c(mle,list(sigma = sigma(x)))
     ## FIXME: what about GLMMs with scale parameters??
@@ -100,7 +104,7 @@ bootMer <- function(x, FUN, nsim = 1, seed = NULL,
       x
       ss
       verbose
-      do_parallel
+      parallel
       control
       length.t0 <- length(t0)
       f1 <- factory(function(i) FUN(refit(x, ss[[i]],
@@ -108,27 +112,24 @@ bootMer <- function(x, FUN, nsim = 1, seed = NULL,
       function(i) {
           ret <- f1(i)
           if (verbose) { cat(sprintf("%5d :",i)); str(ret) }
-          if (!do_parallel && .progress!="none") { setpbfun(pb,i/nsim) }
+          if (parallel == "no" && .progress!="none") { setpbfun(pb,i/nsim) }
           ret
       }})
 
     simvec <- seq_len(nsim)
-    res <- if (do_parallel) {
-        if (have_mc) {
-            parallel::mclapply(simvec, ffun, mc.cores = ncpus)
-        } else if (have_snow) {
-            if (is.null(cl)) {
-                cl <- parallel::makePSOCKcluster(rep("localhost", ncpus))
-                ## explicit export of the lme4 namespace since most FUNs will probably
-                ## use some of them
-                parallel::clusterExport(cl, varlist=getNamespaceExports("lme4"))
-                if(RNGkind()[1L] == "L'Ecuyer-CMRG")
-                    parallel::clusterSetRNGStream(cl)
-                res <- parallel::parLapply(cl, simvec, ffun)
-                parallel::stopCluster(cl)
-                res
-            } else parallel::parLapply(cl, simvec, ffun)
+    res <- if (parallel == "multicore") {
+        parallel::mclapply(simvec, ffun, mc.cores = ncpus)
+    } else if (parallel == "snow") {
+        if (is.null(cl)) {
+            cl <- parallel::makeCluster(ncpus)
+            on.exit(parallel::stopCluster(cl))
+            ## explicit export of the lme4 namespace since most FUNs will probably
+            ## use some of them
+            parallel::clusterExport(cl, varlist=getNamespaceExports("lme4"))
+            if(RNGkind()[1L] == "L'Ecuyer-CMRG")
+                parallel::clusterSetRNGStream(cl)
         }
+        parallel::parLapply(cl, simvec, ffun)
     } else lapply(simvec, ffun)
 
     t.star <- do.call(cbind,res)
@@ -204,14 +205,16 @@ confint.bootMer <- function(object, parm=seq(length(object$t0)), level=0.95,
                              type=c("perc","norm","basic"), ...) {
     type <- match.arg(type)
     bnms <- c(norm="normal",basic="basic",perc="percent")
-    blens <- c(norm=3,basic=5,perc=5)
+    blens <- c(norm=3, basic=5, perc=5)
     bnm <- bnms[[type]]
     blen <- blens[[type]]
-    btab0 <- t(vapply(parm,
-                      function(i)
-        boot::boot.ci(object,index=i,conf=level, type=type)[[bnm]],
-        FUN.VALUE=numeric(blen)))
-    btab <- btab0[,(blen-1):blen,drop=FALSE]
+    safe_bootci <- function(i) {
+      capture.output(val <- boot::boot.ci(object, index=i, conf=level, type=type)[[bnm]])
+      if (is.null(val)) return(matrix(rep(NA_real_, blen), nrow = 1))
+      val
+    }
+    btab0 <- t(vapply(parm, FUN=safe_bootci, FUN.VALUE=numeric(blen)))
+    btab <- btab0[, (blen-1):blen, drop=FALSE]
     rownames(btab) <- names(object$t0)
     a <- (1 - level)/2
     a <- c(a, 1 - a)

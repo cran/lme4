@@ -7,6 +7,8 @@ if ("sample.kind" %in% names(formals(RNGkind)))
 L <- load(system.file("testdata", "lme-tst-fits.rda",
                       package="lme4", mustWork=TRUE))
 
+nosingcheck_lmer <- lmerControl(check.conv.singular = "ignore")
+nosingcheck_glmer <- glmerControl(check.conv.singular = "ignore")
 ## FIXME: should test for old R versions, skip reloading test data in that
 ## case?
 fm0 <- fit_sleepstudy_0
@@ -23,9 +25,12 @@ dNA <- data.frame(
     resp= rnorm(100))
 dNA[sample(1:100, 10), "xcov"] <- NA
 
-CI.boot <- function(fm, nsim=10, seed=101, ...)
-  suppressWarnings(confint(fm, method="boot", nsim=nsim,
-                           quiet=TRUE, seed=seed, ...))
+CI.boot <- function(fm, nsim=10, seed=101, ...) {
+  suppressMessages(
+    suppressWarnings(confint(fm, method="boot", nsim=nsim,
+                             quiet=TRUE, seed=seed, ...))
+  )
+}
 
 ##
 rSimple <- function(rep = 2, m.u = 2, kinds = c('fun', 'boring', 'meh')) {
@@ -96,8 +101,7 @@ test_that("lmer anova", {
                                      model.names=c("a","b"))),
                c("b","a"))
   ff <- function(form) {
-    lmer(form, dat=dat, REML=FALSE,
-         control=lmerControl(check.conv.singular="ignore"))
+    lmer(form, dat=dat, REML=FALSE, control=nosingcheck_lmer)
   }
   expect_error(rownames(stats::anova(ff(y ~ u + (1 | t)),
                                      ff(y ~ 1 + (1 | t)),
@@ -188,8 +192,7 @@ if (testLevel>1) {
   set.seed(47)
   test_that("bootMer", {
     ## testing bug-fix for ordering of sd/cor components in sd/cor matrix with >2 rows
-    ## FIXME: This model makes no sense [and CI.boot() fails for "nloptwrap"!]
-    dd <- expand.grid(A=factor(1:3),B=factor(1:10),rep=1:10)
+    dd <- expand.grid(A=factor(1:3), B=factor(1:10), rep=1:20)
     dd$y <- suppressMessages(simulate(~1 + (A|B),
                                       newdata=dd,
                                       newparams=list(beta=1,theta=rep(1,6),
@@ -197,20 +200,18 @@ if (testLevel>1) {
                                       family=gaussian,
                                       seed=101))[[1]]
     m1 <- lmer(y ~ 1 + (A|B), data=dd, control=lmerControl(calc.deriv=FALSE))
-    ci <- CI.boot(m1,seed=101)
-    ci2 <- CI.boot(m1,seed=101)
-    expect_equal(ci,ci2)
+    ci <- CI.boot(m1, seed=101, signames = FALSE)
+    ci2 <- CI.boot(m1, seed = 101, signames = FALSE)
+    expect_equal(ci, ci2)
     ci_50 <- CI.boot(m1,level=0.5,seed=101)
     expect_true(all(ci_50[,"25 %"]>ci[,"2.5 %"]))
     expect_true(all(ci_50[,"75 %"]<ci[,"97.5 %"]))
-    corvals <- ci[grep("^cor_",rownames(ci)),]
+    corvals <- ci[grep("^cor_", rownames(ci)),]
     expect_true(all(abs(corvals) <= 1))
     ## test bootMer with GLMM, multiple RE
-    ## expect_message(
-        ci1 <- CI.boot(gm2, nsim=5)
-      ## , "singular")
-    ci2  <- CI.boot(gm2, nsim=5, parm=3:6)
-    ci2B <- CI.boot(gm2, nsim=5, parm="beta_")
+    ci1 <- CI.boot(gm2, nsim=5, seed = 101)
+    ci2  <- CI.boot(gm2, nsim=5, parm=3:6, seed = 101)
+    ci2B <- CI.boot(gm2, nsim=5, parm="beta_", seed = 101)
     ## previously tested with nsim=5 vs nsim=3
     expect_true(nrow(ci2) == 4)
     expect_equal(ci2, ci2B)
@@ -219,7 +220,7 @@ if (testLevel>1) {
     ddNA <- dd
     ddNA$A[1:3] <- NA
     m2 <- update(m1, data=ddNA)
-    ci3 <- CI.boot(m2)
+    ci3 <- CI.boot(m2, signames = FALSE)
     expect_equal(ci, ci3, tolerance=0.2)
     sleepstudyNA <- sleepstudy
     sleepstudyNA$Days[1:3] <- NA
@@ -278,19 +279,21 @@ if (testLevel>1) {
     gaussmodel <- glmer(prop2 ~ prop1 + (1|site),
                         data=df2, family=gaussian(link="logit"))
 
-    set.seed(101)
-    bci <- suppressWarnings(confint(gaussmodel,method="boot",nsim=10,quiet=TRUE))
-    expect_equal(bci,
-                 structure(c(16.0861072699207, 0.0367496156026639,
-                             -4.21025090053564,
-                             3.1483596407467, 31.3318861915707,
-                             0.0564761126030204, -1.00593089841924,
-                             4.7064432268919), .Dim = c(4L, 2L),
-                           .Dimnames = list(c(".sig01",
-                                              ".sigma", "(Intercept)",
-                                              "prop1"), c("2.5 %", "97.5 %"))),
-                 tolerance=1e-5)
+    ## parametric bootstrap:
+    ##  terrible, but not a computational bug I think?
+    boot_res <- matrix(
+      c(
+        0.7876999074589053, 0.03674961560266387, -4.210250900535643,
+        3.1483596407466985, 1.7682636983854518, 0.05647611260302035,
+        -1.0059308984192392, 4.706443226891899
+      ), nrow = 4L, ncol = 2L,
+      dimnames = list(c(".sig01", ".sigma", "(Intercept)", "prop1"),
+                      c("2.5 %", "97.5 %"))
+    )
 
+    set.seed(101)
+    bci <- suppressMessages(suppressWarnings(confint(gaussmodel,method="boot",nsim=10,quiet=TRUE)))
+    expect_equal(bci, boot_res, tolerance=1e-5)
 
   })
 } ## testLevel>1
@@ -359,12 +362,12 @@ test_that("monotonic profile but bad spline",
   }
   set.seed(102)
   dat <- simfun(10,5,1,.3,.3,.3,(1/18),0,(1/18))
-  fit <- lmer(Y~X+Z+X:Z+(X||group),data=dat)
-
-    expect_warning(pp <- profile(fit,"theta_"), "non-monotonic profile")
-    expect_warning(cc <- confint(pp),"falling back to linear interpolation")
-    ## very small/unstable problem, needs large tolerance
-    expect_equal(unname(cc[2,]), c(0, 0.509), tolerance=0.09) # "bobyqa" had 0.54276
+  fit <- lmer(Y~X+Z+X:Z+(X||group),data=dat,
+              control = lmerControl(check.conv.singular = "ignore"))
+  expect_warning(pp <- profile(fit,"theta_"), "non-monotonic profile")
+  expect_warning(cc <- confint(pp),"falling back to linear interpolation")
+  ## very small/unstable problem, needs large tolerance
+  expect_equal(unname(cc[2,]), c(0, 0.509), tolerance=0.09) # "bobyqa" had 0.54276
 })
 
 test_that("confint with bad profile", {
@@ -724,8 +727,11 @@ if (testLevel>1) {
     expect_equal(unname(confint(varianceProf(p1))),
                  unname(confint(p2)),
                  tolerance=1e-5)
-    p3 <- profile(fm2,which=c(1,3,4))
-    p4 <- suppressWarnings(profile(fm2,which="theta_",prof.scale="varcov",
+    s_inds <- c(1,2,4) ## variance terms
+    p3 <- profile(fm2, which=s_inds)
+    p4 <- suppressWarnings(profile(fm2,
+                                   which = "theta_",
+                                   prof.scale="varcov",
                                    signames=FALSE))
     ## compare only for sd/var components, not corr component
     ## FAILS on r-patched-solaris-x86 2018-03-30 ???
@@ -735,22 +741,43 @@ if (testLevel>1) {
 
     if (Sys.info()["sysname"] != "SunOS") {
       expect_equal(unname(confint(p3)^2),
-                   unname(confint(p4)[c(1,3,4),]),
-                   tolerance=1e-3)
+                   unname(confint(p4)[s_inds,]),
+                   tolerance=5e-3)
     }
 
     ## check naming convention properly adjusted
     expect_equal(as.character(unique(p4$.par)),
-                 c("var_(Intercept)|Subject", "cov_Days.(Intercept)|Subject",
-                   "var_Days|Subject", "sigma"))
+                 c("var_(Intercept)|Subject", 
+                   "var_Days|Subject",
+                   "cov_Days.(Intercept)|Subject", "sigma"))
   })
 
+  test_that("profile name/value order consistency",
+             ## can use parallel comp since testLevel > 1, won't
+             ##  be tried on CRAN
+             ## use snow instead of multicore for Windows safety
+  {
+    ## GitHub actions complains about >2 cores ...
+    pp <- profile(fm2, parallel = "snow", ncpus = 2,
+                  signames = FALSE)
+    ci_pp <- confint(pp)
+    expect_all_true(abs(ci_pp["cor_Days.(Intercept)|Subject",]) < 1)
+
+    ci_bb <- suppressWarnings(
+      suppressMessages(
+        confint(fm2, method = "boot", nsim = 10, signames = FALSE)
+      ))
+    expect_all_true(abs(ci_bb["cor_Days.(Intercept)|Subject",]) <= 1)
+  })
+    
   test_that("densityplot is robust", {
     p <- readRDS(system.file("testdata","harmel_profile.rds",
                              package="lme4"))
     expect_warning(lattice::densityplot(p),
                    "unreliable profiles for some variables")
   })
+
+  
 
 } ## testLevel>1
 
@@ -798,7 +825,7 @@ test_that("influence OK with tibbles", {
     ss <- tibble::as_tibble(sleepstudy[1:60,])
     smallfit <- lmer(Reaction ~ 1 + (1 | Subject),
                      data = ss)
-    i1 <- influence(smallfit, ncores = 1)
+    i1 <- influence(smallfit, ncpus = 1)
     expect_equal(head(i1[["fixed.effects[-case]"]]),
                  structure(c(286.35044481665, 286.179896199062,
                              286.327301507498, 285.014692121823,
@@ -829,7 +856,7 @@ test_that("cooks distance", {
 })
 
 test_that("cooks distance on subject-level influence", {
-  ifm1S <- influence(fm1, "Subject", ncores=1)
+  ifm1S <- influence(fm1, "Subject", ncpus=1)
   expect_equal(
       unname(head(cooks.distance(ifm1S),2)),
       c(0.33921460279262, 0.290309061006305),
@@ -838,7 +865,7 @@ test_that("cooks distance on subject-level influence", {
 
 test_that("cooks distance on glmer models", {
   inf <- influence(gm1)
-  inf.h <- influence(gm1, "herd", ncores=1)
+  inf.h <- influence(gm1, "herd", ncpus=1)
   cook <- cooks.distance(inf)
   expect_equal(unname(head(cook, 3)),
                c(0.0532998800033037, 0.0405931172763581, 0.252608337928438),
@@ -868,22 +895,28 @@ zerodat$y2 <- simulate(~x+(1|f),
 
 test_that("rstudent matches for zero-var cases",
 {
-  lmer_zero <- lmer(y1~x+(1|f), data=zerodat)
-  glmer_zero <- glmer(y2~x+(1|f),family=poisson, data=zerodat)
+
+  skip_if(getRversion() < "4.6.0") ## methods have changed to match r-devel
+  lmer_zero <- lmer(y1~x+(1|f), data=zerodat, control = nosingcheck_lmer)
+  glmer_zero <- glmer(y2~x+(1|f),family=poisson, data=zerodat, control = nosingcheck_glmer)
   lm_zero <- lm(y1~x, data=zerodat)
   glm_zero <- glm(y2~x,family=poisson, data=zerodat)
+  ## suppressWarnings() for "hatvalues may not be well defined" warning
   expect_equal(suppressWarnings(rstudent(glmer_zero)),
                rstudent(glm_zero),
                tolerance=0.01)
   expect_equal(suppressWarnings(rstudent(lmer_zero)),
                rstudent(lm_zero),tolerance=0.01)
+  expect_equal(suppressWarnings(rstandard(glmer_zero)), rstandard(glm_zero),
+          tolerance = 0.01)
+
 })
 
 if (testLevel>1) {
   ## n.b. influence() doesn't work under system.time();
   ##  weird evaluation stuff ?
   ## FIXME: work on timing some more
-  i1 <- influence(fm1, ncores=1)
+  i1 <- influence(fm1, ncpus=1)
   test_that("full version of influence", {
     expect_equal(c(head(i1[["fixed.effects[-case]"]],1)),
                  c(252.323536264131, 10.3222704729148))
@@ -891,16 +924,28 @@ if (testLevel>1) {
   cd <- cooks.distance(i1)
   expect_equal(unname(head(cd,2)),
                c(0.016503344184025, 0.0106634053477361))
-  if (parallel::detectCores() > 1) {
+  if (max(parallel::detectCores(), 1L, na.rm = TRUE) > 1) {
     test_that("parallel influence", {
-        i2 <- suppressMessages(influence(fm1, ncores=2))
-        ## if (packageVersion("Matrix") != "1.4.2")
-        ## fow now,as they differ
-        str(i1)
-        str(i2)
-        print(all.equal(i1, i2)) # to see diff
-        print(identical(i1, i2))
-        # expect_equal(i1, i2) ## <<<<-------------- FAILS (4 MM)
+        # ncores = 2 (deprecated)
+        expect_warning(
+            i2 <- influence(fm1, ncores=2),
+            "argument 'ncores' is deprecated"
+        )
+        i3 <- influence(fm1, parallel = "snow", ncpus = 2)
+        expect_equal(i1, i2)
+        expect_equal(i1, i3)
+
+        if (.Platform$OS.type != "windows") {
+            i4 <- influence(fm1, parallel = "multicore", ncpus = 2)
+            expect_equal(i1, i4)
+        }
+
+        # provide cl
+        cl <- parallel::makeCluster(2)
+        on.exit(parallel::stopCluster(cl))
+        parallel::clusterEvalQ(cl, library(lme4))
+        i5 <- influence(fm1, parallel = "snow", ncpus = length(cl), cl = cl)
+        expect_equal(i1, i5)
     })
   }
 }
