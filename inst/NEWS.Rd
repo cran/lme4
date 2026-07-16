@@ -4,7 +4,114 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 2.0-1}{
+\section{CHANGES IN VERSION 2.0-6}{
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item fixed \code{compDev=FALSE} (R-level PIRLS, used for debugging):
+      the \code{uOnly} flag was inverted relative to the C++ implementation.
+      \code{getME(*, "devfun")} for GLMMs now correctly propagates
+      \code{compDev} (and \code{tolPwrss}) from the fitted model to the
+      reconstructed deviance function environment.
+      \item \code{profile()} no longer emits spurious \dQuote{unused control
+      arguments ignored} warnings when profiling with an \code{optimizer}
+      different from the one used for the original fit (GH #913)
+      \item \code{lmList} would fail when some groups have rank-deficient model matrices;
+      in particular, it used to report the incorrect degrees of freedom (GH #377)
+      \item likelihood profiling no longer gets stuck when a deviance value less
+      than the original fitted deviance (but greater than
+      \code{mindev-devtol}) is encountered
+      \item fixed bug where \code{glmer} with structured covariance models
+      would return incorrect fixed effect coefficients (zero values, or wrong
+      number of values) (GH #962).
+      \item \code{refit()} on a GLMM with multiple random effects no longer
+      gives a spurious \dQuote{longer object length is not a multiple of
+      shorter object length} warning (GH #975)
+      \item fixed the case where a Gamma GLMM performs poorly for
+      data with small shape parameters by changing the starting
+      parameter values for Gamma families (GH #290)
+      \item fixed parameter-counting bug for structured covariance
+      matrices (internal \code{npar.merMod} function, results exposed in
+      \code{logLik}, \code{anova}, \code{df.residual} ...) (GH #943,
+      Henrik Singmann)
+      \item fixed ordering bug for models with multiple structured
+      covariances of different types (\code{mkReTrms} sorts random effects
+      in decreasing order of number of grouping variable levels, this
+      ordering was not applied consistently) (GH #945, Henrik Singmann)
+      \item fixed the case where \code{lme4::lmList} prints grouping variable 
+      as \code{NULL} (GH #958)
+      \item fixed some edge cases where \code{splom} would fail due to
+      bad spline fits in profiles: these cases are now dropped, with
+      a warning (Michael Chirico, GH #979)
+      \item \code{simulate()} with \code{re.form=NULL} now works when
+      a predictor is a one-column matrix (e.g. from \code{scale()}) used
+      inside \code{poly()}; \code{poly()} with pre-specified coefficients
+      (stored in \code{predvars}) rejected matrix input even though it
+      accepted it during initial model fitting (GH #948)
+      \item \code{allFit()} could fail or emit spurious warnings when
+      refitting a model whose original \code{control} argument specified
+      a non-default \code{optimizer} or \code{optCtrl} (GH #985)
+      \item fixed a heap-use-after-free bug in \code{merPredD} construction.
+      This caused intermittent (GC-timing-dependent) \dQuote{Downdated VtV
+      is not positive definite} errors and other spurious failures in
+      \code{glmer()} fits, most visible under memory pressure (e.g. during
+      \code{R CMD check}) or under AddressSanitizer.
+      \item fixed a second, unrelated heap-use-after-free with the same
+      symptoms, triggered by an interaction between R's ALTREP-wrapped
+      vectors and Rcpp's data-pointer accessors (exposed by the Rcpp 1.1.2
+      upgrade; invaluable help from Ivan Krylov).
+    } % itemize
+  } % bug fixes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item a new vignette (\code{vignette("glmer", package = "lme4")})
+      describes the details of \code{glmer} implementation
+      \item parallelization via the \code{future} framework is available
+      by setting argument \code{parallel} to \code{"future"}.
+    } % itemize
+  } % new features
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item \code{getData()} now gives more informative error messages
+      when the original data cannot be retrieved: if the object is not
+      found, the message names the object and suggests re-loading it;
+      if an object of the wrong type is found (e.g. the name \code{data}
+      resolving to \code{utils::data}), the message reports the type and
+      location of what was found and notes the likely masking (GH #808)
+      \item the Gauss-Hermite quadrature (GH) nodes and weights used when
+      \code{nAGQ > 1} are now symmetrized (nodes averaged with their
+      negatives in reverse order; weights averaged in forward and reverse
+      order), matching the convention in
+      \href{https://github.com/JuliaStats/MixedModels.jl}{MixedModels.jl}
+      (GH #968).
+      This will produce small changes to numerical results for any
+      \code{glmer()} fit with \code{nAGQ > 1}.
+      \item exported covariance methods documented in
+      \code{help("Covariance-class")} (\code{getPar}, \code{getTheta},
+      etc.)
+      \item the dependency on \pkg{rlang} has been removed; the
+      once-per-session deprecation warnings for formula-processing
+      functions that moved to \pkg{reformulas} are now implemented
+      internally.
+      \item performing \emph{de novo} simulation (i.e., calling
+      \code{simulate()} with a one-sided formula rather than a fitted
+      model or a two-sided formula) without specifying \code{family}
+      or \code{newparams} now gives a more informative error. This
+      only affects the one-sided-formula dispatch path that is
+      internal to \pkg{lme4}; the two-sided
+      \code{simulate.formula}/\code{simulate.formula_lhs} dispatch
+      mechanism shared with \pkg{ergm} (see GH #566) is unchanged, so
+      \pkg{ergm}'s behavior should not be affected.
+      \item \emph{de novo} simulation (see previous item) for a
+      family with an estimated scale parameter (e.g. Gaussian, Gamma)
+      without specifying \code{sigma} as part of \code{newparams}
+      now gives an error (it previously gave a bogus result based on
+      the residual dispersion from a \code{merMod} object with default
+      \code{beta} and \code{theta} values)
+    } % itemize
+  } % user-visible changes
+} % 2.0-2
+
+\section{CHANGES IN VERSION 2.0-1 (2026-03-05)}{
   \subsection{BUG FIXES}{
     \itemize{
       \item variances and standard deviations for GLMMs with estimated
@@ -79,7 +186,7 @@
       upstream changes/corrections in base R
     } % itemize
   } % user-visible changes
-} % 2.0-0
+} % 2.0-1
 
 \section{CHANGES IN VERSION 1.1-38 (2025-12-02)}{
   \subsection{BUG FIXES}{
@@ -246,9 +353,9 @@
   } % bug fixes
   \subsection{USER-VISIBLE CHANGES}{
     \itemize{
-      \item{updated tests of upstream \code{Matrix} version; should
+      \item updated tests of upstream \code{Matrix} version; should
 	      now warn only on ABI incompatibility, not on package version
-	      mismatch alone}
+	      mismatch alone
     } % itemize
   } % user-visible changes
 } % 1.1-35.2

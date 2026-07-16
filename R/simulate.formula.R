@@ -119,8 +119,23 @@ simulate.formula <- function(object, nsim=1, seed=NULL, ..., basis, newdata, dat
   eval(cl, parent.frame())
 }
 
+#' @describeIn simulate.formula A method for one-sided formulas (no LHS) that
+#'   routes to [.simulateFun()], enabling \code{simulate(~re_formula,
+#'   family=..., newdata=..., newparams=...)} usage. \code{ergm} (and other
+#'   packages using the shared \code{simulate.formula}/\code{simulate.formula_lhs}
+#'   dispatch mechanism from GH#566) only ever supply two-sided formulas, so
+#'   they never reach this method; this method exists only to give one-sided
+#'   formulas a clearer error message than the generic
+#'   \code{simulate.formula_lhs()} fallback would.
+#'
+#' @export
+simulate.formula_lhs_ <- function(object, nsim=1, seed=NULL, ...) {
+  class(object) <- setdiff(class(object), c("formula_lhs_", "formula_lhs"))
+  .simulateFun(formula=object, nsim=nsim, seed=seed, ...)
+}
+
 #' @describeIn simulate.formula A function to catch the situation when there is no method implemented for the class to which the LHS evaluates.
-#' 
+#'
 #' @export
 simulate.formula_lhs <- function(object, nsim=1, seed=NULL, ...){
   stop("No applicable method for LHS of type ", paste0(sQuote(class(attr(object, ".Basis"))), collapse=", "), ".")

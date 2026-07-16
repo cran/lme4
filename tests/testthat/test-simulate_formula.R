@@ -54,14 +54,28 @@ test_that("two-sided formula warning", {
                    "object '.' not found")
 })
 
-## cleanup
+## cleanup: mk_method() assigns into .GlobalEnv, so remove explicitly from there
+suppressWarnings(try(rm(list = c("simulate.formula_lhs_", "simulate.formula_lhs_numeric",
+                                 "simulate.formula_lhs_array"),
+                        envir = .GlobalEnv), silent = TRUE))
 
-## I can't figure out what environments these things actually live in so I'm going to
-## give up and try() to remove them ...
+## a one-sided formula with neither 'family' nor 'newparams' used to fall
+## through to the generic (and unhelpful) "No applicable method for LHS of
+## type 'NULL'" error; it should instead report the missing arguments.
+test_that("one-sided formula without family/newparams gives an informative error", {
+    expect_error(simulate(~1 + (1|Days), newdata=sleepstudy),
+                 "must specify all of.*formula.*newdata.*newparams")
+})
 
-## rmx <- function(s) if (exists(s, parent.frame())) rm(list=s, envir=parent.frame())
-## rmx("simulate.formula_lhs_character")
-## rmx("simulate.formula_lhs_")
-## rmx("simulate.formula_lhs_numeric")
+## GH#948: simulate with re.form=NULL should work when a predictor is a 1-col
+## matrix (e.g. from scale()) used inside poly() -- poly() with pre-specified
+## coefs rejects matrix input, so mkNewReTrms must drop such columns first
+test_that("simulate re.form=NULL works with poly(scale(x)) predictor (GH#948)", {
+  ss_sc <- transform(sleepstudy, Days = scale(Days))
+  fit1  <- lmer(Reaction ~ 1 + poly(Days, 2) + (1|Subject), data = sleepstudy)
+  fit_sc <- update(fit1, data = ss_sc)
+  s1 <- simulate(fit_sc, seed = 101, re.form = NULL)
+  s2 <- simulate(fit_sc, seed = 101, re.form = NULL)
+  expect_equal(s1, s2)
+})
 
-suppressWarnings(try(rm(list = c("simulate.formula_lhs_", "simulate.formula_lhs_numeric")),silent=TRUE))

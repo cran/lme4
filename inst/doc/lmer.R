@@ -244,7 +244,11 @@ ddiff2 <- deviance(fm2ML) - deviance(fm1ML)
 
 ## ----compareCI,echo=FALSE,cache=TRUE,message=FALSE,warning=FALSE----
 ccw <- confint(fm1, method = "Wald")
-ccp <- confint(fm1, method = "profile", signames = FALSE)
+## compute the profile once here and re-use it below rather than
+## profiling fm1 a second time; profiling is expensive and
+## makes us exceed CRAN time limits
+pf <- profile(fm1)
+ccp <- confint(pf)
 ccb <- confint(fm1, method = "boot")
 
 ## ----CIqcomp,echo=FALSE,eval=TRUE-----------------------------------
@@ -271,7 +275,9 @@ mdiffpct <- round(100 * max(rtol(bw, pw)))
 #     labs(x = "")
 
 ## ----profile_calc,echo=FALSE,cache=TRUE-----------------------------
-pf <- profile(fm1)
+## pf was computed above, in the confidence interval
+## comparison; re-used here to save time by not profiling
+## fm1 twice
 
 ## ----profile_zeta_plot,fig.cap="Profile zeta plot: \\code{xyplot(prof.obj)}",fig.scap="Profile zeta plot",echo=FALSE,fig.align='center',fig.pos='tb'----
 xyplot(pf)

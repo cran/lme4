@@ -71,6 +71,38 @@ if (testLevel>1) {
         expect_equal(class(af2),"allFit")
     })
 
+    test_that("control passed as a variable does not break allFit (GH #985)", {
+        ## previously: getCall(object)$control was a bare symbol (not a
+        ## call), so allFit() failed with
+        ## "object of type 'symbol' is not subsettable"
+        cc <- lmerControl(optimizer="bobyqa", optCtrl = list(maxfun = 1e5))
+        fm <- lmer(Reaction ~ Days + (1|Subject), control = cc, data = sleepstudy)
+        aa <- expect_no_error(allFit(fm, verbose=FALSE))
+        expect_true(all(summary(aa)$which.OK))
+    })
+
+    test_that("allFit does not corrupt nmkbw's optCtrl (GH #985)", {
+        ## previously: a stale 'maxfun' entry (valid for bobyqa but not
+        ## for nmkbw) survived sanitize() alongside the correct
+        ## 'maxfeval' entry, causing dfoptim::nmkb() to warn
+        ## "number of items to replace is not a multiple of replacement length"
+        gm <- glmer(round(Reaction) ~ Days + (1|Subject),
+                   control = glmerControl(optimizer="bobyqa",
+                                          optCtrl = list(maxfun = 1e5)),
+                   data = sleepstudy, family = poisson)
+        warnings_seen <- character(0)
+        aa <- withCallingHandlers(
+            allFit(gm, verbose=FALSE),
+            warning = function(w) {
+                warnings_seen <<- c(warnings_seen, conditionMessage(w))
+                invokeRestart("muffleWarning")
+            }
+        )
+        expect_true(all(summary(aa)$which.OK))
+        expect_false(any(grepl("number of items to replace",
+                               warnings_seen, fixed=TRUE)))
+    })
+
     test_that("i in model call is OK", {
         ## GH #538
         ## ugh, testthat scoping is insane ...
@@ -117,6 +149,22 @@ if (testLevel>1) {
         ## function values are sometimes off a bit (due to initialization or Hessian calculation)
         ##  but close enough ...
         expect_true(all(is.na(v) | v < 12))
+    })
+
+    test_that("parallel = 'future' works", {
+        if (require("future.apply", quietly = TRUE)) {
+            plan(sequential)
+            gm_all_future_seq <- allFit(fit_cbpp_1, verbose = FALSE, parallel = "future")
+            expect_is(gm_all_future_seq, "allFit")
+            expect_equal(names(gm_all_future_seq), names(gm_all))
+            plan(multisession)
+            gm_all_future_multi <- allFit(fit_cbpp_1, verbose = FALSE, parallel = "future")
+            expect_is(gm_all_future_multi, "allFit")
+            ## Comparing results is tricky due to timing/environment differences
+            ## but the set of optimizers that worked should be the same
+            expect_equal(names(gm_all_future_multi), names(gm_all))
+            plan(sequential)
+        }
     })
 
 }  ## testLevel

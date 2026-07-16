@@ -406,6 +406,17 @@ test_that("refit", {
   expect_equal(logLik(m5),logLik(m5R))
 })
 
+test_that("refit GLMM with multiple RE no length-mismatch warning (GH #975)", {
+  ## upper bound vector was not extended for fixed effects when n_RE > 1,
+  ## causing recycling warning in checkConv when n_beta %% n_theta != 0
+  cbpp2 <- transform(cbpp, prop = incidence/size, obs = factor(seq(nrow(cbpp))))
+  m <- glmer(prop ~ herd + (1|period) + (1|obs), weights = size,
+             family = binomial, data = cbpp2,
+             control = glmerControl(calc.derivs = FALSE))
+  expect_no_warning(refit(m, newresp = cbpp2$prop),
+                    message = "not a multiple")
+})
+
 if (testLevel>1) {
   #context("predict method")
   test_that("predict", {
@@ -519,9 +530,14 @@ if (testLevel>1) {
   ## testLevel>1
   test_that("simulate", {
     ## simulate() will look for data in environment of formula, find
-    ##   unmodified version of cbpp -- need to re-add observation-level factor
+    ##   unmodified version of cbpp -- need to re-add observation-level factor.
+    ## ee is .GlobalEnv; ee$cbpp$obs<-... would create a corrupted list in
+    ## .GlobalEnv shadowing lme4's cbpp, breaking later tests.
+    ## Fix: assign a proper data frame with obs added, restore on exit.
     ee <- environment(formula(gm2))
-    ee$cbpp$obs <- factor(seq(nrow(ee$cbpp)))
+    on.exit(rm(list = intersect("cbpp", ls(envir = ee)), envir = ee),
+            add = TRUE)
+    ee$cbpp <- transform(cbpp, obs = factor(seq(nrow(cbpp))))
     expect_is(simulate(gm2), "data.frame")
     p1 <- simulate(gm2, re.form = NULL, seed = 101)
     p2 <- simulate(gm2, re.form = ~0, seed = 101)
@@ -687,6 +703,33 @@ test_that("plot", {
 
   ## test qqmath/getIDLabels()
   expect_is(q1 <- lattice::qqmath(fm,id=0.05),"trellis")
+})
+
+## GH#808: getData.merMod should give informative errors when the data object
+## cannot be retrieved from the formula environment
+test_that("getData gives informative errors (GH#808)", {
+  form <- Reaction ~ Days + (1|Subject)
+
+  ## case 1: data name not found (object lives only in the function's local env)
+  fit_notfound <- local({
+    dd <- sleepstudy
+    lmer(form, data = dd)
+  })
+  expect_error(getData(fit_notfound),
+               "not found.*re-load it into the current environment",
+               perl = TRUE)
+
+  ## case 2: name resolves to wrong type (shadows a built-in, e.g. 'data')
+  fit_masked <- local({
+    data <- sleepstudy          # shadows utils::data
+    lmer(form, data = data)
+  })
+  expect_error(getData(fit_masked),
+               "is not a data frame or matrix.*masked by a built-in",
+               perl = TRUE)
+})
+
+test_that("plot (continued)", {
 
   cake2 <- transform(cake,replicate=as.numeric(replicate),
                      recipe=as.numeric(recipe))
@@ -706,6 +749,14 @@ test_that("summary", {
                                 family=MASS::negative.binomial(theta=2),
                                 data=grouseticks))
   expect_is(family(gnb),"family")
+})
+
+test_that("profile with switched optimizer does not warn (GH #913)", {
+    ## fm1 was fit with the default optimizer (nloptwrap); profiling with a
+    ## different optimizer must not pass nloptwrap's stored control args (e.g.
+    ## 'print_level') to the new optimizer, which would warn "unused control
+    ## arguments ignored".
+    expect_no_warning(profile(fm1, which = 1, optimizer = "bobyqa"))
 })
 
 
@@ -926,18 +977,26 @@ if (testLevel>1) {
                c(0.016503344184025, 0.0106634053477361))
   if (max(parallel::detectCores(), 1L, na.rm = TRUE) > 1) {
     test_that("parallel influence", {
+        ## function.evals can legitimately differ by 1 across parallel backends
+        ## (optimizer non-determinism); compare all components except that one.
+        cmp_influence <- function(a, b) {
+            drop <- "function.evals"
+            expect_equal(a[setdiff(names(a), drop)],
+                         b[setdiff(names(b), drop)])
+        }
+
         # ncores = 2 (deprecated)
         expect_warning(
             i2 <- influence(fm1, ncores=2),
             "argument 'ncores' is deprecated"
         )
         i3 <- influence(fm1, parallel = "snow", ncpus = 2)
-        expect_equal(i1, i2)
-        expect_equal(i1, i3)
+        cmp_influence(i1, i2)
+        cmp_influence(i1, i3)
 
         if (.Platform$OS.type != "windows") {
             i4 <- influence(fm1, parallel = "multicore", ncpus = 2)
-            expect_equal(i1, i4)
+            cmp_influence(i1, i4)
         }
 
         # provide cl
@@ -945,7 +1004,17 @@ if (testLevel>1) {
         on.exit(parallel::stopCluster(cl))
         parallel::clusterEvalQ(cl, library(lme4))
         i5 <- influence(fm1, parallel = "snow", ncpus = length(cl), cl = cl)
-        expect_equal(i1, i5)
+        cmp_influence(i1, i5)
+
+        if (require("future.apply", quietly = TRUE)) {
+            plan(sequential)
+            i6 <- influence(fm1, parallel = "future")
+            cmp_influence(i1, i6)
+            plan(multisession)
+            i7 <- influence(fm1, parallel = "future")
+            cmp_influence(i1, i7)
+            plan(sequential)
+        }
     })
   }
 }
@@ -968,6 +1037,14 @@ test_that("influence with nAGQ=0", {
   expect_is(influence(gm1Q0), "influence.merMod")
 })
 
+test_that("getME now has npar", {
+  fm1 <- fit_sleepstudy_2
+  expect_equal(getME(fm1, "npar"),
+               length(getReCovs(fm1)[[1]]@par))
+  expect_equal(getME(fm1, "npar"),
+               length(getLower(fm1)))
+})
+
 if (testLevel > 1) withAutoprint({
   test_that("cook's distance comparison", {
   ## generate data with zero variance
@@ -988,9 +1065,12 @@ if (testLevel > 1) withAutoprint({
   expect_equal(cooks.distance(i2), cooks.distance(fm2L))
   expect_equal(cooks.distance(fm2), cooks.distance(fm2L), tolerance = 1e-2)
   })
+
+  test_that("oldNames warning in confint", {
+    fm1 <- fit_sleepstudy_2
+    expect_warning(confint(fm1, parm = 1, oldNames = TRUE, quiet = TRUE))
+  })
+
 }) ## testLevel > 1
 
-test_that("oldNames warning in confint", {
-  fm1 <- lmer(Reaction ~ Days + (Days|Subject), sleepstudy)
-  expect_warning(confint(fm1, oldNames = TRUE))
-})
+

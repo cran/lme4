@@ -81,7 +81,7 @@ if(testLevel > 2) {
     lme4a_CIpr2 <-
         structure(c(0.633565787613112, 1.09578224011285, -0.721864513060904,
                     21.2666273835452, 1.1821039843372, 3.55631937954106, -0.462903300019305,
-                    24.6778176174587), .Dim = c(4L, 2L), .Dimnames = list(c(".sig01",
+                    24.6778176174587), dim = c(4L, 2L), dimnames = list(c(".sig01",
                            ".sig02", ".lsig", "(Intercept)"), c("2.5 %", "97.5 %")))
     lme4a_CIpr2[".lsig",] <- exp(lme4a_CIpr2[".lsig",])
 
@@ -149,6 +149,16 @@ if (max(detectCores(), 1L, na.rm = TRUE) > 1) {
     if (Sys.info()["sysname"] != "SunOS" && !travis) {
         prof01P.snow <- profile(fm1, which="theta_", parallel="snow", ncpus=2)
         stopifnot(all.equal(p0,prof01P.snow))
+    }
+
+    if (require("future.apply", quietly = TRUE)) {
+        plan(sequential)
+        prof01P.future.seq <- profile(fm1, which = "theta_", parallel = "future")
+        stopifnot(all.equal(p0, prof01P.future.seq))
+        plan(multisession)
+        prof01P.future.multi <- profile(fm1, which = "theta_", parallel = "future")
+        stopifnot(all.equal(p0, prof01P.future.multi))
+        plan(sequential)
     }
 }
 

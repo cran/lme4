@@ -32,7 +32,7 @@ profile.merMod <- function(fitted,
                            optimizer = NULL,
                            control = NULL,
                            signames = TRUE,
-                           parallel = c("no", "multicore", "snow"),
+                           parallel = c("no", "multicore", "snow", "future"),
                            ncpus = getOption("profile.ncpus", 1L),
                            cl = NULL,
                            prof.scale = c("sdcor","varcov"),
@@ -54,12 +54,17 @@ profile.merMod <- function(fitted,
     ## hack: doesn't work to set bobyqa parameters to *ending* values stored
     ## in @optinfo$control
     ignore.pars <- c("xst", "xt")
-    control.internal <- fitted@optinfo$control
+    ## The control stored in @optinfo$control is specific to the optimizer used
+    ## for the original fit.  Reusing it with a *different* optimizer can pass
+    ## arguments the new optimizer rejects (e.g. nloptwrap's 'print_level' handed
+    ## to bobyqa), producing spurious "unused control arguments ignored" warnings
+    ## (GH #913).  Only carry it over when the optimizer is unchanged.
+    control.internal <- if (identical(optimizer, fitted@optinfo$optimizer))
+                            fitted@optinfo$control else list()
     if (length(ign <- which(names(control.internal) %in% ignore.pars)) > 0)
         control.internal <- control.internal[-ign]
     if (!is.null(control)) {
-        i <- names(control)
-        control.internal[[i]] <- control[[i]]
+        for (i in names(control)) control.internal[[i]] <- control[[i]]
     }
     control <- control.internal
     useSc <- isLMM(fitted) || isNLMM(fitted)
@@ -163,7 +168,7 @@ profile.merMod <- function(fitted,
         nr <- nrow(mat)
         i <- 2L
         ## REF: is.na(curzeta) behaviour last modified in commit b1a28914e72be845e
-        while (i < nr && mat[i, cc] > lowcut && mat[i,cc] < upcut &&
+        while (i < nr && !is.na(mat[i, cc]) && mat[i, cc] > lowcut && mat[i, cc] < upcut &&
                (i > 1 && !is.na(curzeta <- abs(mat[i, ".zeta"]))) && curzeta <= cutoff) {
                 np <- nextpar(mat, cc, i, delta, lowcut, upcut)
                 ns <- nextstart(mat, pind = cc-1, r=i, method=startmethod)
@@ -229,7 +234,7 @@ profile.merMod <- function(fitted,
         pw <- opt[w]
         lowcut <- lower[w]
         upcut <- upper[w]
-        zeta <- function(xx,start) {
+         zeta <- function(xx,start) {
             ores <- tryCatch(optwrap(optimizer, par=start,
                                      fn=function(x) dd(mkpar(npar1, w, xx, x)),
                                      lower = lowvp[-w],
@@ -245,6 +250,8 @@ profile.merMod <- function(fitted,
             }
             if (is.na(devdiff)) {
                 warning("NAs detected in profiling")
+                ## optimizer failed; return an all-NA row so fillmat can skip it
+                return(rep(NA_real_, ncol(res)))
             } else {
                 if(verbose && devdiff < 0)
                     cat("old deviance ",base,",\n",
@@ -261,8 +268,8 @@ profile.merMod <- function(fitted,
                 if(devdiff < 0)
                     warning(gettextf("slightly lower deviances (diff=%g) detected",
                                      devdiff), domain=NA)
+                if (devdiff <= 0) devdiff <- devtol
             }
-            devdiff <- max(0,devdiff)
             zz <- sign(xx - pw) * sqrt(devdiff)
             r <- c(zz, mkpar(npar1, w, xx, pars))
             if (isLMM(fitted)) c(r, pp$beta(1)) else r
@@ -325,6 +332,9 @@ profile.merMod <- function(fitted,
                 parallel::clusterSetRNGStream(cl)
         }
         parallel::parLapply(cl, seqnvp, FUN)
+    } else if(parallel == "future") {
+        future.apply::future_lapply(seqnvp, FUN,
+            future.seed = TRUE, future.packages = "lme4")
     } else lapply(seqnvp, FUN)
     nn <- names(opt[seqnvp])
     ans <-    setNames(lapply(L, `[[`,  "bres"), nn)
@@ -456,7 +466,7 @@ get.which <- function(which, nvp, nptot, parnames, verbose=FALSE) {
                        ## FIXME: where did the contrasts information go??
                        ##      mm@contrasts
                        ),
-                  lapply(structure(nX, .Names=nX),
+                  lapply(setNames(nX, nX),
                          function(nm) slot(X, nm))))
     } else {
         structure(mm[, -w, drop=FALSE],
@@ -554,8 +564,8 @@ devfun2 <- function(fm,
 
 ## extract only the y component from a prediction
 predy <- function(sp, vv) {
-    if(inherits(sp,"error")) rep(NA_real_, length(vv))
-    else predict(sp, vv)$y
+    if (inherits(sp, "error") || is.null(sp)) return(rep(NA_real_, length(vv)))
+    predict(sp, vv)$y
 }
 
 stripExpr <- function(ll, nms) {
@@ -660,7 +670,7 @@ xyplot.thpr <-
         else if(is.numeric(x <- bs$x) && is.numeric(y <- bs$y) && length(x) == length(y))
             approx(x, y, xout = zeta)$y
         else
-            rep_len(NA, length(zeta))
+            rep_len(NA_real_, length(zeta))
     }
     fr <- data.frame(zeta = rep.int(zeta, length(spl)),
                      pval = unlist(lapply(bspl, mypred, zeta)),
@@ -723,9 +733,9 @@ confint.thpr <- function(object, parm, level = 0.95, zeta,
     ## fallback strategy for old profiles that don't have a lower/upper
     ##  attribute saved ...
     if (is.null(lower <- attr(object,"lower")))
-        lower <- rep(NA,length(parm))
+        lower <- rep(NA_real_,length(parm))
     if (is.null(upper <- attr(object,"upper")))
-        upper <- rep(NA,length(parm))
+        upper <- rep(NA_real_,length(parm))
     ## FIXME: work a little harder to add -Inf/Inf for fixed effect
     ##  parameters?  (Should only matter for really messed-up profiles)
     bnms <- names(bak)
@@ -757,7 +767,7 @@ confint.thpr <- function(object, parm, level = 0.95, zeta,
         ## tell in general whether an NA indicates a lower or an
         ## upper bound ...
         badprof <- FALSE
-        p <- rep(NA,2)
+        p <- rep(NA_real_,2)
         if (!inherits(b <- bak[[parm[i]]], "error")) {
             p <- predy(b, zeta)
         } else {
@@ -838,7 +848,7 @@ confint.merMod <- function(object, parm, level = 0.95,
            "wald" = {
                a <- (1 - level)/2
                a <- c(a, 1 - a)
-               ci.vcov <- array(NA,dim = c(length(vn), 2L),
+               ci.vcov <- array(NA_real_,dim = c(length(vn), 2L),
                                 dimnames = list(vn, format.perc(a,3)))
                ## copied with small changes from confint.default
                cf <- fixef(object)   ## coef() -> fixef()
@@ -962,8 +972,19 @@ splom.thpr <- function (x, data,
 
     nvp <- length(grep("^(\\.sig[0-9]+|.sigma|sd_|cor_)", nms))
     which <- get.which(which, nvp, nptot, nms)
-    if (length(which) == 1)
-        stop("can't draw a scatterplot matrix for a single variable")
+    ok_params <- sapply(nms[which], function(nm) {
+      !is.null(attr(x, "forward")[[nm]]) &&
+        !is.null(attr(x, "backward")[[nm]]) &&
+         !inherits(attr(x, "backward")[[nm]], "error")
+    })
+    if (!all(ok_params)) {
+      warning("Dropping parameters from splom due to failed spline interpolation: ",
+              paste(nms[which][!ok_params], collapse=", "))
+      which <- which[ok_params]
+    }
+    if (length(which) == 1) {
+      stop("can't draw a scatterplot matrix for a single variable")
+    }
 
     mlev <- max(levels)
     spl <- attr(x, "forward")[which]
@@ -1178,7 +1199,7 @@ dens <- function(pr, npts=201, upper=0.999) {
     dd <- rng # empty named list to be filled
     for (i in seq_along(bspl)) {
         if (inherits(bspl[[i]], "error")) {
-            rng[[i]] <- rep(NA,npts)
+            rng[[i]] <- rep(NA_real_,npts)
             bad_vars <- c(bad_vars, vNms[i])
             next
         }
