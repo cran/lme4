@@ -242,14 +242,15 @@ ddiff2 <- deviance(fm2ML) - deviance(fm1ML)
 ## ----pvaluesHelp, eval=FALSE----------------------------------------
 # help("pvalues")
 
-## ----compareCI,echo=FALSE,cache=TRUE,message=FALSE,warning=FALSE----
-ccw <- confint(fm1, method = "Wald")
-## compute the profile once here and re-use it below rather than
-## profiling fm1 a second time; profiling is expensive and
-## makes us exceed CRAN time limits
-pf <- profile(fm1)
-ccp <- confint(pf)
-ccb <- confint(fm1, method = "boot")
+## ----compareCI,echo=FALSE-------------------------------------------
+## ccw <- confint(fm1, method = "Wald")
+## ## compute the profile once here and re-use it below rather than
+## ## profiling fm1 a second time; profiling is expensive and
+## ## makes us exceed CRAN time limits
+## pf <- profile(fm1)
+## ccp <- confint(pf)
+## ccb <- confint(fm1, method = "boot")
+load(system.file("vignette_data", "lmer_batch.rda", package = "lme4"))
 
 ## ----CIqcomp,echo=FALSE,eval=TRUE-----------------------------------
 rtol <- function(x,y) {
@@ -274,10 +275,8 @@ mdiffpct <- round(100 * max(rtol(bw, pw)))
 #     theme(axis.text.x = element_blank()) +
 #     labs(x = "")
 
-## ----profile_calc,echo=FALSE,cache=TRUE-----------------------------
-## pf was computed above, in the confidence interval
-## comparison; re-used here to save time by not profiling
-## fm1 twice
+## ----profile_calc,echo=FALSE----------------------------------------
+## used to compute pf here, but was computed above, in the confidence interval chunk (compareCI)
 
 ## ----profile_zeta_plot,fig.cap="Profile zeta plot: \\code{xyplot(prof.obj)}",fig.scap="Profile zeta plot",echo=FALSE,fig.align='center',fig.pos='tb'----
 xyplot(pf)

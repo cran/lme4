@@ -159,7 +159,10 @@ test_that("anova() of glmer+glm models", {
   gm2 <- glmer(y~(1|u), data=dat[1:4,], family=poisson,nAGQ=2, control = cs)
   aa <- anova(gm1,gm0)
   expect_equal(aa[2,"Chisq"],0)
-  expect_error(anova(gm2,gm0),"incommensurate")
+  ## nAGQ>1 logLik is now commensurate with glm() (see
+  ## misc/Gamma_GLMM/README_Gamma_GLMMs.md), so this should no longer error
+  aa2 <- anova(gm2,gm0)
+  expect_equal(aa2[2,"Chisq"],0)
 })
 
   test_that("anova() of lmer+glm models", {
@@ -280,12 +283,16 @@ if (testLevel>1) {
                         data=df2, family=gaussian(link="logit"))
 
     ## parametric bootstrap:
-    ##  terrible, but not a computational bug I think?
+    ## reference refreshed: gaussian fit via glmer() with a non-identity
+    ## link now also gets the free-dispersion phi-profiling fix
+    ## (previously Gamma-only), and disp_dof_correction=TRUE (now the
+    ## default) applies an n-qEff degrees-of-freedom correction to sigma
+    ## -- see misc/Gamma_GLMM/README_Gamma_GLMMs.md, Gamma_GLMM branch
     boot_res <- matrix(
       c(
-        0.7876999074589053, 0.03674961560266387, -4.210250900535643,
-        3.1483596407466985, 1.7682636983854518, 0.05647611260302035,
-        -1.0059308984192392, 4.706443226891899
+        0, 0.034361786616178, -2.61757496650457, 3.73664214983603,
+        0.00529946962093008, 0.0558814899485592, -1.82356951909793,
+        5.09845277221458
       ), nrow = 4L, ncol = 2L,
       dimnames = list(c(".sig01", ".sigma", "(Intercept)", "prop1"),
                       c("2.5 %", "97.5 %"))
@@ -305,6 +312,7 @@ test_that("change in deviance name for anova", {
 })
 
 test_that("confint", {
+  skip_on_cran()
   load(system.file("testdata", "gotway_hessianfly.rda", package = "lme4"))
   ## generated via:
   ## gotway_hessianfly_fit <- glmer(cbind(y, n-y) ~ gen + (1|block),
@@ -381,6 +389,91 @@ test_that("confint with bad profile", {
                      dimnames = list(c(".sig01", ".sig02", ".sig03", ".sigma", "(Intercept)", "cYear"),
                                      c("2.5 %", "97.5 %"))),
                tolerance=1e-3)
+})
+
+test_that("monotone profile splines (GH #834)", {
+  ## profile points for a correlation parameter: monotone, but the
+  ## natural interpolating spline has a negative slope at one knot
+  pp <- data.frame(
+    .sig03 = c(-1, -0.9419788, -0.7712586, -0.5406735, -0.283924, -0.03107754,
+               0.1966026, 0.4020445, 0.4467161, 0.4511833, 0.4958549,
+               0.6916766, 0.8531035, 0.9558708, 1),
+    .zeta = c(-5.537997, -3.829926, -2.803105, -2.110852, -1.540167, -1.03543,
+              -0.5739137, -0.1114451, 0, 0.01221793, 0.1291381, 0.7508699,
+              1.55595, 2.642026, 4.739299))
+  form <- .zeta ~ .sig03
+  isp <- splines::interpSpline(form, pp)
+  expect_false(lme4:::isMonotoneSpline(isp))
+  ## exact check agrees with a fine grid
+  xx <- seq(-1, 1, length.out = 10001)
+  expect_true(any(predict(isp, xx, deriv = 1)$y < 0))
+
+  spl <- lme4:::profSplines(form, pp)
+  expect_true(lme4:::isMonotoneSpline(spl$forward))
+  expect_true(lme4:::isMonotoneSpline(spl$backward))
+  expect_true(all(predict(spl$forward, xx, deriv = 1)$y >= 0))
+  ## both splines interpolate the profile points
+  expect_equal(lme4:::predy(spl$forward, pp$.sig03), pp$.zeta)
+  expect_equal(lme4:::predy(spl$backward, pp$.zeta), pp$.sig03)
+  ## CI stays inside [-1, 1]; backSpline() gave (-0.491, 1.172)
+  ci <- lme4:::predy(spl$backward, qnorm(c(0.025, 0.975)))
+  expect_equal(ci, c(-0.4788, 0.9026), tolerance = 1e-3)
+  expect_true(all(abs(ci) < 1))
+
+  ## well-behaved profiles keep the natural spline
+  p0 <- profile(fm1, which = 1)
+  expect_s3_class(attr(p0, "forward")[[1]], "npolySpline")
+})
+
+if (testLevel>1) {
+## slow (~40 s): profiling the correlation
+test_that("confint.thpr uses the right bounds for a subset of parameters", {
+  ## sd (lower 0, upper Inf) and correlation (lower -1, upper 1);
+  ## a very high level runs past the profile, so NA limits are
+  ## replaced by the parameter's bounds
+  p <- profile(fm2, which = c(1, 3))
+  lev <- 0.99999
+  ci_all <- confint(p, level = lev)
+  ci_cor <- confint(p, parm = ".sig03", level = lev)
+  expect_equal(ci_cor[".sig03", 2], 1)
+  expect_equal(ci_cor[".sig03", ], ci_all[".sig03", ])
+  expect_equal(confint(p, parm = 2, level = lev), ci_cor)
+})
+} ## testLevel>1
+
+test_that("profiling correlations near or on the boundary", {
+  ctrl <- lmerControl(check.conv.singular = "ignore")
+  ## estimate above 1/1.01, so the default first step (1.01 times the
+  ## estimate) would fall outside [-1, 1]
+  set.seed(20261010)
+  dd <- data.frame(g = factor(rep(1:30, each = 20)), x = rnorm(600))
+  dd$y <- simulate(~ x + (x | g), newdata = dd, family = gaussian,
+                   newparams = list(beta = c(0, 1),
+                                    theta = c(1, 0.995, 0.05), sigma = 1),
+                   seed = 3)[[1]]
+  fit <- lmer(y ~ x + (x | g), dd, control = ctrl)
+  expect_gt(attr(VarCorr(fit)$g, "correlation")[1, 2], 1/1.01)
+  p <- profile(fit, which = 3)
+  pts <- p$.sig03[p$.par == ".sig03"]
+  expect_gt(length(pts), 5)
+  expect_true(all(abs(pts) <= 1))
+  ci <- confint(p)
+  expect_true(ci[1, 1] > 0.85 && ci[1, 1] < 0.97)
+  expect_equal(ci[1, 2], 1)
+
+  ## estimate exactly on the boundary, with both sds positive
+  set.seed(101)
+  d2 <- data.frame(g = factor(rep(1:6, each = 5)), x = rnorm(30))
+  d2$y <- rnorm(30) + rep(rnorm(6), each = 5) * (1 + d2$x)
+  f2 <- lmer(y ~ x + (x | g), d2, control = ctrl)
+  th <- getME(f2, "theta")
+  skip_if_not(th[3] == 0 && th[2] != 0, "correlation estimate not on boundary")
+  ## the profile is flat for strongly negative correlations, so it is not
+  ## strictly monotone and confint() falls back to linear interpolation
+  expect_warning(p2 <- profile(f2, which = 3), "non-monotonic profile")
+  ci2 <- suppressWarnings(confint(p2))
+  expect_true(ci2[1, 1] > 0 && ci2[1, 1] < 1)
+  expect_equal(ci2[1, 2], 1)
 })
 
 test_that("refit", {
@@ -655,8 +748,15 @@ if (testLevel>1) {
     expect_equal(s1, s2)
     dd$y2 <- s2[[1]]
     g2 <- glmer(y2~x+(1|f), family=Gamma(link="log"),dd)
+    ## reference refreshed: getME(g1, "sigma") now reports the correct
+    ## dispersion (fixing a bug where sigma() for Gamma GLMMs used a
+    ## generic pwrss/n formula inconsistent with the phi actually
+    ## converged to internally), and again for disp_dof_correction=TRUE
+    ## (now the default), which applies an n-qEff degrees-of-freedom
+    ## correction on top -- see misc/Gamma_GLMM/README_Gamma_GLMMs.md,
+    ## Gamma_GLMM branch -- so the simulated y2 (and hence g2) shifts too
     expect_equal(fixef(g2), tolerance = 4e-7, # 32-bit windows showed 1.34e-7
-                 c(`(Intercept)` = 2.90871404438183, x = 0.988265230798941))
+                 c(`(Intercept)` = 2.97872455138837, x = 1.05320649158952))
 ##                 c("(Intercept)" = 2.81887136759369, x= 1.06543222163626))
 
     ## simulate with re.form = NULL and derived/offset components in formula
@@ -756,7 +856,8 @@ test_that("profile with switched optimizer does not warn (GH #913)", {
     ## different optimizer must not pass nloptwrap's stored control args (e.g.
     ## 'print_level') to the new optimizer, which would warn "unused control
     ## arguments ignored".
-    expect_no_warning(profile(fm1, which = 1, optimizer = "bobyqa"))
+    expect_no_warning(profile(fm1, which = 1, optimizer = "bobyqa"),
+                      message = "unused control arguments")
 })
 
 
@@ -915,15 +1016,16 @@ test_that("cooks distance on subject-level influence", {
 })
 
 test_that("cooks distance on glmer models", {
+  skip_on_cran()
   inf <- influence(gm1)
   inf.h <- influence(gm1, "herd", ncpus=1)
   cook <- cooks.distance(inf)
   expect_equal(unname(head(cook, 3)),
-               c(0.0532998800033037, 0.0405931172763581, 0.252608337928438),
+               c(0.0524063139071626, 0.0396850631091166, 0.246678190526733),
                tolerance = 1e-6)
   cook.h <- cooks.distance(inf.h)
   expect_equal(unname(head(cook.h, 3)),
-               c(0.256630560723611, 0.00525856231971531, 0.103355658099396),
+               c(0.251033719710455, 0.00519895610205458, 0.101113708827459),
                tolerance = 1e-6)
 })
 

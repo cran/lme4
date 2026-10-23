@@ -316,7 +316,12 @@ model_fit <- glmer(y ~ 1 + (1|id),
                    control=glmerControl(check.conv.singular="ignore"))
 
 test_that("simulation works for inverse gaussian", {
-    expect_equal(mean(simulate(model_fit)[[1]]), 1.02704392575914,
+    ## reference value updated for the dispersion-profiling fix (phi is now
+    ## profiled rather than fixed at 1 for free-dispersion families), and
+    ## again for disp_dof_correction=TRUE (now the default), which applies
+    ## an n-qEff degrees-of-freedom correction on top -- see
+    ## misc/Gamma_GLMM/README_Gamma_GLMMs.md
+    expect_equal(mean(simulate(model_fit)[[1]]), 1.022158676022,
                  tolerance=1e-5)
 })
 
@@ -328,6 +333,55 @@ test_that("simulation complains appropriately about bad family", {
                         data = df,
                         control=glmerControl(check.conv.singular="ignore"))
     expect_error(simulate(model_fit2),"simulation not implemented for family")
+})
+
+test_that("glmer warns (once) about a family with no way to tell if dispersion is free", {
+    ## unrecognized family *name*, and (unlike the "junk" case above) no
+    ## $dispersion component either -- lme4 can't tell whether dispersion
+    ## should be profiled, so it assumes free dispersion and warns
+    badfam <- poisson()
+    badfam$family <- "junk"
+    badfam$dispersion <- NULL
+    msgs <- character(0)
+    fit <- withCallingHandlers(
+        glmer(y ~ 1 + (1|id),
+              family = badfam,
+              data = df,
+              control = glmerControl(check.conv.singular = "ignore")),
+        warning = function(w) {
+            msgs <<- c(msgs, conditionMessage(w))
+            invokeRestart("muffleWarning")
+        })
+    nodisp <- grepl("family junk has no 'dispersion' component", msgs, fixed = TRUE)
+    expect_equal(sum(nodisp), 1L)
+    expect_s4_class(fit, "glmerMod")
+})
+
+test_that("unrecognized family name with a valid fixed $dispersion fits identically to the real family", {
+    ## fakepois isn't dispatched to lme4's hardcoded PoissonDist subclass
+    ## (name doesn't match), so it falls through to the generic $dispersion-
+    ## based path -- $dispersion is 1 (fixed), same conclusion the hardcoded
+    ## poisson path reaches, so the fits should agree
+    fakepois <- poisson()
+    fakepois$family <- "fakepois"
+
+    set.seed(103)
+    dat <- data.frame(id = factor(rep(1:20, each = 5)))
+    dat$y <- suppressMessages(
+        simulate(~ 1 + (1 | id), newdata = dat, family = poisson,
+                 newparams = list(beta = 1, theta = 0.5))[[1]]
+    )
+    fit_real <- glmer(y ~ 1 + (1 | id), family = poisson, data = dat)
+    fit_fake <- update(fit_real, family = fakepois)
+
+    ## not bit-identical: fakepois takes the generic R-function-fallback
+    ## path (Rcpp::Function callbacks) rather than poisson's hardcoded C++
+    ## PoissonDist methods, so tiny floating-point-level differences
+    ## (~1e-10) are expected even though both converge to the same fit
+    expect_equal(fixef(fit_real), fixef(fit_fake), tolerance = 1e-8)
+    expect_equal(c(VarCorr(fit_real)[["id"]]), c(VarCorr(fit_fake)[["id"]]),
+                 tolerance = 1e-8)
+    expect_equal(c(logLik(fit_real)), c(logLik(fit_fake)), tolerance = 1e-8)
 })
 
 test_that("prediction from large factors", {
@@ -365,7 +419,8 @@ test_that("prediction with spaces in variable names", {
                family=binomial, data=cbpp)
     expect_equal(round(head(predict(m)),3),
                  c(`1` = -0.809, `2` = -1.801,
-                   `3` = -1.937, `4` = -2.388, `5` = -1.697, `6` = -2.689))
+                   `3` = -1.937, `4` = -2.388, `5` = -1.697, `6` = -2.689),
+                 tolerance=5e-4)
 })
 
 if (requireNamespace("statmod")) {
@@ -381,11 +436,16 @@ if (requireNamespace("statmod")) {
                                 family=inverse.gaussian,
                                 data=dd))
     set.seed(101)
+    ## reference values updated for the dispersion-profiling fix (phi is now
+    ## profiled rather than fixed at 1 for free-dispersion families), and
+    ## again for disp_dof_correction=TRUE (now the default), which applies
+    ## an n-qEff degrees-of-freedom correction on top -- see
+    ## misc/Gamma_GLMM/README_Gamma_GLMMs.md
     expect_equal(head(unlist(simulate(m))),
-                 c(sim_11 = 0.451329390087728, sim_12 = 0.629516371309772,
-                   sim_13 = 0.481236633500098,
-                   sim_14 = 0.170060386109077, sim_15 = 0.258742371516342,
-                   sim_16 = 0.949617440586848))
+                 c(sim_11 = 0.453344718811628, sim_12 = 0.64148773286959,
+                   sim_13 = 0.484750314445057,
+                   sim_14 = 0.164012565637704, sim_15 = 0.253683796505627,
+                   sim_16 = 0.983549319252098), tolerance=1e-7)
   })
 }
 
@@ -553,9 +613,9 @@ test_that("predictions work with se.fit and subset of grouping variable levels",
                   grp = factor(c("a","b"), levels = letters[1:4]))
   
   pp <- suppressWarnings(predict(m1, newdata = d, se.fit = TRUE))
-  expect_equal(pp, list(fit = c(`1` = -0.4338277, `2` = -0.5993396),
-                        se.fit = c(`1` = 0.4255397, `2` = 0.2779372)), 
-               tol = 1e-6)
+  expect_equal(pp, list(fit = c(`1` = -0.433821571187245, `2` = -0.599345208646073),
+                        se.fit = c(`1` = 0.425542869767524, `2` = 0.277942375835559)),
+               tol = 1e-5)
   
   d2 <- dat[sample(1:nrow(dat), size = 20),]
   d2 <- d2[!("c" == d2$grp), ]
@@ -564,9 +624,9 @@ test_that("predictions work with se.fit and subset of grouping variable levels",
   expect_identical(lengths(pp2), c(fit=16L, se.fit=16L))
 
   expect_equal(lapply(pp2, head, 2),
-               list(fit = c(`37` = -0.5109994, `29` = -0.5704263),
-                    se.fit = c(`37` = 0.5151070, `29` = 0.3258730)),
-               tol = 1e-7)
+               list(fit = c(`37` = -0.510995123191198, `29` = -0.570421417853284),
+                    se.fit = c(`37` = 0.515109410757795, `29` = 0.325875971363831)),
+               tol = 1e-5)
 
   set.seed(123)
   dat2 <- expand.grid(

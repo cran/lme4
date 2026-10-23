@@ -368,6 +368,118 @@ test_that("unit tests for autoregressive covariances", {
   }
 })
 
+test_that("setTheta correlation fallback: cs and ar1 unidentifiable/degenerate rho", {
+  make_value <- function(cls, nc, sigma, rho) {
+    getTheta(new(cls, nc = as.integer(nc), hom = FALSE, par = c(sigma, rho)))
+  }
+  fresh <- function(cls, nc) new(cls, nc = as.integer(nc), hom = FALSE, par = rep(NA_real_, nc + 1L))
+
+  for (rho in c(-0.2, 0.4)) {
+    value <- make_value("Covariance.cs", 4, c(2, 0, 3, 5), rho)
+    res <- setTheta(fresh("Covariance.cs", 4), value)
+    expect_equal(res@par, c(2, 0, 3, 5, rho))
+  }
+
+  for (rho in c(-0.7, 0.7)) {
+    value <- make_value("Covariance.ar1", 4, c(2, 0, 3, 5), rho)
+    res <- setTheta(fresh("Covariance.ar1", 4), value)
+    expect_equal(res@par, c(2, 0, 3, 5, rho))
+  }
+  for (rho in c(-0.7, 0.7)) {
+    value <- make_value("Covariance.ar1", 4, c(2, 0, 0, 5), rho)
+    res <- setTheta(fresh("Covariance.ar1", 4), value)
+    expect_equal(res@par, c(2, 0, 0, 5, rho))
+  }
+  for (rho in c(-0.7, 0.7)) {
+    value <- make_value("Covariance.ar1", 5, c(0, 0, 2, 0, 5), rho)
+    res <- setTheta(fresh("Covariance.ar1", 5), value)
+    expect_equal(res@par, c(0, 0, 2, 0, 5, abs(rho)))
+  }
+
+  for (cls in c("Covariance.cs", "Covariance.ar1")) {
+    value <- make_value(cls, 4, c(0, 0, 5, 0), 0.5)
+    expect_warning(res <- setTheta(fresh(cls, 4), value), "not identifiable")
+    rho_out <- res@par[length(res@par)]
+    expect_true(is.na(rho_out) && is.double(rho_out))
+    expect_equal(res@par[1:4], c(0, 0, 5, 0))
+
+    value0 <- make_value(cls, 4, c(0, 0, 0, 0), 0.5)
+    expect_warning(res0 <- setTheta(fresh(cls, 4), value0), "not identifiable")
+    expect_true(is.na(res0@par[length(res0@par)]))
+  }
+})
+
+test_that("restart_edge check survives sigma = 0 with unidentifiable rho", {
+  ## stub optimizer returning all sigmas on their lower bound: theta is then
+  ## all zeros, so rho cannot be recovered from theta and must come from opt$par
+  stubopt <- function(fn, par, lower, upper, control) {
+    p <- c(rep(0, length(par) - 1L), 0.5)
+    list(par = p, fval = fn(p), conv = 0, message = "stub")
+  }
+  ss <- subset(sleepstudy, Days < 3)
+  ss$fDays <- factor(ss$Days)
+  forms <- list(ar1 = Reaction ~ 1 + ar1(0 + fDays | Subject),
+                cs  = Reaction ~ 1 + cs(0 + fDays | Subject))
+  for (form in forms) {
+    fit <- suppressWarnings(suppressMessages(
+      lmer(form, data = ss,
+           control = lmerControl(optimizer = stubopt, calc.derivs = FALSE))))
+    expect_false(anyNA(getME(fit, "theta")))
+    par <- getME(fit, "par")
+    expect_equal(unname(par[-length(par)]), rep(0, length(par) - 1L))
+  }
+})
+
+test_that("glmer stage 2 starts from stage-1 par when rho is unidentifiable (GH #999)", {
+  ## stub stage-1 optimizer returning sigma = 0: theta is then all zeros,
+  ## so the stage-2 starting value of rho must come from opt$par
+  stubopt <- function(fn, par, lower, upper, control) {
+    p <- c(rep(0, length(par) - 1L), 0.5)
+    list(par = p, fval = fn(p), conv = 0, message = "stub")
+  }
+  forms <- list(ar1 = cbind(incidence, size - incidence) ~ period +
+                  ar1(0 + period | herd),
+                cs  = cbind(incidence, size - incidence) ~ period +
+                  cs(0 + period | herd))
+  for (form in forms) {
+    fit <- suppressWarnings(
+      glmer(form, family = binomial, data = cbpp,
+            control = glmerControl(optimizer = list(stubopt, "bobyqa"),
+                                   calc.derivs = FALSE)))
+    expect_false(anyNA(getME(fit, "theta")))
+    expect_false(anyNA(fixef(fit)))
+  }
+})
+
+test_that("use.last.params restores the last evaluated par for structured covariances", {
+  ## stub optimizer: evaluates the deviance at 'p_last' after 'p_opt',
+  ## then reports 'p_opt' as the optimum
+  mkstub <- function(p_opt, p_last) {
+    function(fn, par, lower, upper, control) {
+      fval <- fn(p_opt)
+      fn(p_last)
+      list(par = p_opt, fval = fval, conv = 0, message = "stub")
+    }
+  }
+  ss <- subset(sleepstudy, Days < 3)
+  ss$fDays <- factor(ss$Days)
+  p_opt <- c(1, 0.3)
+  p_last <- c(0.8, 0.5)
+  fit_last <- function(optimizer, use.last.params) {
+    suppressWarnings(
+      lmer(Reaction ~ 1 + ar1(0 + fDays | Subject), data = ss,
+           control = lmerControl(optimizer = optimizer,
+                                 use.last.params = use.last.params,
+                                 calc.derivs = TRUE)))
+  }
+  ref_last <- fit_last(mkstub(p_last, p_last), FALSE)
+  ref_opt  <- fit_last(mkstub(p_opt, p_opt), FALSE)
+  expect_equal(getME(fit_last(mkstub(p_opt, p_last), TRUE), "theta"),
+               getME(ref_last, "theta"))
+  expect_equal(getME(fit_last(mkstub(p_opt, p_last), FALSE), "theta"),
+               getME(ref_opt, "theta"))
+})
+
 ## lme4 linear mixed models
 
 fm1 <- lmer(Reaction ~ Days + (Days | Subject), sleepstudy, REML = FALSE)
@@ -438,15 +550,15 @@ test_that("integration tests for coef and fixef", {
   expected_sum2 <- c("Fixed effects:",                                             
                      "            Estimate Std. Error z value Pr(>|z|)    ",       
                      "(Intercept)   -0.720      0.103      -7    3e-12 ***",       
-                     "age            0.009      0.005       2     0.09 .  ",       
+                     "age            0.009      0.006       2     0.09 .  ",
                      "urbanY         0.742      0.169       4    1e-05 ***",       
                      "---",      
                      "Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1",
                      "",                                  
                      "Correlation of Fixed Effects:",      
                      "       (Intr) age   ",            
-                     "age    -0.022       ",      
-                     "urbanY -0.648  0.006")
+                     "age    -0.023       ",
+                     "urbanY -0.649  0.006")
   expect_equal(tfun(tmpf(gm.us)), expected_sum2)
   options(opt)
 })

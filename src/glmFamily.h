@@ -19,6 +19,13 @@ namespace glm {
         Rcpp::Function d_devRes, d_variance, d_aic;
                                 //@}
         Rcpp::Environment d_rho;
+        std::string d_familyName;    /**< $family, for error messages only */
+        bool   d_hasDispersionField; /**< does the R family list have a $dispersion
+                                       *   component (?family, R >= 4.3.0)? */
+        double d_dispersionField;    /**< its value, if present: NA_real_ (free) or
+                                       *   a fixed numeric value; meaningless otherwise */
+        mutable bool d_warnedNoDispersion; /**< has the missing-$dispersion
+                                             *   warning been issued already? */
     public:
         glmDist(Rcpp::List&);
         virtual ~glmDist() {}
@@ -27,10 +34,38 @@ namespace glm {
         virtual const ArrayXd devResid(const ArrayXd&, const ArrayXd&, const ArrayXd&) const;
         virtual double             aic(const ArrayXd&, const ArrayXd&, const ArrayXd&,
                                        const ArrayXd&, double) const;
-        /**< in keeping with the botched up nomenclature in the R glm function, 
+        /**< in keeping with the botched up nomenclature in the R glm function,
          *   the value of aic is the deviance */
         virtual double           theta() const;
         virtual void          setTheta(const double&);
+        /**< whether this family has a free/estimated dispersion parameter
+         *   (Gamma, gaussian, inverse.gaussian) vs. a fixed one (poisson,
+         *   binomial, negative binomial) -- mirrors hasNoScale() in
+         *   R/utilities.R. The base implementation is reached only for
+         *   families glmFamily's constructor didn't recognize by name
+         *   (i.e. user-supplied/external family objects). Those are
+         *   resolved generically via the family's own $dispersion
+         *   component (?family, R >= 4.3.0: NA_real_ if free, a fixed
+         *   numeric value otherwise) rather than guessed; if that
+         *   component is itself absent (pre-4.3.0-style or incomplete
+         *   custom family objects, e.g. mgcv::Tweedie), the dispersion
+         *   is assumed to be free, consistent with hasNoScale()'s
+         *   treatment of unrecognized family names, with a warning.
+         *   This is called at every deviance evaluation, so the warning
+         *   is issued only once per object. */
+        virtual bool  hasFreeDispersion() const {
+            if (!d_hasDispersionField) {
+                if (!d_warnedNoDispersion) {
+                    d_warnedNoDispersion = true;
+                    ::Rf_warning("family %s has no 'dispersion' component; "
+                                 "assuming that the dispersion is estimated "
+                                 "(free) rather than fixed",
+                                 d_familyName.c_str());
+                }
+                return true;
+            }
+            return ISNA(d_dispersionField);
+        }
     };
 
     class binomialDist : public glmDist {
@@ -40,6 +75,7 @@ namespace glm {
         const ArrayXd devResid(const ArrayXd&, const ArrayXd&, const ArrayXd&) const;
         double             aic(const ArrayXd&, const ArrayXd&, const ArrayXd&,
                                const ArrayXd&, double) const;
+        bool  hasFreeDispersion() const {return false;}
     };
 
     class gammaDist : public glmDist {
@@ -49,6 +85,7 @@ namespace glm {
         const ArrayXd devResid(const ArrayXd&, const ArrayXd&, const ArrayXd&) const;
         double             aic(const ArrayXd&, const ArrayXd&, const ArrayXd&,
                                const ArrayXd&, double) const;
+        bool  hasFreeDispersion() const {return true;}
     };
 
     class GaussianDist : public glmDist {
@@ -58,6 +95,7 @@ namespace glm {
         const ArrayXd devResid(const ArrayXd&, const ArrayXd&, const ArrayXd&) const;
         double             aic(const ArrayXd&, const ArrayXd&, const ArrayXd&,
                                const ArrayXd&, double) const;
+        bool  hasFreeDispersion() const {return true;}
     };
 
     class inverseGaussianDist : public glmDist {
@@ -67,6 +105,7 @@ namespace glm {
         const ArrayXd devResid(const ArrayXd&, const ArrayXd&, const ArrayXd&) const;
         double             aic(const ArrayXd&, const ArrayXd&, const ArrayXd&,
                                const ArrayXd&, double) const;
+        bool  hasFreeDispersion() const {return true;}
     };
 
     class negativeBinomialDist : public glmDist {
@@ -80,6 +119,7 @@ namespace glm {
                                const ArrayXd&, double) const;
         double           theta() const {return d_theta;}
         void          setTheta(const double& ntheta) {d_theta = ntheta;}
+        bool  hasFreeDispersion() const {return false;}
     };
 
     class PoissonDist : public glmDist {
@@ -89,6 +129,7 @@ namespace glm {
         const ArrayXd devResid(const ArrayXd&, const ArrayXd&, const ArrayXd&) const;
         double             aic(const ArrayXd&, const ArrayXd&, const ArrayXd&,
                                const ArrayXd&, double) const;
+        bool  hasFreeDispersion() const {return false;}
     };
 
     class glmLink {
@@ -190,6 +231,7 @@ namespace glm {
                                const ArrayXd&, double) const;
         double           theta() const {return d_dist->theta();}
         void          setTheta(const double& theta) {d_dist->setTheta(theta);}
+        bool  hasFreeDispersion() const {return d_dist->hasFreeDispersion();}
         //@}
     };
 

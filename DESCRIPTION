@@ -1,5 +1,5 @@
 Package: lme4
-Version: 2.0-6
+Version: 2.1-0
 Title: Linear Mixed-Effects Models using 'Eigen' and S4
 Authors@R: 
     c(person("Douglas", "Bates", role = "aut",
@@ -61,7 +61,7 @@ URL: https://github.com/lme4/lme4/
 BugReports: https://github.com/lme4/lme4/issues
 Encoding: UTF-8
 NeedsCompilation: yes
-Packaged: 2026-07-15 14:34:40 UTC; bolker
+Packaged: 2026-10-22 23:30:28 UTC; bolker
 Author: Douglas Bates [aut] (ORCID: <https://orcid.org/0000-0001-8316-9503>),
   Martin Maechler [aut] (ORCID: <https://orcid.org/0000-0002-8685-9910>),
   Ben Bolker [cre, aut] (ORCID: <https://orcid.org/0000-0002-2127-0443>),
@@ -85,4 +85,4 @@ Author: Douglas Bates [aut] (ORCID: <https://orcid.org/0000-0001-8316-9503>),
   Henrik Bengtsson [ctb] (ORCID: <https://orcid.org/0000-0002-9280-4430>)
 Maintainer: Ben Bolker <bbolker+lme4@gmail.com>
 Repository: CRAN
-Date/Publication: 2026-07-16 12:30:08 UTC
+Date/Publication: 2026-10-23 14:50:12 UTC

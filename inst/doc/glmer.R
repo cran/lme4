@@ -230,15 +230,15 @@ gm1 <- glmer(incidence/size ~ period + treatment + avg_size + (1 | herd),
 # grad(dd1,tmpf(gm1)[-1])
 # grad(dd1B,tmpf(gm1B)[-1])
 
-## ----cbppModelII, warning=FALSE, message=FALSE---------------------
+## ----cbppModelII, message=FALSE------------------------------------
 cbpp2 <- transform(cbpp2,obs=factor(seq(nrow(cbpp2))))
 bob_opt <- glmerControl(optimizer = "bobyqa")
-## herd and observation-level REs
-gm2 <- update(gm1,.~.+(1|obs), control = bob_opt)  
 ## observation-level REs only
+gm2 <- update(gm1,.~.+(1|obs), control = bob_opt)  
+## herd and observation-level REs
 gm3 <- update(gm1,.~.-(1|herd)+(1|obs))  
 
-## ----diagnose, echo=FALSE, warning=FALSE, message=FALSE, results='hide'----
+## ----diagnose, echo=FALSE, message=FALSE, results='hide'-----------
 aa <- allFit(gm2, verbose=FALSE)
 ok <- summary(aa)[["which.OK"]]
 lapply(aa[ok], \(x) x@optinfo$conv$lme4$messages)
@@ -270,7 +270,7 @@ cat(cc[corRow:length(cc)],sep="\n")
 # ## Q-Q plot
 # qqmath(gm1)
 
-## ----glmerDiag,fig.cap="Graphical diagnostics (using package built-in functions)",warning=FALSE,echo=FALSE----
+## ----glmerDiag,fig.cap="Graphical diagnostics (using package built-in functions)",echo=FALSE----
 p1 <- plot(gm1,type=c("p","smooth"),
     main="Default (Pearson resid vs. fitted)")
 p2 <- plot(gm1,sqrt(abs(resid(.)))~fitted(.),type=c("p","smooth"),
@@ -290,6 +290,7 @@ check_model(gm1, check = c("pp_check", "binned_residuals",
                            "qq", "reqq"))
 
 ## ----dharma_mod_cbpp,fig.cap="Model assumption checks using the DHARMa package. \\code{n.s.} denotes ``not significant''.",echo=FALSE,warning=FALSE----
+## suppressing spurious warnings from DHARMa
 ## FIXME: versions of DHARMa before 0.5.0 gave a significant nonlinearity test, so the caption
 ## included: 'Other exploration (such as \\code{plot(simulationOutput, form = cbpp2\\$period)}) does not reveal any obvious problems such as nonlinear responses, so we proceed with the analysis despite the significant adjusted quantile test.'
 ## Post 0.5.0, there are no test rejections; instead we get the warning 'In getSimulations.merMod(fittedModel, nsim = n, simulateREs = simulateREs,  :
@@ -313,6 +314,7 @@ combCI <- transform(combCI,
 )                    
 
 ## ----cbppcompplot,fig.cap="CBPP example: comparison of point and confidence interval estimation for different methods. Wald CIs are missing for random-effects parameters when the fitted model is singular.",fig.scap="CBPP comparison",echo=FALSE,fig.width=7,fig.height=5,warning=FALSE----
+## warning=FALSE for ggplot2 'Removed 2 rows' warning
 mnames <- cbpp_df_name$mnames
 pd <- position_dodge(width=0.6)
 ggplot(combCI, aes(var, est, colour=type, shape=model)) +
@@ -325,7 +327,7 @@ ggplot(combCI, aes(var, est, colour=type, shape=model)) +
   scale_shape(guide=revguide, labels = mnames) +
   facet_wrap(~ vartype, ncol = 1, scale = "free")
 
-## ----allfit_cbpp1,message=FALSE,warning=FALSE----------------------
+## ----allfit_cbpp1,message=FALSE------------------------------------
 gm_all <- allFit(gm1)
 
 ## ----allfit_cbpp2--------------------------------------------------
@@ -431,10 +433,14 @@ agevec <- seq(-15, 20)
 pframe <- with(Contraception, expand.grid(age = agevec, urban = levels(urban), ch = levels(ch)))
 pframe <- transform(pframe, age_s = age/(2*sd(Contraception$age)),
                     facet_urban = ifelse(urban=="Y","Urban","Rural"))
-pred  <- predict(cm5, newdata = pframe, se.fit = TRUE, re.form = NA)
-pframe$use <- plogis(pred$fit)
-pframe$lwr <- plogis(pred$fit-1.96*pred$se.fit)
-pframe$upr <- plogis(pred$fit+1.96*pred$se.fit)
+pred  <- suppressWarnings(
+  predict(cm5, newdata = pframe, se.fit = TRUE, re.form = NA)
+)
+pframe <- within(pframe, {
+  use <- plogis(pred$fit)
+  lwr <- plogis(pred$fit-1.96*pred$se.fit)
+  upr <- plogis(pred$fit+1.96*pred$se.fit)
+})
 pframe2 <- with(Contraception, expand.grid(age = agevec, urban = levels(urban), ch = levels(ch),
                  district = levels(district)))
 pframe2 <- transform(pframe2, age_s = age/(2*sd(Contraception$age)),
@@ -463,7 +469,6 @@ ggplot(pframe, aes(age)) +
                     guide = guide_legend(reverse = TRUE)) +
   geom_line(data = pframe2, aes(group = interaction(dist_urb, ch), colour = ch, y = use), alpha = 0.2)
 
-
 ## ----ContraceptionBatch,echo=FALSE---------------------------------
 contr_combCI <- subset(contr_combCI, var != "(Intercept)")
 combCI <- transform(contr_combCI,
@@ -471,11 +476,11 @@ combCI <- transform(contr_combCI,
     model = factor(model, levels = rev(levels(model)))  ## flip AND flip order of guide below
     )
 
-## ----contracompplot,fig.cap="Contraception example: comparison of point and confidence interval estimation for different methods. (Note that the Wald CI for variation in the intercept across districts, in the \\code{(1|district/urban)} model, includes negative values.)",fig.scap="Contraception comparison",echo=FALSE,fig.width=10,fig.height=10,warning=FALSE----
+## ----contracompplot,fig.cap="Contraception example: comparison of point and confidence interval estimation for different methods. (Note that the Wald CI for variation in the intercept across districts, in the \\code{(1|district/urban)} model, includes negative values.)",fig.scap="Contraception comparison",echo=FALSE,fig.width=10,fig.height=10----
 ggplot(combCI, aes(var, est, colour=type, shape=model)) +
   geom_pointrange(aes(ymin=lwr, ymax=upr),
                   position=position_dodge(width=0.6)) +
-  labs(x="", y="Estimate (log-odds of seropositivity)") +
+  labs(x="", y="Estimate (log-odds of contraception use)") +
   geom_hline(yintercept=0, lty=2) +
   coord_flip() +
   scale_colour_brewer(palette="Dark2", guide = revguide) +
@@ -497,14 +502,21 @@ cm.homcs <- glmer(update(base_form, . ~ . + cs(1 + urban|district, hom = TRUE)),
 
 ## ----cm_cs, message = FALSE, warning = FALSE-----------------------
 cm.cs <- glmer(use ~ age*ch + I(age^2) + urban + cs(1 + urban | district),
-               Contraception, binomial, control = cc)
+               Contraception, binomial)
 
 ## ----cm_varcorr_view-----------------------------------------------
 print(VarCorr(cm.cs))
 
+## ----count-models,echo=FALSE---------------------------------------
+## how many do we exclude from the 2^n total cases?
+## 1 + n + n(n-1)/2 = (2 + 2n + n^2 -n)/2 = (n^2 +n + 2)/2 = (n^2+n)/2 + 1
+cfun <- function(n) {
+  3*(2^n - ((n^2 + n)/2 + 1)) + n*(n-1)/2 + n
+}
+
 ## ----pkgs, echo=FALSE----------------------------------------------
 pkglist <- c("lme4", "performance", "DHARMa", "see")
 pp <- sapply(pkglist, function(x)
-  sprintf("%s: %s", x, format(packageVersion(x))))
+  sprintf("\\pkg{%s}: %s", x, format(packageVersion(x))))
 ppp <- paste(pp, collapse  = "; ")
 

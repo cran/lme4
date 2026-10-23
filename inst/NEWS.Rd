@@ -4,7 +4,128 @@
 \title{lme4 News}
 \encoding{UTF-8}
 
-\section{CHANGES IN VERSION 2.0-6}{
+\section{CHANGES IN VERSION 2.1-0}{
+  \subsection{USER-VISIBLE CHANGES}{
+    \itemize{
+      \item how \code{lme4} searches for model components
+      such as weights and offsets has changed; \code{[g]lmer} no longer copies
+      \code{weights} and \code{offset} objects from the parent frame
+      (environment of the calling function) into the environment of
+      the formula; the \code{simulate.merMod} method modifies the
+      formula's environment, but restores it when exiting.
+      This change makes the scoping
+      logic more consistent with other R functions and solves problems
+      of leakage/overwriting of these objects (e.g. see GH #481).
+      This change may cause failures in some cases where the
+      formula and the weights are defined in separate environments
+      before passing them to \code{[g]lmer}.
+      Such failures
+      can generally be solved by adding a statement such as
+      \code{assign("weights", weights, environment(formula))} (see
+      \url{https://github.com/lme4/lme4/pull/961} and
+      \url{https://github.com/lme4/lme4/pull/811} for more detail,
+      and \url{https://github.com/lme4/lme4/issues/742} for an example).
+      \item the dependency on \pkg{rlang} has been removed; the
+      once-per-session deprecation warnings for formula-processing
+      functions that moved to \pkg{reformulas} are now implemented
+      internally.
+      \item \code{glmerControl} gains two new options for GLMMs with
+      estimated dispersion parameters: \code{disp_method} (default
+      \code{"moment"}) selects how the dispersion parameter is
+      incorporated into the PIRLS fit; \code{disp_method="old/buggy"}
+      reproduces the pre-fix behaviour described under BUG FIXES below,
+      for back-compatibility. \code{maxPhiIter} caps the number of
+      iterations of the nested fixed-point loop used by
+      \code{disp_method="moment"}.
+      \item user-specified families should have the
+      \code{dispersion} component set (see \dQuote{Value} under
+      \code{?stats::family}); for families without it (e.g.
+      \code{mgcv::Tweedie}), \code{glmer} warns and assumes the
+      dispersion is estimated rather than fixed.
+    } % itemize
+  } % user-visible changes
+  \subsection{BUG FIXES}{
+    \itemize{
+      \item \code{refit()} now works when incomplete cases in the
+      original data were excluded by \code{na.action} and
+      \code{newresp} (or \code{newweights}) has one value per
+      observation used in the fit but no \code{na.action} attribute
+      (e.g. \code{refit(m, simulate(m)[[1]])} previously failed in
+      this case). A \code{newresp} of the wrong length now gives an
+      informative error.
+      \item \code{glmer()} refreshes the working weights and factorization
+      at the accepted PIRLS mean before computing the Laplace approximation
+      or adaptive quadrature, removing a stale-factor contribution to
+      numerical Hessian error. Parameter estimates and estimated parameter 
+      covariance matrices (and hence standard errors) will generally change slightly. 
+      Large changes in standard errors are likely to be improvements 
+      (GH #998, #289, @tylermorganwall).
+      \item \code{ar1} and \code{cs} covariance structures with zero
+      variances (making correlation unidentifiable) now return
+      \code{NA} with a warning rather than throwing an error, including
+      when the first (\code{nAGQ = 0}) stage of \code{glmer} fitting
+      ends at zero variance;
+      correlation calculations are more robust (GH #967, #999,
+      @jphughes9)
+      \item \code{vcov()} would fail for GLMMs using structured
+      covariance matrices under some circumstances (GH #996, @jphughes9)
+      \item profile confidence intervals could fall outside a
+      parameter's bounds (e.g. correlations > 1) when the interpolating
+      spline through a monotone likelihood profile was itself
+      non-monotone; such profiles now use monotone (Hermite) splines
+      for \code{confint()} and the \code{xyplot()} profile plot.
+      Results for well-behaved profiles are unchanged.
+      Additionally fixed long-standing edge-case and indexing bugs in
+      \code{profile.merMod} and \code{confint.thpr} (GH #834,
+      @meierluk, @yasrey10).
+      \item fixed a long-standing bug for GLMMs with estimated dispersion
+      parameters (Gamma, inverse Gaussian, and Gaussian families fitted
+      via \code{glmer}); log-likelihood was too large by an additive
+      constant of 2.0. This would affect comparisons with LMMs or with
+      results from other packages.
+      \item fixed a long-standing bug (GH #557, #643, partial #936) for GLMMs with estimated
+      dispersion parameters (Gamma, inverse Gaussian, and Gaussian
+      families with non-identity links fitted via \code{glmer}): the
+      PIRLS working weights used to find the conditional modes were
+      computed with the dispersion parameter fixed to 1, which could
+      substantially bias estimates of random-effect variances and the
+      dispersion parameter. Fixed effects were largely unaffected.
+      \item fixed a bug affecting \code{glmer.nb()} fits with
+      \code{nAGQ>1}: the deviance computed for these fits
+      omitted a normalizing constant that depends on the negative
+      binomial dispersion parameter \code{theta} but not on the
+      random-effects variance being optimized within a given fit
+      (GH #868, Bert van der Veen).
+      \item normalizing constants are now included in the
+      log-likelihoods and deviances of models fitted with
+      \code{nAGQ>1}, making the log-likelihoods and deviances for these
+      fits consistent with those where Laplace approximation is used
+      (\code{nAGQ=1}) and with \code{stats::glm()}
+      \item \code{sigma()} computations for free-dispersion GLMMs (e.g.
+      Gamma) did not account for \dQuote{degree of freedom} corrections,
+      i.e. dividing deviance by \code{(n-q)} rather than \code{n}, where
+      \code{q} is the rank of the combined (\code{X} and \code{Z}) model
+      matrix (fixes GH #936). For back-compatibility, users can specify
+      \code{glmerControl(disp_dof_correction = FALSE)}.
+    } % itemize
+  } % bug fixes
+  \subsection{NEW FEATURES}{
+    \itemize{
+      \item \code{bootMer()} gains a \code{call.env} argument, an
+      environment or a list, in which the \code{control} argument stored
+      in the model's call is evaluated.  A model fitted inside a function
+      with \code{control = ctrl} could not be bootstrapped from outside
+      it, because \code{ctrl} was looked up only in the caller's frame.
+      When that lookup fails, \code{bootMer()} now tries the formula's
+      environment, as \code{update()} does, which finds \code{ctrl}
+      whenever the formula was written in the fitting function; otherwise
+      \code{call.env = list(ctrl = ctrl)} supplies it
+      (GH #1007, @billdenney).
+    } % itemize
+  } % new features
+} % 2.1-0 (devel)
+
+\section{CHANGES IN VERSION 2.0-6 (2026-07-16)}{
   \subsection{BUG FIXES}{
     \itemize{
       \item fixed \code{compDev=FALSE} (R-level PIRLS, used for debugging):
@@ -77,7 +198,7 @@
       if an object of the wrong type is found (e.g. the name \code{data}
       resolving to \code{utils::data}), the message reports the type and
       location of what was found and notes the likely masking (GH #808)
-      \item the Gauss-Hermite quadrature (GH) nodes and weights used when
+      \item the Gauss-Hermite quadrature nodes and weights used when
       \code{nAGQ > 1} are now symmetrized (nodes averaged with their
       negatives in reverse order; weights averaged in forward and reverse
       order), matching the convention in
@@ -88,10 +209,6 @@
       \item exported covariance methods documented in
       \code{help("Covariance-class")} (\code{getPar}, \code{getTheta},
       etc.)
-      \item the dependency on \pkg{rlang} has been removed; the
-      once-per-session deprecation warnings for formula-processing
-      functions that moved to \pkg{reformulas} are now implemented
-      internally.
       \item performing \emph{de novo} simulation (i.e., calling
       \code{simulate()} with a one-sided formula rather than a fitted
       model or a two-sided formula) without specifying \code{family}
@@ -109,7 +226,7 @@
       \code{beta} and \code{theta} values)
     } % itemize
   } % user-visible changes
-} % 2.0-2
+} % 2.0-6
 
 \section{CHANGES IN VERSION 2.0-1 (2026-03-05)}{
   \subsection{BUG FIXES}{
@@ -244,6 +361,13 @@
       \code{[g]lmerControl()}); default threshold is 1e4 observations.
       If desired, derivatives can be calculated (but not checked)
       by explicitly setting \code{calc.derivs} to TRUE.
+      \item derivative-based convergence checks are similarly skipped
+      for models with large numbers of top-level parameters (number
+      of variance parameters for \code{lmer} or \code{glmer} with
+      \code{nAGQ=0}, variance parameters plus
+      fixed-effect parameters for \code{glmer} with \code{nAGQ>0});
+      threshold is set by \code{[g]lmerControl(check.conv.nparmax=...)},
+      default value 20
       \item Derivative calculations are now skipped for models with
       singular random effects components (unless \code{calc.derivs} is
       explicitly set to TRUE in \code{[g]lmerControl})

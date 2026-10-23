@@ -375,52 +375,6 @@ mkFormula <- function(formula, mc, data, contrasts, control,
     fr.form <- sub_specials(fr.form., specials = c("|", "||"),
                             keep_args = c(2L, 2L))
     environment(fr.form.) <- environment(fr.form) <- environment(formula)
-    ## model.frame.default resolves 'weights'/'offset' (and other extras)
-    ## by evaluating them with 'data' searched first and environment(formula)
-    ## as a fallback -- *not* the frame from which [g]lFormula was called
-    ## (see the 'extras' handling in stats:::model.frame.default). So, to
-    ## allow 'weights'/'offset' expressions that aren't columns of 'data' to
-    ## be looked up in the caller's frame as a fallback, temporarily assign
-    ## their values (evaluated the same way, but with the caller's frame
-    ## substituted for environment(formula) as the fallback) into the
-    ## formula's environment, restoring its previous state on exit so
-    ## nothing is permanently added to (or overwritten in) that environment.
-    formula_env <- environment(fr.form)
-    existed <- logical(0)
-    old <- list()
-    for (i in c("weights", "offset")) {
-        if (!is.null(mc[[i]])) {
-            ## Checking for a pre-existing binding can force an unrelated
-            ## promise (e.g. a same-named formal argument of a caller whose
-            ## own frame happens to be environment(formula), as when a
-            ## wrapper builds its formula via as.formula() without setting
-            ## env= explicitly). Treat a failure to resolve it the same as
-            ## "no pre-existing value to preserve" rather than propagating
-            ## the error.
-            existed[i] <- tryCatch(
-                exists(i, envir = formula_env, inherits = FALSE) &&
-                    !is.function(get(i, envir = formula_env, inherits = FALSE)),
-                error = function(e) FALSE)
-            if (existed[i]) old[[i]] <- get(i, envir = formula_env, inherits = FALSE)
-            assign(i, eval(mc[[i]], data, parent_env), envir = formula_env)
-        }
-    }
-    if (length(existed) > 0L) {
-        on.exit(
-            for (nm in names(existed)) {
-                if (existed[[nm]]) {
-                    assign(nm, old[[nm]], envir = formula_env)
-                }
-                ## else: leave the value we just assigned in place, rather than
-                ## rm()-ing it -- restores pre-2.0-2 behaviour where a real
-                ## weights/offset value assigned here persists in the formula's
-                ## environment.  Several downstream packages (mermboost, and
-                ## emmeans's recover_data.call() as used by glmmSeq) rely on
-                ## being able to find it there after the fact.
-            },
-            add = TRUE
-        )
-    }
     mf$formula <- fr.form
     fr <- eval(mf, parent_env)
     if (check_zero_rows && nrow(fr) == 0L) stop("0 (non-NA) cases")
@@ -612,9 +566,10 @@ getStart <- function(start, rho, nAGQ) {
 }
 
 updateStart <- function(start, par) {
-    if (is.null(start))
-        start
-    else if (is.numeric(start))
+    ## use 'par' itself rather than letting getStart() recompute it from
+    ## theta: the theta -> par map loses information at the boundary
+    ## (e.g., 'rho' is NA for an ar1() or cs() term with zero variance)
+    if (is.null(start) || is.numeric(start))
         par
     else if (is.list(start)) {
         if (!is.null(start[["par"]]))
@@ -734,10 +689,10 @@ optimizeLmer <- function(devfun,
 
 
     if (restart_edge) {
-        ## FIXME: should we be looking at rho$pp$theta or opt$par
-        ##  at this point???  in koller example (for getData(13)) we have
-        ##   rho$pp$theta=0, opt$par=0.08
-        par0 <- rho$mkPar(rho$pp$theta)
+        ## check the parameters the model state will be left at: with
+        ## use.last.params = TRUE these are the last ones evaluated, which
+        ## may be on the boundary even when opt$par is not
+        par0 <- attr(opt, "last_par") %||% opt$par
         if (length(wl <- which(par0 == lower)) > 0L |
             length(wu <- which(par0 == upper)) > 0L) {
             ## *don't* use numDeriv -- cruder but fewer dependencies, no worries
@@ -752,7 +707,7 @@ optimizeLmer <- function(devfun,
             ## </MJ>
 
             d0 <- devfun(par0)
-            btol <- 1e-5  ## FIXME: make user-settable?
+            btol <- 1e-5  ## boundary tolerance. FIXME: make user-settable?
             bgrad <- mapply(function(i, bval, btol) {
                                 par <- par0
                                 par[i] <- bval + btol
@@ -836,6 +791,82 @@ glFormula <- function(formula, data=NULL, family = gaussian,
     c(res, list(family = family))
 }
 
+##' Effective random-effects degrees-of-freedom correction for glmer's
+##' moment-based dispersion estimator: phi = deviance/(n - qEff) instead
+##' of the plain deviance/n. qEff is the rank of the combined
+##' fixed+random "saturated" mean-structure design matrix [X, Z]
+##' (treating every random-effects term as if it were a set of ordinary
+##' fixed-effect dummy/product columns) -- the same n-p logic behind the
+##' classical unbiased variance estimator RSS/(n-p) in linear
+##' regression, generalized here to whatever redundancy structure the
+##' random effects happen to have.
+##'
+##' An earlier version of this used a naive closed-form guess,
+##' qEff = sum(q_k) - (K-1) for K additive random-effects terms (q_k =
+##' the k-th term's raw dimension, levels x columns) -- correct for
+##' crossed, scalar-or-single-multi-column-term structures, but found
+##' (via misc/Gamma_GLMM/paramsurvey_loggaussian/, see README on the
+##' Gamma_GLMM branch) to UNDER-correct for two real structures: nested
+##' terms (e.g. (1|Rail1/Rail2) -- the outer term's columns are an exact
+##' linear combination of the inner nested term's, contributing *zero*
+##' extra rank) and multiple random-slope terms sharing a covariate
+##' (e.g. (1+x|Rail1)+(1+x|Rail2) -- their slope-column blocks are
+##' redundant with *each other*, not just with the intercept). Both are
+##' just special cases of "the naive formula didn't count some linear
+##' dependency among the columns" -- so rather than hand-coding a
+##' growing list of known redundancy patterns, this computes the rank
+##' directly. Verified against every paramsurvey_loggaussian case,
+##' including the two the naive formula got wrong, and checked for
+##' computational cost at a much larger scale (q=1000): the rank
+##' computation is a one-time cost per fit (the design's rank doesn't
+##' depend on theta/phi/beta), and stays a small fraction of the fit's
+##' own cost -- *provided* `method = "qr"` is used, which dispatches to
+##' a genuine sparse QR; the default `rankMatrix()` method
+##' (`"tolNorm2"`, via `svd()`) silently densifies for sparse input and
+##' scales far worse.
+##'
+##' Only meaningful for free-dispersion families -- profilePhi()
+##' (external.cpp) only ever applies qEff when hasFreeDispersion() is
+##' true, so for fixed-dispersion families (binomial, Poisson,
+##' negative.binomial) the result would never be used at all. Gated
+##' here via hasNoScale(family) (same check mkMerMod() already uses)
+##' rather than computing it and throwing it away -- not just for
+##' efficiency: for a model with as many random-effects columns as
+##' observations (e.g. an observation-level random effect used to model
+##' overdispersion in a Poisson GLMM), the rank computation itself can
+##' be expensive or fail outright (observed: sparse QR out-of-memory at
+##' q ~ 50000) for a family where the answer was always going to be
+##' discarded.
+##' @noRd
+computeQEff <- function(X, reTrms, enable, family) {
+    if (!isTRUE(enable) || hasNoScale(family)) return(NA_real_)
+    full <- cbind(X, t(reTrms$Zt))
+    ## Matrix::qr() warns ("matrix is structurally rank deficient; using
+    ## augmented matrix..." / "computing t(x) as nrow(x) < ncol(x)")
+    ## whenever [X,Z] is rank-deficient or wider than it is tall -- both
+    ## routine here (nested terms, shared-covariate random slopes, or
+    ## any other redundancy computeQEff() exists to detect in the first
+    ## place; or a model with more random-effects columns than
+    ## observations), not something the caller needs to see.
+    ##
+    ## For very large q (e.g. an observation-level random effect, one
+    ## level per row) the sparse QR itself can fail outright (observed:
+    ## "QR factorization of .gCMatrix failed: out of memory" at
+    ## q ~ 50000) rather than just being slow. Rather than guess a safe
+    ## size cutoff, just catch any failure and fall back to no
+    ## correction -- the same safe default as when disp_dof_correction
+    ## is off entirely.
+    qEff <- tryCatch(
+        unname(suppressWarnings(rankMatrix(full, method = "qr"))[1]),
+        error = function(e) {
+            warning("glmerControl(disp_dof_correction=TRUE): computing the ",
+                    "degrees-of-freedom correction failed (", conditionMessage(e),
+                    "); proceeding without it.")
+            NA_real_
+        })
+    qEff
+}
+
 ##' @rdname modular
 ##' @export
 mkGlmerDevfun <- function(fr, X, reTrms, family,
@@ -848,7 +879,10 @@ mkGlmerDevfun <- function(fr, X, reTrms, family,
     maxit   <- as.integer(maxit)
     rho <- list2env(list(verbose=verbose, maxit=maxit,
                          tolPwrss= control$tolPwrss,
-                         compDev = control$compDev),
+                         compDev = control$compDev,
+                         dispProfile = identical(control$disp_method %||% "moment", "moment"),
+                         maxPhiIter = as.integer(control$maxPhiIter %||% 100L),
+                         qEff = computeQEff(X, reTrms, control$disp_dof_correction %||% TRUE, family)),
                     parent = parent.frame())
     rho$pp <- do.call(merPredD$new,
                       c(reTrms[c("Zt","theta","Lambdat","Lind")],
@@ -866,7 +900,8 @@ mkGlmerDevfun <- function(fr, X, reTrms, family,
 
         ## initialize (from mustart)
         .Call(glmerLaplace, rho$pp$ptr(), rho$resp$ptr(), nAGQ > 0L,
-              control$tolPwrss, maxit, verbose)
+              control$tolPwrss, maxit, verbose,
+              rho$dispProfile, rho$maxPhiIter, rho$qEff)
         rho$lp0         <- rho$pp$linPred(1) # each pwrss opt begins at this eta
         rho$pwrssUpdate <- glmerPwrssUpdate
     }

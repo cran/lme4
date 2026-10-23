@@ -83,7 +83,10 @@ glmerControl(optimizer = c("bobyqa", "Nelder_Mead"),
     tolPwrss = 1e-7,
     compDev = TRUE,
     nAGQ0initStep = TRUE,
-    check.response.not.const = "stop"
+    check.response.not.const = "stop",
+    disp_method = c("moment", "old/buggy"),
+    maxPhiIter = 100L,
+    disp_dof_correction = TRUE
  )
 
 nlmerControl(optimizer = "Nelder_Mead", tolPwrss = 1e-10,
@@ -169,6 +172,25 @@ nlmerControl(optimizer = "Nelder_Mead", tolPwrss = 1e-10,
     where the initial phase results in bad fixed-effect estimates
     (seen most often in binomial models with \code{link="cloglog"}
     and offsets).}
+  \item{disp_method}{(GLMMs only) character - how to handle the
+    dispersion parameter for families with a free/estimated
+    dispersion (e.g. \code{Gamma}) during PIRLS. \code{"moment"}
+    (the default) profiles it via a nested fixed-point loop, using the
+    method-of-moments estimate (deviance/n) at each outer iteration;
+    this corrects a bias in random-effects variance estimates present
+    in older versions of \code{lme4}. \code{"old/buggy"} reproduces
+    that older, biased behaviour (dispersion held fixed at 1
+    throughout fitting), kept only for backward compatibility.}
+  \item{maxPhiIter}{(GLMMs only) integer - maximum number of outer
+    iterations for the \code{disp_method="moment"} nested
+    fixed-point loop. Only used when \code{disp_method="moment"}.}
+  \item{disp_dof_correction}{(GLMMs only) logical - for free-dispersion
+    families, apply a degrees-of-freedom correction to the
+    \code{disp_method="moment"} estimator (\code{deviance/(n-q)} instead
+    of \code{deviance/n}), where \code{q} is the rank of the combined
+    fixed-and-random-effects (\code{X} and \code{Z}) model matrix.
+    \code{TRUE} by default; set to \code{FALSE} to reproduce the older,
+    uncorrected behaviour.}
   \item{check.nlev.gtreq.5}{character - rules for
     checking whether all random effects have >= 5 levels.
     See \code{action}.}
@@ -271,9 +293,9 @@ nlmerControl(optimizer = "Nelder_Mead", tolPwrss = 1e-10,
   \item{mod.type}{model type (for internal use)}
   \item{standardize.X}{scale columns of X matrix? (not yet implemented)}
   \item{autoscale}{if \code{TRUE}, automatically applies scaling for
-    the continuous covariates, and then back-transforms the estimates 
+    the continuous covariates, and then back-transforms the estimates
     back to the original scale to prevent numeric stability without user
-    intervention. (NOTE: not compatiable with glmer yet!)}
+    intervention. Works for both \code{lmer} and \code{glmer}.}
   \item{\dots}{other elements to include in check specification}
 }
 \value{

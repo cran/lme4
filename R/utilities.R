@@ -500,7 +500,19 @@ mkMerMod <- function(rho, opt, reTrms, fr, mc, lme4conv=NULL) {
               REML = if (rcl=="lmerResp") resp$REML else 0L,
               GLMM= isGLMM,
               NLMM= (rcl=="nlsResp"),
-              npar= length(reTrms$lower))
+              npar= length(reTrms$lower),
+              ## new entries go *after* the existing ones: downstream
+              ## packages index dims by position (e.g. merDeriv uses
+              ## dims[10] for REML), so inserting earlier breaks them.
+              ## disp_method/maxPhiIter/qEff (glmerControl(); NA for lmer/nlmer)
+              ## stored so refit() can recover the original fit's setting
+              ## rather than silently falling back to package defaults.
+              ## qEff (glmerControl(disp_dof_correction=)) is always
+              ## integer-valued when set (sum(q_k) - (K-1)), so it round-
+              ## trips through this integer-mode dims vector like the rest.
+              dispProfile = rho$dispProfile %||% NA,
+              maxPhiIter = rho$maxPhiIter %||% NA,
+              qEff = rho$qEff %||% NA)
     storage.mode(dims) <- "integer"
     fac     <- as.numeric(rcl != "nlsResp")
     if (trivial.y <- (length(resp$y)==0)) {
@@ -513,7 +525,26 @@ mkMerMod <- function(rho, opt, reTrms, fr, mc, lme4conv=NULL) {
     }
     ## weights <- resp$weights
     beta    <- pp$beta(fac)
-    sigmaML <- pwrss/n
+    ## For GLMMs with a free/estimated dispersion parameter (Gamma,
+    ## gaussian, inverse.gaussian -- glmResp::hasFreeDispersion() on the
+    ## C++ side), report the dispersion actually converged to by
+    ## glmerLaplace()'s internal phi fixed-point loop (resp$phi()),
+    ## rather than the generic pwrss/n formula below: pwrss/n is a
+    ## Pearson-residual-based quantity computed via resp$wrss(), which
+    ## (for these families) is itself computed at the *reweighted* PIRLS
+    ## working weights (reweighted by 1/phi), so pwrss/n no longer
+    ## estimates phi once phi != 1 -- it's confounded with phi through
+    ## that reweighting. See misc/Gamma_GLMM/README_Gamma_GLMMs.md, Gamma_GLMM branch.
+    ## Fixed-dispersion GLMMs and LMMs are unaffected.
+    hasFreeDisp <- isGLMM && !hasNoScale(resp$family)
+    ## resp$phi() is only meaningful when it was actually profiled
+    ## (disp_method="moment"); under disp_method="old/buggy" it's stuck at
+    ## its untouched default of 1, and the PIRLS working weights were never
+    ## reweighted by 1/phi either, so pwrss/n is *not* confounded in that
+    ## case -- it's the same (biased, but back-compatible) moment estimate
+    ## old CRAN reported.
+    dispProfile <- rho$dispProfile %||% TRUE
+    sigmaML <- if (hasFreeDisp && !trivial.y && dispProfile) resp$phi() else pwrss/n
     if (rcl != "lmerResp") {
         pars <- opt$par
         ## making the assertion that length(pars) > npar iff nAGQ > 0;
@@ -865,8 +896,10 @@ nlminbwrap <- function(par, fn, lower, upper, control=list(), ...) {
          conv = res$convergence, message = res$message)
 }
 
-glmerLaplaceHandle <- function(pp, resp, nAGQ, tol, maxit, verbose) {
-    .Call(glmerLaplace, pp, resp, nAGQ, tol, as.integer(maxit), verbose)
+glmerLaplaceHandle <- function(pp, resp, nAGQ, tol, maxit, verbose,
+                                dispProfile=TRUE, maxPhiIter=100L, qEff=NA_real_) {
+    .Call(glmerLaplace, pp, resp, nAGQ, tol, as.integer(maxit), verbose,
+          dispProfile, as.integer(maxPhiIter), qEff)
 }
 
 isFlexLambda <- function() FALSE
@@ -1072,7 +1105,7 @@ scale_vcov <- function(vv, sc, ce) {
   vv["(Intercept)", other_vars] <- updated_2
   vv[other_vars, "(Intercept)"] <- updated_2
   vv[other_vars, other_vars] <- vv[other_vars, other_vars] * outer(1/sc, 1/sc)
-  vv <- as(vv, "dpoMatrix")
+  vv <- as_dpoMatrix(vv)
 }
 
 ##' Used for padding NAs to Cmat accordingly in predict.merMod
@@ -1166,4 +1199,10 @@ get_grpvars <- function(formula, return_val = c("char", "symbol")) {
   ff3 <- lapply(ff2, "[[", 3) ## get argument after |
   if (return_val == "symbol") return(ff3)
   vapply(ff3, deparse1, FUN.VALUE = "")
+}
+
+as_dpoMatrix <- function(x) {
+  if (packageVersion("Matrix") < "1.8.0") return(as(x, "dpoMatrix"))
+  pd <- as(as(x, "dMatrix"), "posdefMatrix")
+  if (is(pd, "dpoMatrix")) pd else as(pd, "unpackedMatrix")
 }

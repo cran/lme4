@@ -154,6 +154,12 @@ extern "C" {
         END_RCPP;
     }
 
+    SEXP glm_phi(SEXP ptr) {
+        BEGIN_RCPP;
+        return ::Rf_ScalarReal(XPtr<glmResp>(ptr)->phi());
+        END_RCPP;
+    }
+
     SEXP glm_updateWts(SEXP ptr_) {
         BEGIN_RCPP;
         return ::Rf_ScalarReal(XPtr<glmResp>(ptr_)->updateWts());
@@ -289,9 +295,14 @@ extern "C" {
         }
         rp->updateMu(pp->linPred(1.));
 	// FIXME: warn/error/clamp/penalize here if value is out of bounds
-        if (debug) Rcpp::Rcout << "(igWI) mu: min: " << rp->mu().minCoeff() << 
+        if (debug) Rcpp::Rcout << "(igWI) mu: min: " << rp->mu().minCoeff() <<
                        " max: " << rp->mu().maxCoeff() << std::endl;
-        return rp->resDev() + pp->sqrL(1.);
+                                // deviance/data-fit term reweighted by
+                                // 1/phi (phi==1 reproduces the original
+                                // formula exactly); the ||u||^2 penalty
+                                // (sqrL) is untouched -- see
+                                // misc/README_Gamma_GLMMs.md
+        return rp->resDev() / rp->phi() + pp->sqrL(1.);
     }
 
     // FIXME: improve verbose output (remove code, even commented,
@@ -374,7 +385,122 @@ extern "C" {
             throw runtime_error("pwrssUpdate did not converge in (maxit) iterations");
     }
 
-    SEXP glmerLaplace(SEXP pp_, SEXP rp_, SEXP nAGQ_, SEXP tol_, SEXP maxit_, SEXP verbose_) {
+    // Runs pwrssUpdate() to find the conditional mode(s), profiling phi via
+    // a nested fixed-point loop around it when the family has a free/
+    // estimated dispersion parameter (Gamma, gaussian, inverse.gaussian --
+    // glmDist::hasFreeDispersion(), mirroring hasNoScale() in
+    // R/utilities.R) and dispProfile is requested
+    // (glmerControl(disp_method="moment"), the default); otherwise a
+    // single pwrssUpdate() call, leaving phi at its default 1.0 (fixed-
+    // dispersion families, or disp_method="old/buggy" for backward
+    // compatibility). The moment estimator phi = deviance/n is used at
+    // each outer iteration; the math is already family-generic (resDev(),
+    // Laplace()/aic() all dispatch per-family via glmFamily). Shared by
+    // glmerLaplace() (nAGQ<=1) and glmerAGQ() (nAGQ>1) -- both need the
+    // same mode-finding-with-profiled-phi step; only what happens with
+    // the converged mode afterward differs. See
+    // misc/Gamma_GLMM/README_Gamma_GLMMs.md in the Gamma_GLMM branch for
+    // the derivation and validation. Returns false if even the safe
+    // fallback below failed to converge for this candidate theta/beta, in
+    // which case the caller should report a flat sentinel deviance
+    // instead of proceeding.
+    // qEff: degrees-of-freedom correction to the moment estimator's
+    // denominator (phi = deviance/(n - qEff) instead of deviance/n), or
+    // NA (R_finite(qEff) false) for no correction (the previous,
+    // uncorrected behaviour). Computed in R (mkGlmerDevfun -> computeQEff(),
+    // R/modular.R) from reTrms$Gp, since the number of independent
+    // random-effects *terms* isn't reliably recoverable from Lambdat/Lind
+    // alone here (a correlated multi-parameter term contributes several
+    // Lind values for what is structurally still a single term) --
+    // gated to glmerControl(disp_dof_correction=TRUE), and only computed
+    // (non-NA) for models where every random-effects term is a scalar
+    // random intercept; see misc/Gamma_GLMM/README_Gamma_GLMMs.md
+    // (Gamma_GLMM branch) for the derivation and validation.
+    static bool profilePhi(glmResp *rp, merPredD *pp, bool uOnly, double tol,
+                            int maxit, int verb, bool dispProfile, int maxPhiIter,
+                            double qEff) {
+        if (rp->hasFreeDispersion() && dispProfile) {
+            double phi = 1.;
+            double lastGoodPhi = 1.;
+            double n = rp->weights().sum();
+            if (R_finite(qEff)) n -= qEff;
+            double phiTol = 1e-8;
+            for (int outer = 0; outer < maxPhiIter; ++outer) {
+                rp->setPhi(phi);
+                try {
+                    pwrssUpdate(rp, pp, uOnly, tol, maxit, verb);
+                } catch (std::runtime_error&) {
+                    // A candidate phi destabilized this PIRLS call enough to trip its
+                    // own step-halving safeguard (can happen transiently for extreme/
+                    // near-singular candidate theta/beta during the outer optimizer's
+                    // search). delu/delb (this call's in-progress Newton-step
+                    // refinement) reflect the bad attempt; u0/beta0 (the committed
+                    // baseline) are *usually* untouched by a failed pwrssUpdate, but
+                    // can themselves become non-finite if the R-level optimizer wrapper
+                    // ever commits a non-finite candidate as the new baseline between
+                    // devfun calls (observed: bobyqa's own trust-region model can start
+                    // proposing NaN candidates after enough uninformative/sentinel
+                    // evaluations in a row -- a pre-existing gap in how lme4 handles
+                    // that, not something this fix can safely paper over here). Recover
+                    // by discarding delu/delb (back to the u0/beta0 baseline) and
+                    // retrying once at the last phi that did succeed in this loop (a
+                    // gentler restart than jumping all the way back to phi=1, which can
+                    // itself be a large change from where the damped sequence currently
+                    // is).
+                    pp->setDelu(Vec::Zero(pp->u0().size()));
+                    pp->setDelb(Vec::Zero(pp->beta0().size()));
+                    rp->updateMu(pp->linPred(1.));
+                    phi = lastGoodPhi;
+                    rp->setPhi(phi);
+                    try {
+                        pwrssUpdate(rp, pp, uOnly, tol, maxit, verb);
+                    } catch (std::runtime_error&) {
+                        // Even that safe fallback failed for this exact candidate
+                        // theta/beta. Report a large but finite deviance instead of
+                        // propagating, so the outer optimizer treats this candidate
+                        // as bad and moves elsewhere rather than aborting the whole
+                        // glmer() fit. (Tried returning the Laplace value from the
+                        // non-converged state instead of this flat constant -- that
+                        // was worse: it can be misleadingly low near a degenerate
+                        // boundary and pulls the optimizer toward it rather than
+                        // away.)
+                        return false;
+                    }
+                    break;
+                }
+                double phiNew = rp->resDev() / n;
+                bool cvgd = std::abs(phiNew - phi) / phi < phiTol;
+                lastGoodPhi = phi;
+                // Damp the update: take only a small step (in log space) toward
+                // phiNew each outer iteration, rather than jumping straight to it --
+                // reduces (but, per the fallback above, doesn't have to eliminate)
+                // how often the safeguard above is needed.
+                phi = std::exp(0.9 * std::log(phi) + 0.1 * std::log(phiNew));
+                if (cvgd) break;
+            }
+            rp->setPhi(phi);
+        } else {
+            // Either a fixed-dispersion family (binomial/poisson: phi
+            // stays at its default 1.0, exactly as always), or
+            // disp_method="old/buggy" for a free-dispersion family:
+            // reproduces the original pre-fix behaviour, where the PIRLS
+            // working weights are computed disp-blind (phi==1) and only
+            // the final reported deviance (via aic()'s own internal dev/n
+            // plug-in) is dispersion-aware. Kept for backward
+            // compatibility -- see glmerControl(disp_method=).
+            pwrssUpdate(rp, pp, uOnly, tol, maxit, verb);
+        }
+        // PIRLS updates mu after forming the working factorization. Rebuild
+        // it at the accepted mean and final phi before Laplace or AGQ uses it.
+        // Do not solve again: that would change the accepted coefficients and
+        // leave the factorization one iteration behind again.
+        pp->updateXwts(rp->sqrtWrkWt());
+        pp->updateDecomp();
+        return true;
+    }
+
+    SEXP glmerLaplace(SEXP pp_, SEXP rp_, SEXP nAGQ_, SEXP tol_, SEXP maxit_, SEXP verbose_,
+                       SEXP dispProfile_, SEXP maxPhiIter_, SEXP qEff_) {
         BEGIN_RCPP;
         XPtr<glmResp>  rp(rp_);
         XPtr<merPredD> pp(pp_);
@@ -383,8 +509,21 @@ extern "C" {
             Rcpp::Rcout << "\nglmerLaplace resDev:  " << rp->resDev() << std::endl;
             Rcpp::Rcout << "\ndelb 1:  " << pp->delb() << std::endl;
         }
-        pwrssUpdate(rp, pp, ::Rf_asInteger(nAGQ_), ::Rf_asReal(tol_), 
-                    ::Rf_asInteger(maxit_), ::Rf_asInteger(verbose_));
+        bool    uOnly(::Rf_asInteger(nAGQ_));
+        double     tol(::Rf_asReal(tol_));
+        int      maxit(::Rf_asInteger(maxit_));
+        int       verb(::Rf_asInteger(verbose_));
+        // dispProfile is R's glmerControl(disp_method=...) == "moment"
+        // (TRUE) vs "old/buggy" (FALSE); maxPhiIter is glmerControl's
+        // maxPhiIter, capping the nested loop in profilePhi(); qEff is
+        // glmerControl(disp_dof_correction=)'s degrees-of-freedom
+        // correction (NA if disabled/not applicable -- see profilePhi()).
+        bool dispProfile(::Rf_asLogical(dispProfile_));
+        int  maxPhiIter(::Rf_asInteger(maxPhiIter_));
+        double    qEff(::Rf_asReal(qEff_));
+
+        if (!profilePhi(rp, pp, uOnly, tol, maxit, verb, dispProfile, maxPhiIter, qEff))
+            return ::Rf_ScalarReal(1e10);
         return ::Rf_ScalarReal(rp->Laplace(pp->ldL2(), pp->ldRX2(), pp->sqrL(1.)));
         END_RCPP;
     }
@@ -393,15 +532,21 @@ extern "C" {
     //
     // fac: mapped integer vector indicating the factor levels
     // u: current conditional modes
-    // devRes: current deviance residuals (i.e. similar to results of 
+    // devRes: current deviance residuals (i.e. similar to results of
     // family()$dev.resid, but computed in glmFamily.cpp)
-    static Ar1 devcCol(const MiVec& fac, const Ar1& u, const Ar1& devRes) {
+    // phi: current (profiled, or fixed at 1 for fixed-dispersion
+    // families) dispersion parameter -- the deviance-residual part is
+    // reweighted by 1/phi (mirrors sqrtWrkWt()'s d_phi reweighting and
+    // profilePhi()'s use in glmerLaplace()); the u^2 penalty is left
+    // unscaled, same split as everywhere else in this fix. phi==1
+    // reproduces the original formula exactly.
+    static Ar1 devcCol(const MiVec& fac, const Ar1& u, const Ar1& devRes, double phi) {
         Ar1  ans(u.square());
-        for (int i = 0; i < devRes.size(); ++i) ans[fac[i] - 1] += devRes[i];
+        for (int i = 0; i < devRes.size(); ++i) ans[fac[i] - 1] += devRes[i] / phi;
         // return: vector the size of u (i.e. length = number of
         // grouping factor levels), containing the squared conditional
-        // modes plus the sum of the deviance residuals associated
-        // with each level
+        // modes plus the sum of the (phi-reweighted) deviance residuals
+        // associated with each level
         return ans;
     }
 
@@ -411,7 +556,13 @@ extern "C" {
     // maxit: maximum number of pirls iterations
     // GQmat: matrix of quadrature weights
     // fac: grouping factor (gets converted to mapped integer below)
-    SEXP glmerAGQ(SEXP pp_, SEXP rp_, SEXP tol_, SEXP maxit_, SEXP GQmat_, SEXP fac_, SEXP verbose_) {
+    // dispProfile, maxPhiIter, qEff: as in glmerLaplace() -- see
+    // profilePhi(). (qEff will always reduce to the trivial K=1 case
+    // here in practice, since AGQ is only reachable for a single
+    // scalar random-effects term -- see the "AGQ only defined for..."
+    // check below -- but there's no need to special-case that.)
+    SEXP glmerAGQ(SEXP pp_, SEXP rp_, SEXP tol_, SEXP maxit_, SEXP GQmat_, SEXP fac_, SEXP verbose_,
+                  SEXP dispProfile_, SEXP maxPhiIter_, SEXP qEff_) {
         BEGIN_RCPP;
 
         XPtr<glmResp>     rp(rp_);
@@ -422,17 +573,26 @@ extern "C" {
         double           tol(::Rf_asReal(tol_));
         int            maxit(::Rf_asInteger(maxit_));
         double          verb(::Rf_asReal(verbose_));
+        bool     dispProfile(::Rf_asLogical(dispProfile_));
+        int       maxPhiIter(::Rf_asInteger(maxPhiIter_));
+        double         qEff(::Rf_asReal(qEff_));
         if (fac.size() != rp->mu().size())
             throw std::invalid_argument("size of fac must match dimension of response vector");
 
-        pwrssUpdate(rp, pp, true, tol, maxit, verb); // should be a
-                                                     // no-op
+        // Find the conditional mode(s), profiling phi via the same
+        // nested fixed-point loop glmerLaplace() uses for free-
+        // dispersion families (a no-op single pwrssUpdate() call
+        // otherwise, as before).
+        if (!profilePhi(rp, pp, true, tol, maxit, (int) verb, dispProfile, maxPhiIter, qEff))
+            return ::Rf_ScalarReal(1e10);
+        double phi(rp->phi());
 
                     // devc0: vector with one element per grouping
                     // factor level containing the the squared
-                    // conditional modes plus the sum of the deviance
-                    // residuals associated with each level
-        const Ar1      devc0(devcCol(fac, pp->u(1.), rp->devResid())); 
+                    // conditional modes plus the sum of the (phi-
+                    // reweighted) deviance residuals associated with
+                    // each level
+        const Ar1      devc0(devcCol(fac, pp->u(1.), rp->devResid(), phi));
         const unsigned int q(pp->u0().size());
         if (pp->L().factor()->nzmax !=  q)
             throw std::invalid_argument("AGQ only defined for a single scalar random-effects term");
@@ -449,13 +609,21 @@ extern "C" {
             else {
                 pp->setU0(zknot * sd); // to be added to current delu
                 rp->updateMu(pp->linPred(1.));
-                mult += (-0.5 * (devcCol(fac, pp->u(1.), rp->devResid()) - devc0) -
+                mult += (-0.5 * (devcCol(fac, pp->u(1.), rp->devResid(), phi) - devc0) -
                          GQmat(i, 2)).exp() * GQmat(i, 1)/sqrt2pi;
             }
         }
         pp->setU0(Vec::Zero(q)); // restore settings from pwrssUpdate;
         rp->updateMu(pp->linPred(1.));
-        return ::Rf_ScalarReal(devc0.sum() + pp->ldL2() - 2 * std::log(mult.prod()));
+        // devc0.sum() (the raw, phi-free deviance-based term) is
+        // replaced by rp->Laplace(ldL2, 0., sqrL) -- the same density-
+        // based fit term glmerLaplace() reports, which correctly
+        // includes the phi-dependent density-normalizing constant
+        // (via aic(), self-consistent with the profiled phi at this
+        // converged mode -- see profilePhi()/misc/Gamma_GLMM/
+        // README_Gamma_GLMMs.md) that a bare deviance sum omits.
+        return ::Rf_ScalarReal(rp->Laplace(pp->ldL2(), 0., pp->sqrL(1.)) -
+                                2 * std::log(mult.prod()));
         END_RCPP;
     }
 
@@ -1027,6 +1195,7 @@ static R_CallMethodDef CallEntries[] = {
     CALLDEF(glm_family,         1),
     CALLDEF(glm_link,           1),
     CALLDEF(glm_muEta,          1),
+    CALLDEF(glm_phi,            1),
     CALLDEF(glm_resDev,         1),
     CALLDEF(glm_sqrtWrkWt,      1),
     CALLDEF(glm_theta,          1),
@@ -1050,8 +1219,8 @@ static R_CallMethodDef CallEntries[] = {
     CALLDEF(glmFamily_theta,    1),
     CALLDEF(glmFamily_variance, 2),
 
-    CALLDEF(glmerAGQ,           7),
-    CALLDEF(glmerLaplace,       6),
+    CALLDEF(glmerAGQ,           10),
+    CALLDEF(glmerLaplace,       9),
 
     CALLDEF(golden_Create,      2),
     CALLDEF(golden_newf,        2),

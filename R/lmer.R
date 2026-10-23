@@ -315,7 +315,7 @@ mkdevfun <- function(rho, nAGQ=1L, maxit = if(extends(rho.cld, "nlsResp")) 300L 
     ## (clearly preferred to using globalVariables() !]
     fac <- pp <- resp <- lp0 <- compDev <- dpars <- baseOffset <- tolPwrss <-
         pwrssUpdate <- ## <-- even though it's a function below
-        GQmat <- nlmerAGQ <- mkTheta <- NULL
+        GQmat <- nlmerAGQ <- mkTheta <- dispProfile <- maxPhiIter <- qEff <- NULL
 
     ## The deviance function (to be returned, with 'rho' as its environment):
     ff <-
@@ -328,12 +328,15 @@ mkdevfun <- function(rho, nAGQ=1L, maxit = if(extends(rho.cld, "nlsResp")) 300L 
         ## control values will override rho values *if present*
         if (!is.null(tp <- control$tolPwrss)) rho$tolPwrss <- tp
         if (!is.null(cd <- control$ compDev)) rho$compDev <- cd
+        if (!is.null(dp <- control$disp_method)) rho$dispProfile <- identical(dp, "moment")
+        if (!is.null(mpi <- control$maxPhiIter)) rho$maxPhiIter <- as.integer(mpi)
         if (nAGQ == 0L)
             function(par) {
                 resp$updateMu(lp0)
                 pp$setTheta(mkTheta(as.double(par)))
                 p <- pwrssUpdate(pp, resp, tol=tolPwrss, GQmat=GHrule(0L),
-                                 compDev=compDev, maxit=maxit, verbose=verbose)
+                                 compDev=compDev, maxit=maxit, verbose=verbose,
+                                 dispProfile=dispProfile, maxPhiIter=maxPhiIter, qEff=qEff)
                 resp$updateWts()
                 p
             }
@@ -347,7 +350,8 @@ mkdevfun <- function(rho, nAGQ=1L, maxit = if(extends(rho.cld, "nlsResp")) 300L 
                 offset <- if (length(spars)==0) baseOffset else baseOffset + pp$X %*% spars
                 resp$setOffset(offset)
                 p <- pwrssUpdate(pp, resp, tol=tolPwrss, GQmat=GQmat,
-                                 compDev=compDev, grpFac=fac, maxit=maxit, verbose=verbose)
+                                 compDev=compDev, grpFac=fac, maxit=maxit, verbose=verbose,
+                                 dispProfile=dispProfile, maxPhiIter=maxPhiIter, qEff=qEff)
                 resp$updateWts()
                 p
             }
@@ -430,16 +434,28 @@ RglmerWrkIter <- function(pp, resp, uOnly=FALSE) {
 ##' @param compDev compute in C++ (as opposed to doing as much as possible in R)
 ##' @param grpFac grouping factor (normally found in environment ..)
 ##' @param verbose verbosity, of course
-glmerPwrssUpdate <- function(pp, resp, tol, GQmat, compDev=TRUE, grpFac=NULL, maxit = 70L, verbose=0) {
+##' @param dispProfile for families with a free dispersion parameter (e.g.
+##'     Gamma), profile it via a nested fixed-point loop around PIRLS
+##'     (\code{glmerControl(disp_method="moment")}, the default) rather
+##'     than leaving it fixed at 1 (\code{disp_method="old/buggy"},
+##'     back-compatible with pre-fix behaviour)
+##' @param maxPhiIter cap on the nested dispersion fixed-point loop
+##'     (only used when \code{dispProfile=TRUE})
+##' @param qEff degrees-of-freedom correction to the moment estimator's
+##'     denominator (\code{glmerControl(disp_dof_correction=TRUE)}; see
+##'     \code{\link{glmerControl}}), or \code{NA_real_} for none
+glmerPwrssUpdate <- function(pp, resp, tol, GQmat, compDev=TRUE, grpFac=NULL, maxit = 70L, verbose=0,
+                              dispProfile=TRUE, maxPhiIter=100L, qEff=NA_real_) {
     nAGQ <- nrow(GQmat)
     if (compDev) {
         if (nAGQ < 2L)
             return(.Call(glmerLaplace, pp$ptr(), resp$ptr(),
                          nAGQ, tol, as.integer(maxit),
-                         verbose))
+                         verbose, dispProfile, as.integer(maxPhiIter), qEff))
         return(.Call(glmerAGQ, pp$ptr(), resp$ptr(),
                      tol, as.integer(maxit),
-                     GQmat, grpFac, verbose))
+                     GQmat, grpFac, verbose,
+                     dispProfile, as.integer(maxPhiIter), qEff))
     }
  ### does this show anywhere ??? [i.e. is it ever used in our checks/examples/scripts/vignettes ?
  ### message("glmerPwrssUpdate(*, compDev=FALSE)  --> using more R, no direct .Call() to C.") # [DBG] only
@@ -469,6 +485,10 @@ glmerPwrssUpdate <- function(pp, resp, tol, GQmat, compDev=TRUE, grpFac=NULL, ma
         oldpdev <- pdev
         i <- i+1
     }
+    ## Match the compiled path: use the accepted mean, without taking
+    ## another PIRLS step, to form the factorization used by Laplace.
+    pp$updateXwts(resp$sqrtWrkWt())
+    pp$updateDecomp()
     resp$Laplace(pp$ldL2(), 0., pp$sqrL(1))  ## FIXME: should 0. be pp$ldRX2 ?
 }
 
@@ -547,9 +567,6 @@ anovaLmer <- function(object, ..., refit = TRUE, model.names=NULL) {
             stop("model names vector and model list have different lengths")
         names(mods) <- sub("@env$", '', mNms) # <- hack
         models.reml <- vapply(mods, function(x) is(x,"merMod") && isREML(x), NA)
-        models.GHQ <- vapply(mods, function(x) is(x,"glmerMod") && getME(x,"devcomp")$dims[["nAGQ"]]>1 , NA)
-        if (any(models.GHQ) && any(vapply(mods, function(x) is(x,"glm"), NA)))
-            stop("GLMMs with nAGQ>1 have log-likelihoods incommensurate with glm() objects")
         if (refit) {
             ## message only if at least one models is REML:
             if (any(models.reml)) message("refitting model(s) with ML (instead of REML)")
@@ -1424,21 +1441,33 @@ refit.merMod <- function(object,
             names(object@frame)[rcol] <- deparse(newrespSub)
         }
         if (!is.null(na.act <- attr(object@frame,"na.action")) &&
-            is.null(attr(newresp,"na.action"))) {
-            ## will only get here if na.action is 'na.omit' or 'na.exclude'
-            ## *and* newresp does not have an 'na.action' attribute
-            ## indicating that NAs have already been filtered
+            is.null(attr(newresp,"na.action")) &&
+            NROW(newresp) == nrow(object@frame) + length(na.act)) {
+            ## will only get here if na.action is 'na.omit' or 'na.exclude',
+            ## newresp does not have an 'na.action' attribute
+            ## indicating that NAs have already been filtered, *and*
+            ## newresp has one value per row of the original data
             newresp <- if (is.matrix(newresp))
                 newresp[-na.act, ]
             else newresp[-na.act]
         }
+        if (NROW(newresp) != nrow(object@frame))
+            stop(if (length(na.act) > 0)
+                     gettextf("'newresp' has %d rows: expected %d (the number of observations used in the fit), or %d (also including rows dropped because of missing values)",
+                              NROW(newresp), nrow(object@frame),
+                              nrow(object@frame) + length(na.act))
+                 else
+                     gettextf("'newresp' has %d rows: expected %d (the number of observations used in the fit)",
+                              NROW(newresp), nrow(object@frame)),
+                 domain = NA)
         object@frame[[rcol]] <- newresp
     }
 
     if (!is.null(newweights)) {
         ## DRY ...
         if (!is.null(na.act <- attr(object@frame,"na.action")) &&
-            is.null(attr(newweights, "na.action"))) {
+            is.null(attr(newweights, "na.action")) &&
+            length(newweights) == nrow(object@frame) + length(na.act)) {
             newweights <- newweights[-na.act]
         }
         object@frame[["(weights)"]] <- newweights
@@ -1486,11 +1515,15 @@ refit.merMod <- function(object,
     if (haveGLMM) {
         GQmat <- GHrule(nAGQ)
 
+        dispProfile <- identical(control$disp_method %||% "moment", "moment")
+        maxPhiIter  <- as.integer(control$maxPhiIter %||% 100L)
         if (nAGQ <= 1) {
-            glmerPwrssUpdate(pp,rr, control$tolPwrss, GQmat, maxit=maxit)
+            glmerPwrssUpdate(pp,rr, control$tolPwrss, GQmat, maxit=maxit,
+                             dispProfile=dispProfile, maxPhiIter=maxPhiIter)
         } else {
             glmerPwrssUpdate(pp,rr, control$tolPwrss, GQmat, maxit=maxit,
-                             grpFac = object@flist[[1]])
+                             grpFac = object@flist[[1]],
+                             dispProfile=dispProfile, maxPhiIter=maxPhiIter)
         }
     }
 
@@ -1505,6 +1538,32 @@ refit.merMod <- function(object,
 
             list(tolPwrss= dc$cmp [["tolPwrss"]],
                  compDev = dc$dims[["compDev"]],
+                 ## recover the original fit's disp_method/maxPhiIter from
+                 ## devcomp; fall back to package defaults for objects
+                 ## fitted before these were stored there. Single-bracket
+                 ## (not [[) lookup + explicit is.na(): dims is a named
+                 ## atomic vector, so [[ throws "subscript out of bounds"
+                 ## for a name that's genuinely absent (old-format dims,
+                 ## from before these fields existed) rather than
+                 ## returning NULL -- %||% never gets a chance to rescue
+                 ## it. [ instead returns NA in that case, which %||%
+                 ## *also* wouldn't rescue (it only treats NULL as
+                 ## missing), hence the explicit is.na() check.
+                 dispProfile = {
+                     v <- dc$dims["dispProfile"]
+                     if (is.na(v)) TRUE else as.logical(v)
+                 },
+                 maxPhiIter = {
+                     v <- dc$dims["maxPhiIter"]
+                     if (is.na(v)) 100L else as.integer(v)
+                 },
+                 ## qEff: NA (no correction) for pre-disp_dof_correction fit
+                 ## objects, same fallback mkGlmerDevfun()/computeQEff() use
+                 ## when the option is off.
+                 qEff = {
+                     v <- dc$dims["qEff"]
+                     if (is.na(v)) NA_real_ else as.double(v)
+                 },
                  nAGQ = nAGQ,
                  lp0 = pp$linPred(1), ## object@resp$eta - baseOffset,
                  baseOffset = baseOffset,
@@ -2207,17 +2266,18 @@ vcov.merMod <- function(object, correlation = TRUE, sigm = sigma(object),
          ## (1) numerical Hessian computed?
         (!is.null(h <- object@optinfo$derivs$Hessian) &&
          ## (2) does Hessian include fixed-effect parameters?
-         nrow(h) > (ntheta <- length(object@theta)))
+         nrow(h) > (npar <- getParLength(object)))
     if (is.null(use.hessian)) use.hessian <- hess.avail
     if (use.hessian && !hess.avail) stop(shQuote("use.hessian"),
                                          "=TRUE specified, ",
                                          "but Hessian is unavailable")
+
     calc.vcov.hess <- function(h) {
         ## invert 2*Hessian, catching errors and forcing symmetric result
         ## ~= forceSymmetric(solve(h/2)[i,i]) : solve(h/2) = 2*solve(h)
         h <- tryCatch(solve(h),
                       error=function(e) matrix(NA_real_,nrow=nrow(h),ncol=ncol(h)))
-        i <- -seq_len(ntheta)  ## drop var-cov parameters
+        i <- -seq_len(npar)  ## drop var-cov parameters
         h <- h[i,i]
         forceSymmetric(h + t(h))
     }
@@ -2257,7 +2317,7 @@ vcov.merMod <- function(object, correlation = TRUE, sigm = sigma(object),
     }
 
     ## FIXME: try to catch non-PD matrices
-    rr <- tryCatch(as(V, "dpoMatrix"), error = function(e)e)
+    rr <- tryCatch(as_dpoMatrix(V), error = function(e)e)
     if (inherits(rr, "error")) {
         warning(gettextf("Computed variance-covariance matrix problem: %s;\nreturning NA matrix",
                          rr$message), domain = NA)
@@ -2555,7 +2615,20 @@ optwrap <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
                "'verbose' not yet passed to optimizer '%s'; consider fixing optwrap()",
                                         optName), domain = NA)
            )
-    arglist <- list(fn = fn, par = par, lower = lower, upper = upper, control = control)
+    ## record the last parameters evaluated, on the scale of 'par':
+    ## these can't be recovered from environment(fn)$pp$theta, since
+    ## the theta -> par mapping loses information (e.g. rho when sigma = 0)
+    last_par <- NULL
+    optwrap_env <- environment()
+    ## single argument: Nelder_Mead() requires length(formals(fn)) == 1
+    fn_opt <- if (use.last.params)
+                  function(par) {
+                      ## +0 forces a copy
+                      assign("last_par", par + 0, envir = optwrap_env)
+                      fn(par)
+                  }
+              else fn
+    arglist <- list(fn = fn_opt, par = par, lower = lower, upper = upper, control = control)
     ## optimx: must pass method in control (?) because 'method' was previously
     ## used in lme4 to specify REML vs ML
     if (optName == "optimx") {
@@ -2598,20 +2671,12 @@ optwrap <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
 
     singular <- min(opt$par - lower, upper - opt$par) < getSingTol()
     if (force.calc.derivs || (calc.derivs && !singular)){
-        if (use.last.params) {
-            ## +0 tricks R into doing a deep copy ...
-            ## otherwise element of ref class changes!
-            ## FIXME:: clunky!!
-            orig_pars <- opt$par
-            orig_theta <- environment(fn)$pp$theta+0
-            orig_pars[seq_along(orig_theta)] <- orig_theta
-        }
         if (verbose > 10) cat("computing derivatives\n")
         derivs <- deriv12(fn, opt$par, fx = opt$value)
-        if (use.last.params) {
-            ## run one more evaluation of the function at the optimized
+        if (use.last.params && !is.null(last_par)) {
+            ## run one more evaluation of the function at the last evaluated
             ##  value, to reset the internal/environment variables in devfun ...
-            fn(orig_pars)
+            fn(last_par)
         }
     } else derivs <- NULL
 
@@ -2624,5 +2689,6 @@ optwrap <- function(optimizer, fn, par, lower = -Inf, upper = Inf,
               optimizer = optimizer,
               control   = control,
               warnings  = curWarnings,
-              derivs    = derivs)
+              derivs    = derivs,
+              last_par  = last_par)
 }
